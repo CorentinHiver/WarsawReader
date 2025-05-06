@@ -65,20 +65,27 @@ int studyCFD(int nb_events_max = -1)
   auto E_VS_dT_Ge1_Ref = new TH2F("E_VS_dT_Ge1_Ref", "E_VS_dT_Ge1_Ref", 1000,-2*time_window,2*time_window, 10000,0,100000);
   auto dT_Ref_VS_all = new TH2F("dT_Ref_VS_all", "dT_Ref_VS_all", 200,0,200, 10000,-2*time_window,2*time_window);
   
-  auto cfd_dT_all = new TH1F("cfd_dT_all", "cfd_dT_all", 10000,-2*time_window,2*time_window);
+  auto dT_all_cfd = new TH1F("dT_all_cfd", "dT_all_cfd", 10000,-2*time_window,2*time_window);
   auto cfd_dT_Ge1_Ref = new TH1F("cfd_dT_Ge1_Ref", "cfd_dT_Ge1_Ref", 10000,-2*time_window,2*time_window);
-  auto E_VS_cfd_dT_Ge1_Ref = new TH2F("E_VS_cfd_dT_Ge1_Ref", "E_VS_cfd_dT_Ge1_Ref", 10000,-2*time_window,2*time_window, 10000,0,100000);
-  auto cfd_dT_Ref_VS_all = new TH2F("cfd_dT_Ref_VS_all", "cfd_dT_Ref_VS_all", 200,0,200, 10000,-2*time_window,2*time_window);
+  auto E_VS_dT_Ge1_Ref_cfd = new TH2F("E_VS_dT_Ge1_Ref_cfd", "E_VS_dT_Ge1_Ref_cfd", 10000,-2*time_window,2*time_window, 10000,0,100000);
+  auto dT_Ref_VS_all_cfd = new TH2F("dT_Ref_VS_all_cfd", "dT_Ref_VS_all_cfd", 200,0,200, 10000,-2*time_window,2*time_window);
 
   std::vector<TH2F*> dT_all_vs_all; dT_all_vs_all.reserve(200);
-  std::vector<TH2F*> cfd_dT_all_vs_all; cfd_dT_all_vs_all.reserve(200);
+  std::vector<TH2F*> dT_all_vs_all_cfd; dT_all_vs_all_cfd.reserve(200);
   for (size_t board_i = 0; board_i<Boards_map.size(); ++board_i) for (size_t channel_i = 0; channel_i<16; ++channel_i)
   {
-    if (Boards_map[board_i] == EMPTY) dT_all_vs_all.push_back(nullptr);
-    TString name ("dT_" + DetectorName[Boards_map[board_i]] + "_" + std::to_string(channel_i) + "_label_" + std::to_string(board_i*16+channel_i));
-    dT_all_vs_all.push_back(new TH2F(name, name, 200,0,200, 2000,-time_window,time_window));
-    TString name2 ("cfd_dT_" + DetectorName[Boards_map[board_i]] + "_" + std::to_string(channel_i) + "_label_" + std::to_string(board_i*16+channel_i));
-    cfd_dT_all_vs_all.push_back(new TH2F(name2, name2, 200,0,200, 2000,-time_window,time_window));
+    if (Boards_map[board_i] == EMPTY) 
+    {
+      dT_all_vs_all.push_back(nullptr);
+      dT_all_vs_all_cfd.push_back(nullptr);
+    }
+    else
+    {
+      TString name ("dT_" + DetectorName[Boards_map[board_i]] + "_" + std::to_string(channel_i) + "_label_" + std::to_string(board_i*16+channel_i));
+      dT_all_vs_all.push_back(new TH2F(name, name, 200,0,200, 2000,-time_window,time_window));
+      TString name2 ("cfd_dT_" + DetectorName[Boards_map[board_i]] + "_" + std::to_string(channel_i) + "_label_" + std::to_string(board_i*16+channel_i));
+      dT_all_vs_all_cfd.push_back(new TH2F(name2, name2, 200,0,200, 2000,-time_window,time_window));
+    }
   }
 
   for (auto const & filename : filenames)
@@ -161,11 +168,11 @@ int studyCFD(int nb_events_max = -1)
             dT_all_vs_all[glabel_0]->Fill(glabel_1, Long64_t(hit_1.timestamp - hit_0.timestamp));
             dT_all_vs_all[glabel_1]->Fill(glabel_0, Long64_t(hit_0.timestamp - hit_1.timestamp));
 
-            cfd_dT_all_vs_all[glabel_0]->Fill(glabel_1, Long64_t(hit_1.cfd - hit_0.cfd));
-            cfd_dT_all_vs_all[glabel_1]->Fill(glabel_0, Long64_t(hit_0.cfd - hit_1.cfd));
+            dT_all_vs_all_cfd[glabel_0]->Fill(glabel_1, Long64_t(hit_1.cfd - hit_0.cfd));
+            dT_all_vs_all_cfd[glabel_1]->Fill(glabel_0, Long64_t(hit_0.cfd - hit_1.cfd));
 
             dT_all->Fill(Long64_t(hit_1.timestamp - hit_0.timestamp));
-            cfd_dT_all->Fill(Long64_t(hit_1.cfd - hit_0.cfd));
+            dT_all_cfd->Fill(Long64_t(hit_1.cfd - hit_0.cfd));
           }
 
           // Time reference histograms :
@@ -178,18 +185,18 @@ int studyCFD(int nb_events_max = -1)
             auto const & glabel_1 = glabel(hit_1);
 
             auto const & dT = Long64_t(hit_1.timestamp - hit_0.timestamp);
-            auto const & cfd_dT = Long64_t(hit_1.cfd - hit_0.cfd);
+            auto const & dT_cfd = Long64_t(hit_1.cfd - hit_0.cfd);
             
-            dT_Ref_VS_all -> Fill(glabel_1, dT);
-            cfd_dT_Ref_VS_all -> Fill(glabel_1, cfd_dT);
+            dT_Ref_VS_all     -> Fill(glabel_1, dT    );
+            dT_Ref_VS_all_cfd -> Fill(glabel_1, dT_cfd);
 
             if (glabel_1 == 0) 
             {
               dT_Ge1_Ref -> Fill(dT);
-              cfd_dT_Ge1_Ref -> Fill(cfd_dT);
+              cfd_dT_Ge1_Ref -> Fill(dT_cfd);
               
-              E_VS_dT_Ge1_Ref -> Fill(dT, hit_1.adc);
-              E_VS_cfd_dT_Ge1_Ref -> Fill(cfd_dT, hit_1.adc);
+              E_VS_dT_Ge1_Ref     -> Fill(dT    , hit_1.adc);
+              E_VS_dT_Ge1_Ref_cfd -> Fill(dT_cfd, hit_1.adc);
             }            
           }
         }
@@ -203,23 +210,26 @@ int studyCFD(int nb_events_max = -1)
     HitPattern    ->  Write();
     HitPattern2D  ->  Write();
 
-    dT_all             ->  Write();
+    dT_all           ->  Write();
     dT_Ref_VS_all    ->  Write();
     dT_Ge1_Ref       ->  Write();
     E_VS_dT_Ge1_Ref  ->  Write();
 
-    cfd_dT_all            -> Write();
+    dT_all_cfd          -> Write();
     cfd_dT_Ge1_Ref      -> Write();
-    E_VS_cfd_dT_Ge1_Ref -> Write();
-    cfd_dT_Ref_VS_all   -> Write();
+    E_VS_dT_Ge1_Ref_cfd -> Write();
+    dT_Ref_VS_all_cfd   -> Write();
     
     cfd_corrections ->  Write();
     
     E_all -> Write();
     neda_psd -> Write();
-    for (auto & histo : neda_psds) histo->Write();
-    for (auto & histo : dT_all_vs_all) if (histo) histo->Write();
-    for (auto & histo : cfd_dT_all_vs_all) if (histo) histo->Write();
+    
+    auto filledHisto = []<class THist>(THist * histo){return histo && !histo->IsZombie() && histo->Integral()>0;};
+
+    for (auto & histo : neda_psds         ) if (filledHisto(histo)) histo->Write();
+    for (auto & histo : dT_all_vs_all     ) if (filledHisto(histo)) histo->Write();
+    for (auto & histo : dT_all_vs_all_cfd ) if (filledHisto(histo)) histo->Write();
 
   rootfile->Close();
   print("studyCFD.root written");
@@ -233,14 +243,14 @@ int studyCFD(int nb_events_max = -1)
   delete dT_Ref_VS_all;
   delete dT_Ge1_Ref;
   delete E_VS_dT_Ge1_Ref;
-  delete cfd_dT_all;
+  delete dT_all_cfd;
   delete cfd_dT_Ge1_Ref;
-  delete E_VS_cfd_dT_Ge1_Ref;
-  delete cfd_dT_Ref_VS_all;
+  delete E_VS_dT_Ge1_Ref_cfd;
+  delete dT_Ref_VS_all_cfd;
 
   for (auto & histo : neda_psds) delete histo;
   for (auto & histo : dT_all_vs_all) delete histo;
-  for (auto & histo : cfd_dT_all_vs_all) delete histo;
+  for (auto & histo : dT_all_vs_all_cfd) delete histo;
 
   print(timer());
   return 0;

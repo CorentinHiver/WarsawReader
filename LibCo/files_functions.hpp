@@ -7,16 +7,30 @@
 
 #include <algorithm>
 #include <dirent.h>
-#include <filesystem>
 #include <fstream>
 #include <glob.h>
 #include <iostream>
 #include <map>
-#if __cplusplus >= 201703L
-  namespace fs = std::filesystem;
-#else 
-  #warning ("In version of c++ < 17, '...' fold expression not defined, and <filesystem> not loaded. Some parts of the code might not behave as expected...")
-#endif // C++ 17
+
+#if __GNUC__ >= 9
+	#include <filesystem>
+  #if __cplusplus >= 201703L
+    #include <filesystem>
+    namespace fs = std::filesystem;
+  #else 
+    #warning ("In version of c++ < 17, '...' fold expression not defined, and <filesystem> not loaded. Some parts of the code might not behave as expected...")
+  #endif // C++ 17
+#else
+	#include <experimental/filesystem>
+  #if __cplusplus >= 201703L
+    #include <filesystem>
+	  namespace fs = std::experimental::filesystem;
+  #else 
+    #warning ("In version of c++ < 17, '...' fold expression not defined, and <filesystem> not loaded. Some parts of the code might not behave as expected...")
+  #endif // C++ 17
+#endif
+
+
 
 //----------------------------------------------------//
 //       General files and folders manipulations      //
