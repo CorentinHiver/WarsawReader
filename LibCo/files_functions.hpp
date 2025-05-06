@@ -23,7 +23,6 @@
 #else
 	#include <experimental/filesystem>
   #if __cplusplus >= 201703L
-    #include <filesystem>
 	  namespace fs = std::experimental::filesystem;
   #else 
     #warning ("In version of c++ < 17, '...' fold expression not defined, and <filesystem> not loaded. Some parts of the code might not behave as expected...")
