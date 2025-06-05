@@ -14,6 +14,8 @@ namespace CaenDataReader
     {
     }
 
+    void makePureVirtual(bool const & isVirtual = false) override {print(isVirtual);}; // To make this class real (printed to get rid of the warning)
+
     RootReader(std::string const & filename, TTree * tree) : 
       CaenReaderBase(filename)
     {
