@@ -2,7 +2,7 @@
 // The additionnal point is to study the cfd and compare with the original crrc2 timestamp,
 // but without any coincidences, simply comparison of both methods !
 
-#include "Caenlib/CaenRawReader.hpp"
+#include "CaenLib/CaenRawReader.hpp"
 #include "AnalysisLib/CFD.hpp"
 #include "AnalysisLib/RawHit.hpp"
 #include "LibCo/Timer.hpp"
