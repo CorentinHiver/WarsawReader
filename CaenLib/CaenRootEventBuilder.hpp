@@ -35,7 +35,7 @@ namespace CaenDataReader
     void fast_event_building(Long64_t const & time_window)
     {
       std::vector<size_t> ordered_index;
-      bubble_sort(hit_buffer, ordered_index);
+      Colib::bubble_sort(hit_buffer, ordered_index);
       Event event;
       event.emplace_back(ordered_index[0]);
 

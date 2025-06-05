@@ -36,7 +36,7 @@ int studyCFD(int nb_events_max = -1)
   };
 
   // std::vector<std::string> filenames = {"/home/corentin/60Co_data/eagleRU_i2514_0023_0000.caendat"};
-  // std::vector<std::string> filenames = {"/home/corentin/60Co_data/eagleRU_i2607_0005_0000.caendat"};
+  std::vector<std::string> filenames = {"/home/corentin/60Co_data/eagleRU_i2607_0005_0000.caendat"};
   // std::vector<std::string> filenames = {
   //   "/home/corentin/60Co_data/eagleRU_i2606_0004_0000.caendat",
   //   "/home/corentin/60Co_data/eagleRU_i2606_0004_0001.caendat"
@@ -104,7 +104,7 @@ int studyCFD(int nb_events_max = -1)
 
       // Correct timestamp with cfd :
 
-      if (!hit.outTrace.empty() && key_found(hit.board_ID, cfd_shifts)) 
+      if (!hit.outTrace.empty() && key_found(cfd_shifts, hit.board_ID)) 
       {
         CFD cfd(hit.outTrace, cfd_shifts[hit.board_ID], 0.75);
         

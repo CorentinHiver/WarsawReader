@@ -15,6 +15,10 @@ namespace CaenDataReader
       this->open(filename);
     }
 
+    virtual void makePureVirtual(bool const & isVirtual = true) = 0; // To make this class pure virtual
+
+    virtual ~CaenReaderBase() {}
+
     void open(std::string const & filename)
     {
       m_filename = filename  ;

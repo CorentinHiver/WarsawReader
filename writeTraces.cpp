@@ -40,7 +40,6 @@ int writeTraces(int nb_events_max = -1)
 
   auto rootFile = TFile::Open("writeTraces.root", "recreate"); rootFile->cd();
 
-
   std::vector<std::string> folders_names;
 
   while(!finished && reader.readBoardAggregate())
