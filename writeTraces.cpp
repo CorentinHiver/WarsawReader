@@ -94,14 +94,14 @@ int writeTraces(int nb_events_max = -1)
       graph2->Draw("same");
       graph3->SetLineColor(kBlue);
       graph3->Draw("same");
-      if (key_found(hit.detectorType, shifts))
+      if (key_found(shifts, hit.detectorType))
       {
         cfd.calculate(shifts[hit.detectorType], 0.5);
         auto graph4 = new TGraph(cfd.cfd.size(), linspace_for(cfd.cfd, 0., 4.).data(), cfd.cfd.data());
         graph4->SetLineColor(kGray);
         graph4->Draw("same");
 
-        if (key_found(hit.detectorType, thresholds))
+        if (key_found(thresholds, hit.detectorType))
         {
           auto const & zero = cfd.findZero(thresholds[hit.detectorType]) * 4;
           if (zero != CFD::noSignal)

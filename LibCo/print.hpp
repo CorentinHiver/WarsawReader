@@ -13,11 +13,11 @@
 // #include <array>
 
 // Defining the different colors possible of the terminal
-// Usage :  cout<< CoLib::Color::<COLOR> <<....
+// Usage :  cout<< Colib::Color::<COLOR> <<....
 //          ...
-//          cout << ... << CoLib::Color::RESET
+//          cout << ... << Colib::Color::RESET
 
-namespace CoLib
+namespace Colib
 {
   namespace Color
   {
@@ -45,7 +45,7 @@ namespace CoLib
   }
 }
 
-#ifndef MULTITHREADING
+#ifndef COMULTITHREADING
 
 /// @brief New line
 void print() {std::cout << std::endl;}
@@ -116,13 +116,12 @@ template <class... ARGS> void debug(ARGS &&...
 #endif //DEBUG
 }
 
-
 #else
 
 std::mutex print_mutex;
 
 /// @brief New line
-void print() {print_mutex.lock(); std::cout << std::endl; print_mutex.unlock();}
+void print() {lock_mutex lock(print_mutex); std::cout << std::endl;}
 
 template <class T>
 std::ostream& operator<<(std::ostream& cout, std::vector<T> const & v)
@@ -136,40 +135,39 @@ std::ostream& operator<<(std::ostream& cout, std::vector<T> const & v)
 template <class T> 
 void print(T const & t)
 {
-  print_mutex.lock(); 
+  lock_mutex lock(print_mutex); 
   std::cout << t << std::endl; 
-  print_mutex.unlock();
 }
 
 /// @brief Generic print
 /// @details Automatically adds space between each input. Terminate the output with a "\\n"
 template <class T, class... T2> 
-void print(T const & t, T2 const &... t2) {print_mutex.lock(); std::cout << t << " "; print_mutex.unlock(); print(t2...);}
+void print(T const & t, T2 const &... t2) {{lock_mutex lock(print_mutex); std::cout << t << " ";} print(t2...);}
 
 
 /// @brief Generic print concatenated
 /// @details Concatenate the ouput, i.e. do not add space between each input. Terminate the output with a "\\n"
 template <class T> 
-void printC(T const & t) {print_mutex.lock(); std::cout << t << std::endl; print_mutex.unlock();}
+void printC(T const & t) {lock_mutex lock(print_mutex); std::cout << t << std::endl;}
 
 /// @brief Generic print concatenated
 /// @details Concatenate the ouput, i.e. do not add space between each input. Terminate the output with a "\\n"
 template <class T, class... T2> 
-void printC(T const & t, T2 const &... t2) {print_mutex.lock(); std::cout << t;  print_mutex.unlock(); printC(t2...);}
+void printC(T const & t, T2 const &... t2) {{lock_mutex lock(print_mutex); std::cout << t;} printC(t2...);}
 
 
 /// @brief Generic print in one line
 /// @details Concatenate the ouput, i.e. do not add space between each input. Do not terminate the output with a "\\n"
 template <class T> 
-void println(T const & t) {print_mutex.lock(); std::cout << t; print_mutex.unlock();}
+void println(T const & t) {lock_mutex lock(print_mutex); std::cout << t;}
 
 /// @brief Generic print in one line
 /// @details Concatenate the ouput, i.e. do not add space between each input. Do not terminate the output with a "\\n"
 template <class T, class... T2> 
-void println(T const & t, T2 const &... t2) {print_mutex.lock(); std::cout << t; print_mutex.unlock();  println(t2...);}
+void println(T const & t, T2 const &... t2) {{lock_mutex lock(print_mutex); std::cout << t;} println(t2...);}
 
 /// @brief Set the floating point precision displayed.
-void print_precision(int n = 6) {print_mutex.lock(); std::cout << std::setprecision(n); print_mutex.unlock();}
+void print_precision(int n = 6) {lock_mutex lock(print_mutex); std::cout << std::setprecision(n);}
 
 /// @brief Requires #define DEBUG or -D DEBUG in the compile line
 template <class... ARGS> void debug(ARGS &&... args) 
@@ -179,58 +177,41 @@ template <class... ARGS> void debug(ARGS &&... args)
 #endif //DEBUG
 }
 
-
-/// @brief legacy
-template<class... ARGS>
-void printMT(ARGS &&... args) 
-{
-  print(std::forward<ARGS>(args)...);
-}
-
-#endif //MULTITHREADING
-
-
-// Extracts the name of the types (overloaded for user defined objects):
-
-template<class T>
-std::string type_of(T const & t)
-{
-  return typeid(t).name();
-}
+#endif //COMULTITHREADING
 
 // Specialized printing function :
 /// @brief Print in bright black
 template <class... T>
 void warning(T const & ... t)
 {
-  std::cout << CoLib::Color::YELLOW;
+  std::cout << Colib::Color::YELLOW;
   print(t...);
-  std::cout << CoLib::Color::RESET;
+  std::cout << Colib::Color::RESET;
 }
 
 /// @brief Print in red
 template <class... T>
 void error(T const & ... t)
 {
-  std::cout << CoLib::Color::RED;
+  std::cout << Colib::Color::RED;
   print(t...);
-  std::cout << CoLib::Color::RESET;
+  std::cout << Colib::Color::RESET;
 }
 
 /// @brief Print in grey
 template <class... T>
 void information(T const & ... t)
 {
-  std::cout << CoLib::Color::GREY;
+  std::cout << Colib::Color::GREY;
   print(t...);
-  std::cout << CoLib::Color::RESET;
+  std::cout << Colib::Color::RESET;
 }
 
 std::string nicer_bool(bool const & some_bool)
 {
   return ((some_bool) 
-      ? (CoLib::Color::BLUE + std::string("true") + CoLib::Color::RESET) 
-      : (CoLib::Color::RED  + std::string("false") + CoLib::Color::RESET)
+      ? (Colib::Color::BLUE + std::string("true") + Colib::Color::RESET) 
+      : (Colib::Color::RED  + std::string("false") + Colib::Color::RESET)
   );
 }
 
@@ -271,5 +252,6 @@ public:
     std::cout << std::dec << std::endl;
   }
 };
+
 
 #endif //PRINT_HPP

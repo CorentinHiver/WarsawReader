@@ -46,6 +46,8 @@
 #include <vector>
 
 // ********** C includes ************ //
+
+#include <climits>
 #include <cmath>
 #include <csignal>
 #include <cstdlib>
@@ -69,7 +71,7 @@
 template <class F, class S> 
 std::ostream& operator<<(std::ostream& cout, std::pair<F,S> const & p)
 {
-  cout << " {" << p.first << ", " << p.second << "}" << std::endl;
+  cout << " {" << p.first << ", " << p.second << "}";
   return cout;
 }
 
@@ -77,7 +79,7 @@ template <class K, class V>
 std::ostream& operator<<(std::ostream& cout, std::map<K,V> const & m)
 {
   cout << "{";
-  for (auto const & pair : m) cout << pair;
+  for (auto const & pair : m) cout << pair << std::endl;
   cout << "}\n";
   return cout;
 }
@@ -86,7 +88,7 @@ template <class K, class V>
 std::ostream& operator<<(std::ostream& cout, std::unordered_map<K,V> const & m)
 {
   cout << "{";
-  for (auto const & pair : m) cout << pair;
+  for (auto const & pair : m) cout << pair << std::endl;
   cout << "}\n";
   return cout;
 }
@@ -179,7 +181,7 @@ std::string to_binary(T num) {
     return std::bitset<sizeof(T) * 8>(num).to_string(); // Uses full bit width of T
 }
 
-void throw_error(std::string const & message) {throw std::runtime_error(concatenate(CoLib::Color::RED, message, CoLib::Color::RESET));}
+void throw_error(std::string const & message) {throw std::runtime_error(concatenate(Colib::Color::RED, message, Colib::Color::RESET));}
 
 std::map<std::string, std::string> error_message = 
 {
@@ -190,10 +192,10 @@ std::map<std::string, std::string> error_message =
 
 auto pauseCo(std::string message = "") 
 {
-#ifdef MULTITHREADING
+#ifdef COMULTITHREADING
   if (MTObject::kill) exit(MTSIGEXIT);
   lock_mutex lock(MTObject::mutex);
-#endif //MULTITHREADING
+#endif //COMULTITHREADING
 
   if (message == "") message = "Programme paused, please press enter";
   std::cout << message;
@@ -214,9 +216,29 @@ void pauseDebug(std::string const &
 #endif //DEBUG
 }
 
+template <class... T>
+void printPause(T const & ... t)
+{
+  print(t...);
+  pauseCo();
+}
+
 ////////////////
 //    Types   //
 ////////////////
+
+
+template<class T>
+std::string type_of(T const & t)
+{
+  return typeid(t).name();
+}
+
+template<class T>
+std::string type_of()
+{
+  return typeid(T).name();
+}
 
 /// @brief Casts a any type into an bool
 template<typename T>
@@ -485,7 +507,8 @@ public:
     return m_size;
   }
 
-  void resize(size_t size) {
+  void resize(size_t size) 
+  {
          if (m_size == size) return;
     else if (size>m_reserved_size)
     {
@@ -497,7 +520,8 @@ public:
     for (;m_size<size;++m_size) m_data[m_size] = false;
   }
 
-  void resize(size_t size, bool const & value) {
+  void resize(size_t size, bool const & value) 
+  {
     if (size>m_reserved_size)
     {
       delete[] m_data;
@@ -547,6 +571,17 @@ std::ostream& operator<<(std::ostream& cout, Bools const & bools)
 using Strings = std::vector<std::string>;
 using Ints = std::vector<int>;
 
+std::string fuseStrings(std::vector<std::string> const & vec, std::string const & sep = " ")
+{
+  std::ostringstream oss;
+  for (size_t i = 0; i < vec.size(); ++i) 
+  {
+    oss << vec[i];
+    if (i != vec.size() - 1) oss << sep;
+  }
+  return oss.str();
+}
+
 template<typename T>
 struct is_container {
 private:
@@ -572,6 +607,44 @@ constexpr bool found (std::unordered_set<T> set, T const & e)
 // MATHS //
 ///////////
 
+namespace Colib
+{
+  /**
+   * @brief Compiled power calculation, faster than std::pow, but limited to unsigned integer power
+   * @param x : value (any)
+   * @param n : power (unsigned integer)
+   * @return constexpr T 
+   */
+  template<class T>
+  inline constexpr T pow(T x, unsigned int n) {
+      return (n == 0) ? 1 : x * pow(x, n - 1);
+  }
+
+  /**
+   * @brief Compiled power calculation, faster than std::pow, but limited to unsigned integer power
+   * @param x : value (any)
+   * @param n : power (unsigned integer)
+   * @return constexpr T 
+   */
+  template<class T>
+  inline constexpr T abs(T x) { return (x < 0) ? -x : x; }
+
+  template <typename T>
+  inline constexpr T big() {
+      // Calculate the number of bits in the type T
+      const int num_bits = sizeof(T) * CHAR_BIT;
+
+      // For signed types, set all bits except the sign bit
+      // For unsigned types, set all bits
+      if (std::is_signed<T>::value) {
+          return ~(static_cast<T>(1) << (num_bits - 1));
+      } else {
+          return ~static_cast<T>(0);
+      }
+  }
+
+}
+
 template<class T> T positive_modulo(T const & dividend, T const & divisor)
 {
   auto ret = dividend % divisor;
@@ -579,7 +652,7 @@ template<class T> T positive_modulo(T const & dividend, T const & divisor)
   return ret;
 }
 
-namespace CoLib
+namespace Colib
 {
   template<class T, class... ARGS>
   inline T sum(T i, ARGS... args) {return i+sum(args...);}
@@ -620,7 +693,7 @@ constexpr inline bool find_value(std::unordered_map<K,V> const & map, V const & 
 
 /// @brief Simple alias to find_key
 template<typename K, typename V> 
-constexpr inline bool key_found(K const & key, std::unordered_map<K,V> const & map)
+constexpr inline bool key_found(std::unordered_map<K,V> const & map, K const & key)
 {
   return find_key(map, key);
 }
@@ -837,7 +910,7 @@ class Slots
 //   SOME COOL STUFF   //
 /////////////////////////
 
-namespace CoLib
+namespace Colib
 {
   void progress_bar(float const & progress_percent, int width = 50)
   {

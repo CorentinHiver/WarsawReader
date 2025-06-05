@@ -153,8 +153,8 @@ namespace CaenDataReader
     {
       out << 
         " check_bin " << ((board.check_bin == board.check_bin_ref) 
-                            ? (CoLib::Color::BLUE + std::string("true") + CoLib::Color::RESET) 
-                            : (CoLib::Color::RED  + std::string("false") + CoLib::Color::RESET) ) <<
+                            ? (Colib::Color::BLUE + std::string("true") + Colib::Color::RESET) 
+                            : (Colib::Color::RED  + std::string("false") + Colib::Color::RESET) ) <<
         " size "              << board.size                               <<
         " DUAL_CHANNEL_MASK " << std::bitset<8>(board.DUAL_CHANNEL_MASK)  <<
         " PATTERN "           << board.PATTERN                            <<

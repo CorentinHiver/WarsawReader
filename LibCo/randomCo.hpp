@@ -3,10 +3,10 @@
 
 #include <random>
 #include <cstdint>
-#include <bit>
 #include <chrono>
 
 #if __cplusplus >= 202002L
+  #include <bit>
   #define CPP20
 #endif //__cplusplus >= 202002L
 
@@ -74,7 +74,7 @@ namespace randomCo
   
     // Combine time with counter to vary each call
     auto now = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-    uint32_t state = static_cast<uint32_t>(now) ^ (counter++);
+    uint64_t state = static_cast<uint64_t>(now) ^ (counter++);
   
     // Xorshift32
     state ^= state << 13;
