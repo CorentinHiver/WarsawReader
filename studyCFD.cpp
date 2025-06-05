@@ -36,11 +36,16 @@ int studyCFD(int nb_events_max = -1)
   };
 
   // std::vector<std::string> filenames = {"/home/corentin/60Co_data/eagleRU_i2514_0023_0000.caendat"};
-  std::vector<std::string> filenames = {"/home/corentin/data/60Co_Easter/eagleRU_i2607_0005_0000.caendat"};
+  // std::vector<std::string> filenames = {"/home/corentin/data/60Co_Easter/eagleRU_i2607_0005_0000.caendat"};
   // std::vector<std::string> filenames = {
   //   "/home/corentin/60Co_data/eagleRU_i2606_0004_0000.caendat",
   //   "/home/corentin/60Co_data/eagleRU_i2606_0004_0001.caendat"
   // };
+  std::vector<std::string> filenames = {
+    "../../data/coulexNov2024/coulexRU_i2097_3020_0000.caendat",
+    "../../data/coulexNov2024/coulexRU_i2097_3020_0001.caendat",
+    "../../data/coulexNov2024/coulexRU_i2097_3020_0002.caendat"
+  };
 
   auto constexpr static glabel = [](RootCaenHit const & hit){
     return hit.board_ID * 16 + hit.channel_ID * 2 + hit.subchannel_ID;
