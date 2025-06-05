@@ -12,7 +12,7 @@ constexpr size_t   reserved_buffer_size = 5000ul;
 auto constexpr static ref_label = 81;
 
 enum DetectorTypes{ EAGLE, BGO, NEDA, DSSDRing, DSSDSector, LaBr3, EMPTY};
-std::vector<std::string> DetectorName = {"EAGLE", "BGO", "NEDA", "DSSDRing", "DSSDSector", "LaBr3", "EMPTY"};
+static const std::array<std::string, 7> DetectorName = {"EAGLE", "BGO", "NEDA", "DSSDRing", "DSSDSector", "LaBr3", "EMPTY"};
 static constexpr std::array<int, 10> Boards_map = {EAGLE, EAGLE, EMPTY, EMPTY, EMPTY, NEDA, DSSDRing, DSSDSector, DSSDSector, LaBr3};
 
 int studyCFD(int nb_events_max = -1)
@@ -36,7 +36,7 @@ int studyCFD(int nb_events_max = -1)
   };
 
   // std::vector<std::string> filenames = {"/home/corentin/60Co_data/eagleRU_i2514_0023_0000.caendat"};
-  std::vector<std::string> filenames = {"/home/corentin/60Co_data/eagleRU_i2607_0005_0000.caendat"};
+  // std::vector<std::string> filenames = {"/home/corentin/60Co_data/eagleRU_i2607_0005_0000.caendat"};
   // std::vector<std::string> filenames = {
   //   "/home/corentin/60Co_data/eagleRU_i2606_0004_0000.caendat",
   //   "/home/corentin/60Co_data/eagleRU_i2606_0004_0001.caendat"
@@ -114,7 +114,7 @@ int studyCFD(int nb_events_max = -1)
 
         zero = zero * 4000.; // Convert from 4 ns ticks to ps
 
-        cfd_corrections->Fill(glabel(hit), zero);
+        cfd_corrections->Fill(glabel(hit), zero); 
 
         hit.cfd = hit.extended_ts + zero; 
       }

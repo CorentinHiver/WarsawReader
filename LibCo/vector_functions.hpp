@@ -93,7 +93,7 @@ template<class T>
 void fill2D(vector2D<T> & vec2, size_t const & size_x, size_t const & size_y, T const & obj)
 {
   vec2.reserve(size_x);
-  for (size_t i = 0; i<size_x; i++) vec2.emplace_back(size_y, obj);
+  for (size_t i = 0; i<size_x; i++) vec2.emplace_back(std::vector<T>(size_y, obj));
 }
 
 
@@ -148,6 +148,9 @@ int first_index_in(std::vector<T> const & vec, T const & t)
   return (std::distance(vec.begin(), std::find(vec.begin(), vec.end(), t) != vec.end()));
 }
 
+//////////////
+// LINSPACE //
+//////////////
 
 template<class T>
 std::vector<T>& linspace(std::vector<T> & vec, size_t size, int begin = 0, int spacing = 1)
@@ -181,7 +184,6 @@ std::vector<T> linspace_for(std::vector<T> const & values, T begin = 0, T spacin
 }
 
 
-
 template<class T>
 auto c_linspace(std::vector<T> & vec, size_t size, int begin = 0, int spacing = 1)
 {
@@ -212,6 +214,34 @@ auto c_linspace_for(std::vector<T> const & values, T begin = 0, T spacing = 1)
   c_linspace(ret, values.size(), begin, spacing);
   return ret.data();
 }
+
+
+// TODO : logspace, like linspace but logarithmic 
+// template<class T>
+// std::vector<T> logspace(std::vector<double> & vec, size_t size, T begin = 0, double power = 10)
+// {
+//   if (min <= 0) throw std::invalid_argument("min and max must be positive.");
+//   double factor = min; // Start with the initial minimum value
+  
+//   for (size_t i = 0; i < size; ++i) vec[i] = factor * std::pow(power, i);
+
+//   return vec;
+// }
+
+// template<class T>
+// std::vector<T> logspace(size_t size, T begin = 0, double power = 10)
+// {
+//   if (min <= 0) throw std::invalid_argument("min and max must be positive.");
+//   std::vector<double> ret(size);
+//   double factor = min; // Start with the initial minimum value
+  
+//   for (size_t i = 0; i < size; ++i) ret[i] = factor * std::pow(power, i);
+  
+//   return ret;
+// }
+
+// std::vector<double> log2space(size_t nb_bins, int min) {return logspace(nb_bins, min, 2);}
+// std::vector<double> log10space(size_t nb_bins, int min) {return logspace(nb_bins, min, 10);}
 
 
 
@@ -441,6 +471,8 @@ std::vector<T> derivate(std::vector<T> const & x, std::vector<T> const & y, int 
   if (N != y.size()) error("derivate(X, Y) : X and Y vectors size mismatch");
   std::vector<T> ret; ret.reserve(N);
 
+  auto const & smooth_range = 2*smooth;
+
   int    lower_bin = 0  ;
   int    upper_bin = 0  ;
   double low_sum   = 0.0;
@@ -496,14 +528,6 @@ std::vector<T> & scale(std::vector<T> * vec, double const & scaling)
 {
   for (auto & v : *vec) v *= scaling;
   return *vec;
-}
-
-template <class To, class Ti>
-std::vector<To> convert_to(std::vector<Ti> const & input)
-{
-  std::vector<To> ret; ret.reserve(input.size());
-  for (auto const & data : input) ret.push_back(data);
-  return ret;
 }
 
 ////////////////////////////

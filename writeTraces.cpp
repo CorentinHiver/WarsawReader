@@ -33,8 +33,9 @@ int writeTraces(int nb_events_max = -1)
   };
 
   // CaenRawReader reader("/home/corentin/coulexRU_i2097_3020_0000.caendat");
-  CaenRawReader reader("/home/corentin/60Co_data/eagleRU_i2608_0006_0000.caendat");
+  // CaenRawReader reader("/home/corentin/60Co_data/eagleRU_i2608_0006_0000.caendat");
   // CaenRawReader reader("/home/corentin/60Co_data/eagleRU_i2514_0023_0000.caendat");
+  CaenRawReader reader("../../data/coulexNov2024/coulexRU_i2097_3020_0000.caendat");
   reader.handleTraces(true);
 
   auto rootFile = TFile::Open("writeTraces.root", "recreate"); rootFile->cd();
@@ -81,26 +82,28 @@ int writeTraces(int nb_events_max = -1)
       for (auto & Ti : samplesT) if (Ti > 0.5) Ti = maxSample;
       for (auto & DP1 : samplesDP1) if (DP1 > 0.5) DP1 = maxSample;
 
-      auto graph  = new TGraph(cfd.trace.size(), linspace_for(cfd.trace).data(), cfd.trace.data());
-      auto graph2 = new TGraph(samplesT .size(), linspace_for(samplesT ).data(), samplesT .data());
-      auto graph3 = new TGraph(samplesDP1 .size(), linspace_for(samplesDP1 ).data(), samplesDP1 .data());
+      auto graph  = new TGraph(cfd.trace.size(), linspace_for(cfd.trace, 0., 4.).data(), cfd.trace.data());
+      auto graph2 = new TGraph(samplesT .size(), linspace_for(samplesT , 0., 4.).data(), samplesT .data());
+      auto graph3 = new TGraph(samplesDP1 .size(), linspace_for(samplesDP1 , 0., 4.).data(), samplesDP1 .data());
       
       auto canvas = new TCanvas(name.c_str(), name.c_str()); canvas->cd();
       graph->Draw();
       graph2->SetLineColor(kGreen);
+      graph->GetXaxis()->SetTitle("time [ns]");
+      graph->GetYaxis()->SetTitle("pulse height [ADC]");
       graph2->Draw("same");
       graph3->SetLineColor(kBlue);
       graph3->Draw("same");
       if (key_found(hit.detectorType, shifts))
       {
         cfd.calculate(shifts[hit.detectorType], 0.5);
-        auto graph4 = new TGraph(cfd.cfd.size(), linspace_for(cfd.cfd).data(), cfd.cfd.data());
+        auto graph4 = new TGraph(cfd.cfd.size(), linspace_for(cfd.cfd, 0., 4.).data(), cfd.cfd.data());
         graph4->SetLineColor(kGray);
         graph4->Draw("same");
 
         if (key_found(hit.detectorType, thresholds))
         {
-          auto const & zero = cfd.findZero(thresholds[hit.detectorType]);
+          auto const & zero = cfd.findZero(thresholds[hit.detectorType]) * 4;
           if (zero != CFD::noSignal)
           {
             TMarker *zero_marker = new TMarker(zero, 0, 20);

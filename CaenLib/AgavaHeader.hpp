@@ -25,6 +25,7 @@ namespace CaenDataReader
       // Looping through the m_nb_cards cards parameters of the agva header:
       for (size_t word_i = 5; word_i<m_nb_words; ++word_i){
           read_buff(&tmp_word, datafile);
+          // Some other parameters
       }
     }
 

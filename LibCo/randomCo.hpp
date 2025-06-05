@@ -3,6 +3,7 @@
 
 #include <random>
 #include <cstdint>
+#include <bit>
 #include <chrono>
 
 #if __cplusplus >= 202002L
