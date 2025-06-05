@@ -11,7 +11,7 @@ namespace CaenDataReader
     RawReader(std::string const & filename) : CaenReaderBase(filename)
     {}
 
-    void makePureVirtual(bool const & isVirtual = false) override {}; // To make this class real
+    void makePureVirtual(bool const & isVirtual = false) override {print(isVirtual);}; // To make this class real (printed to get rid of the warning)
 
     /**
      * @brief Main function, reads an entire board aggregate

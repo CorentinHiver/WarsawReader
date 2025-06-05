@@ -17,7 +17,7 @@ namespace CaenDataReader
 
     virtual void makePureVirtual(bool const & isVirtual = true) = 0; // To make this class pure virtual
 
-    virtual ~CaenReaderBase() {}
+    virtual ~CaenReaderBase() {if (p_datafile.is_open()) p_datafile.close();}
 
     void open(std::string const & filename)
     {
@@ -39,8 +39,6 @@ namespace CaenDataReader
         AgavaHeader ah(p_datafile);
       }
     }
-
-    ~CaenReaderBase() {if (p_datafile.is_open()) p_datafile.close();}
 
   protected:    
     std::ifstream p_datafile;
