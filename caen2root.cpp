@@ -185,4 +185,4 @@ int main(int argc, char** argv)
   return 0;
 }
 
-// g++ -o exec caen2root.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2
+// g++ -o caen2root caen2root.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2

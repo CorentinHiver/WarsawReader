@@ -16,7 +16,7 @@ enum DetectorTypes{EAGLE, BGO, NEDA, DSSDRing, DSSDSector, LaBr3, EMPTY};
 static const std::array<std::string, 7> DetectorName = {"EAGLE", "BGO", "NEDA", "DSSDRing", "DSSDSector", "LaBr3", "EMPTY"};
 static constexpr std::array<int, 10> Boards_map = {EAGLE, EAGLE, EMPTY, EMPTY, EMPTY, NEDA, DSSDRing, DSSDSector, DSSDSector, LaBr3};
 
-int studyCFD(int nb_events_max = -1)
+int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 {
   Timer timer;
   bool max_events = (nb_events_max>0);
@@ -40,11 +40,11 @@ int studyCFD(int nb_events_max = -1)
   // std::string path = "../../";
 
   // std::vector<std::string> filenames = {path+"data/60Co_Easter/eagleRU_i2607_0005_0000.caendat"};
-  std::vector<std::string> filenames = {
-    path+"data/60Co_Easter/eagleRU_i2606_0004_0000.caendat",
-    path+"data/60Co_Easter/eagleRU_i2606_0004_0001.caendat",
-    path+"data/60Co_Easter/eagleRU_i2606_0004_0002.caendat"
-  };
+  // std::vector<std::string> filenames = {
+  //   path+"data/60Co_Easter/eagleRU_i2606_0004_0000.caendat",
+  //   path+"data/60Co_Easter/eagleRU_i2606_0004_0001.caendat",
+  //   path+"data/60Co_Easter/eagleRU_i2606_0004_0002.caendat"
+  // };
   // std::vector<std::string> filenames = {
   //   path+"data/coulexNov2024/coulexRU_i2097_3020_0000.caendat",
   //   path+"data/coulexNov2024/coulexRU_i2097_3020_0001.caendat",
@@ -78,7 +78,7 @@ int studyCFD(int nb_events_max = -1)
   auto cfd_dT_Ge1_Ref = new TH1F("cfd_dT_Ge1_Ref", "cfd_dT_Ge1_Ref", 10000,-2*time_window,2*time_window);
   auto E_VS_dT_Ge1_Ref_cfd = new TH2F("E_VS_dT_Ge1_Ref_cfd", "E_VS_dT_Ge1_Ref_cfd", 10000,-2*time_window,2*time_window, 10000,0,100000);
   auto dT_Ref_VS_all_cfd = new TH2F("dT_Ref_VS_all_cfd", "dT_Ref_VS_all_cfd", 200,0,200, 10000,-2*time_window,2*time_window);
-  auto cfd_VS_dT_all = new TH2F("cfd_VS_dT_all", "cfd_VS_dT_all", 200,0,200, 2000,-time_window,time_window);
+  auto cfd_VS_dT_all = new TH2F("cfd_VS_dT_all", "cfd_VS_dT_all;label;dT - dT_cfd [ps]", 200,0,200, 2000,-time_window,time_window);
 
   std::vector<TH2F*> dT_all_vs_all; dT_all_vs_all.reserve(200);
   std::vector<TH2F*> dT_all_vs_all_cfd; dT_all_vs_all_cfd.reserve(200);
@@ -217,6 +217,7 @@ int studyCFD(int nb_events_max = -1)
             E_all_vs_ref_cfd_dT[glabel_1] -> Fill(dT_cfd, hit_1.adc);
 
             cfd_vs_dT[glabel_1] -> Fill(dT, dT_cfd);
+            cfd_VS_dT_all->Fill(glabel_1, dT-dT_cfd);
 
             if (glabel_1 == 0) 
             {
@@ -236,6 +237,8 @@ int studyCFD(int nb_events_max = -1)
 
   auto rootfile = TFile::Open("studyCFD.root", "recreate"); rootfile->cd();
 
+    print("Write normal histos");
+
     HitPattern    ->  Write();
     HitPattern2D  ->  Write();
 
@@ -253,8 +256,12 @@ int studyCFD(int nb_events_max = -1)
     
     E_all -> Write();
     neda_psd -> Write();
+
+    cfd_VS_dT_all->Write();
     
     auto filledHisto = []<class THist>(THist * histo){return histo && !histo->IsZombie() && histo->Integral()>0;};
+
+    print("Write big bidims");
 
     for (auto & histo : neda_psds           ) if (filledHisto(histo)) histo->Write();
     for (auto & histo : dT_all_vs_all       ) if (filledHisto(histo)) histo->Write();
@@ -279,6 +286,7 @@ int studyCFD(int nb_events_max = -1)
   delete cfd_dT_Ge1_Ref;
   delete E_VS_dT_Ge1_Ref_cfd;
   delete dT_Ref_VS_all_cfd;
+  delete cfd_VS_dT_all;
 
   for (auto & histo : neda_psds           ) delete histo;
   for (auto & histo : dT_all_vs_all       ) delete histo;
@@ -292,8 +300,15 @@ int studyCFD(int nb_events_max = -1)
 
 int main(int argc, char** argv)
 {
-  if (argc == 2) return studyCFD(int_cast(std::floor(std::stod(argv[1]))));
-  else return studyCFD();
+  std::istringstream iss(argv_to_string(argv));
+  std::string temp; iss>> temp;
+  std::string file = "empty.caendat";
+  int nb_hits = 0;
+  double tmp_d; iss >> tmp_d;
+  nb_hits = tmp_d;
+  iss >> file;
+  print(file, nb_hits);
+  studyCFD({file}, nb_hits);
 }
 
 
