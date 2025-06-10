@@ -114,7 +114,9 @@ int main(int argc, char** argv)
       auto & inHit = reader.getHit();
 
       int evtNb = 0;
+      int evtMult = 0;
       tree->Branch("evtNb", &evtNb);
+      tree->Branch("evtMult", &evtMult);
 
       RootCaenHit outHit;
       outHit.writeTo(tree);
@@ -128,6 +130,7 @@ int main(int argc, char** argv)
 
         for (auto const & event : eventBuilder)
         {
+          evtMult = event.size();
           for (auto const & hit_i : event)
           {
             outHit.copy(eventBuilder[hit_i]);

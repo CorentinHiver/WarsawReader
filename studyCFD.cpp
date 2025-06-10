@@ -76,7 +76,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
   
   auto dT_all_cfd = new TH1F("dT_all_cfd", "dT_all_cfd", 10000,-2*time_window,2*time_window);
   auto cfd_dT_Ge1_Ref = new TH1F("cfd_dT_Ge1_Ref", "cfd_dT_Ge1_Ref", 10000,-2*time_window,2*time_window);
-  auto E_VS_dT_Ge1_Ref_cfd = new TH2F("E_VS_dT_Ge1_Ref_cfd", "E_VS_dT_Ge1_Ref_cfd", 10000,-2*time_window,2*time_window, 10000,0,100000);
+  auto E_VS_dT_Ge1_Ref_cfd = new TH2F("E_VS_dT_Ge1_Ref_cfd", "E_VS_dT_Ge1_Ref_cfd", 1000,-2*time_window,2*time_window, 10000,0,100000);
   auto dT_Ref_VS_all_cfd = new TH2F("dT_Ref_VS_all_cfd", "dT_Ref_VS_all_cfd", 200,0,200, 10000,-2*time_window,2*time_window);
   auto cfd_VS_dT_all = new TH2F("cfd_VS_dT_all", "cfd_VS_dT_all;label;dT - dT_cfd [ps]", 200,0,200, 2000,-time_window,time_window);
 
@@ -312,4 +312,4 @@ int main(int argc, char** argv)
 }
 
 
-// g++ -o exec studyCFD.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2
+// g++ -o exec studyCFD.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2 -std=c++17
