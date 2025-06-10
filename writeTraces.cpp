@@ -15,8 +15,9 @@
 #include "TFile.h"
 #include "TGraph.h"
 
-int writeTraces(int nb_events_max = -1)
+int writeTraces(std::string file, int nb_events_max = -1)
 {
+  print(file);
   Timer timer;
   bool max_events = (nb_events_max>0);
   bool finished = false;
@@ -35,7 +36,8 @@ int writeTraces(int nb_events_max = -1)
   // CaenRawReader reader("/home/corentin/coulexRU_i2097_3020_0000.caendat");
   // CaenRawReader reader("/home/corentin/60Co_data/eagleRU_i2608_0006_0000.caendat");
   // CaenRawReader reader("/home/corentin/60Co_data/eagleRU_i2514_0023_0000.caendat");
-  CaenRawReader reader("../../data/coulexNov2024/coulexRU_i2097_3020_0000.caendat");
+  // CaenRawReader reader("../../data/coulexNov2024/coulexRU_i2097_3020_0000.caendat");
+  CaenRawReader reader(file);
   reader.handleTraces(true);
 
   auto rootFile = TFile::Open("writeTraces.root", "recreate"); rootFile->cd();
@@ -81,9 +83,9 @@ int writeTraces(int nb_events_max = -1)
       for (auto & Ti : samplesT) if (Ti > 0.5) Ti = maxSample;
       for (auto & DP1 : samplesDP1) if (DP1 > 0.5) DP1 = maxSample;
 
-      auto graph  = new TGraph(cfd.trace.size(), linspace_for(cfd.trace, 0., 4.).data(), cfd.trace.data());
-      auto graph2 = new TGraph(samplesT .size(), linspace_for(samplesT , 0., 4.).data(), samplesT .data());
-      auto graph3 = new TGraph(samplesDP1 .size(), linspace_for(samplesDP1 , 0., 4.).data(), samplesDP1 .data());
+      auto graph  = new TGraph(cfd.trace.size(), Colib::linspace_for(cfd.trace, 0., 4.).data(), cfd.trace.data());
+      auto graph2 = new TGraph(samplesT .size(), Colib::linspace_for(samplesT , 0., 4.).data(), samplesT .data());
+      auto graph3 = new TGraph(samplesDP1 .size(), Colib::linspace_for(samplesDP1 , 0., 4.).data(), samplesDP1 .data());
       
       auto canvas = new TCanvas(name.c_str(), name.c_str()); canvas->cd();
       graph->Draw();
@@ -96,7 +98,7 @@ int writeTraces(int nb_events_max = -1)
       if (key_found(shifts, hit.detectorType))
       {
         cfd.calculate(shifts[hit.detectorType], 0.5);
-        auto graph4 = new TGraph(cfd.cfd.size(), linspace_for(cfd.cfd, 0., 4.).data(), cfd.cfd.data());
+        auto graph4 = new TGraph(cfd.cfd.size(), Colib::linspace_for(cfd.cfd, 0., 4.).data(), cfd.cfd.data());
         graph4->SetLineColor(kGray);
         graph4->Draw("same");
 
@@ -123,8 +125,15 @@ int writeTraces(int nb_events_max = -1)
 
 int main(int argc, char** argv)
 {
-  if (argc == 2) writeTraces(int_cast(std::floor(std::stod(argv[1]))));
-  else return writeTraces();
+  std::istringstream iss(argv_to_string(argv));
+  std::string temp; iss>> temp;
+  std::string file = "empty.caendat";
+  int nb_hits = 0;
+  double tmp_d; iss >> tmp_d;
+  nb_hits = tmp_d;
+  iss >> file;
+  print(file, nb_hits);
+  writeTraces(file, nb_hits);
 }
 
 // g++ -o exec writeTraces.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2

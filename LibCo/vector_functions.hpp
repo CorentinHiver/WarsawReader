@@ -177,6 +177,7 @@ namespace Colib
     return ret;
   }
   
+  /// @brief Makes a linspace to create X values based on the lengths of values
   template<class T>
   std::vector<T> linspace_for(std::vector<T> const & values, T begin = 0, T spacing = 1)
   {
@@ -186,6 +187,8 @@ namespace Colib
   }
   
   
+  /// @brief Makes a linspace to create X values based on the lengths of values
+  /// @attention might not be functionnal in practice ...
   template<class T>
   auto c_linspace(std::vector<T> & vec, size_t size, int begin = 0, int spacing = 1)
   {
