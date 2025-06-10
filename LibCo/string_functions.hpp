@@ -21,15 +21,15 @@ std::string firstPart       (std::string const & string, char const & sep) { ret
 std::string lastPart        (std::string const & string, char const & sep) { return (string.substr(   string.find_last_of(sep)+1));  }
 /// @brief Returns the string to the right of the first occurrence of sep in the string
 std::string removeFirstPart (std::string const & string, char const & sep) { return (string.substr(   string.find_first_of(sep) ));  }
-/// @brief Returns the string to the left of the last occurrence of sep in the string
+/// @brief Returns the string to the left of the last occurrence of sep in the string 
 std::string removeLastPart  (std::string const & string, char const & sep) { return (string.substr(0, string.find_last_of(sep)  ));  }
 
 /**
  * @brief Cuts a string into pieces separated by the given separator like ';' or ' ' or ','
  * 
  * @param removeVoids: For instance, we have string = ";1;2;3;;5".
- * without removeVoids this function returns {"1", "2", "3", "5"}
- * with removeVoids this function returns {"", "1", "2", "3", "", "5"}
+ * with    removeVoids this function returns {"1", "2", "3", "5"}
+ * without removeVoids this function returns {"", "1", "2", "3", "", "5"}
  * 
 */
 void fillList(std::vector<std::string>& list, const std::string& input, const std::string& separator, const bool& removeVoids = false)

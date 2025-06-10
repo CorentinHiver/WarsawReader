@@ -76,6 +76,8 @@
     "typeinfo": "cpp",
     "valarray": "cpp",
     "variant": "cpp",
-    "ReadCaenRaw.C": "cpp"
+    "ReadCaenRaw.C": "cpp",
+    "parallel_world.C": "cpp",
+    "caenInspect.C": "cpp"
   }
 }

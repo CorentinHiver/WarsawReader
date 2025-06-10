@@ -2,6 +2,7 @@
 #define TIMER_H
 
 #include <chrono>
+#include <iomanip>
 
 using hr_clock_t = std::chrono::high_resolution_clock;
 using time_point_t = std::chrono::time_point<hr_clock_t>;
@@ -58,7 +59,11 @@ public:
 
   auto Time(std::string const & unit)
   {
-    if (!found(m_units, unit)) {print("in Timer::Time(string unit) : unit", unit, "unkown... ms by default"); return Time();}
+    if (m_units.find(unit) == m_units.end()) 
+    {
+      std::cout << "in Timer::Time(string unit) : unit" << " " << unit << " unkown... ms by default" << std::endl; 
+      return Time();
+    }
     return Time()/m_units[unit];
   }
 

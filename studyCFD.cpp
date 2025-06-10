@@ -10,8 +10,9 @@
 constexpr Long64_t time_window          = 2e6 ; // ps
 constexpr size_t   reserved_buffer_size = 5000ul;
 auto constexpr static ref_label = 81;
+// auto constexpr static trigg_label = 
 
-enum DetectorTypes{ EAGLE, BGO, NEDA, DSSDRing, DSSDSector, LaBr3, EMPTY};
+enum DetectorTypes{EAGLE, BGO, NEDA, DSSDRing, DSSDSector, LaBr3, EMPTY};
 static const std::array<std::string, 7> DetectorName = {"EAGLE", "BGO", "NEDA", "DSSDRing", "DSSDSector", "LaBr3", "EMPTY"};
 static constexpr std::array<int, 10> Boards_map = {EAGLE, EAGLE, EMPTY, EMPTY, EMPTY, NEDA, DSSDRing, DSSDSector, DSSDSector, LaBr3};
 
@@ -35,17 +36,20 @@ int studyCFD(int nb_events_max = -1)
     {8, -500}
   };
 
-  // std::vector<std::string> filenames = {"/home/corentin/60Co_data/eagleRU_i2514_0023_0000.caendat"};
-  // std::vector<std::string> filenames = {"/home/corentin/data/60Co_Easter/eagleRU_i2607_0005_0000.caendat"};
-  // std::vector<std::string> filenames = {
-  //   "/home/corentin/60Co_data/eagleRU_i2606_0004_0000.caendat",
-  //   "/home/corentin/60Co_data/eagleRU_i2606_0004_0001.caendat"
-  // };
+  std::string path = "/home/corentin/";
+  // std::string path = "../../";
+
+  // std::vector<std::string> filenames = {path+"data/60Co_Easter/eagleRU_i2607_0005_0000.caendat"};
   std::vector<std::string> filenames = {
-    "../../data/coulexNov2024/coulexRU_i2097_3020_0000.caendat",
-    "../../data/coulexNov2024/coulexRU_i2097_3020_0001.caendat",
-    "../../data/coulexNov2024/coulexRU_i2097_3020_0002.caendat"
+    path+"data/60Co_Easter/eagleRU_i2606_0004_0000.caendat",
+    path+"data/60Co_Easter/eagleRU_i2606_0004_0001.caendat",
+    path+"data/60Co_Easter/eagleRU_i2606_0004_0002.caendat"
   };
+  // std::vector<std::string> filenames = {
+  //   path+"data/coulexNov2024/coulexRU_i2097_3020_0000.caendat",
+  //   path+"data/coulexNov2024/coulexRU_i2097_3020_0001.caendat",
+  //   path+"data/coulexNov2024/coulexRU_i2097_3020_0002.caendat"
+  // };
 
   auto constexpr static glabel = [](RootCaenHit const & hit){
     return hit.board_ID * 16 + hit.channel_ID * 2 + hit.subchannel_ID;
@@ -74,15 +78,22 @@ int studyCFD(int nb_events_max = -1)
   auto cfd_dT_Ge1_Ref = new TH1F("cfd_dT_Ge1_Ref", "cfd_dT_Ge1_Ref", 10000,-2*time_window,2*time_window);
   auto E_VS_dT_Ge1_Ref_cfd = new TH2F("E_VS_dT_Ge1_Ref_cfd", "E_VS_dT_Ge1_Ref_cfd", 10000,-2*time_window,2*time_window, 10000,0,100000);
   auto dT_Ref_VS_all_cfd = new TH2F("dT_Ref_VS_all_cfd", "dT_Ref_VS_all_cfd", 200,0,200, 10000,-2*time_window,2*time_window);
+  auto cfd_VS_dT_all = new TH2F("cfd_VS_dT_all", "cfd_VS_dT_all", 200,0,200, 2000,-time_window,time_window);
 
   std::vector<TH2F*> dT_all_vs_all; dT_all_vs_all.reserve(200);
   std::vector<TH2F*> dT_all_vs_all_cfd; dT_all_vs_all_cfd.reserve(200);
+  std::vector<TH2F*> E_all_vs_ref_dT; E_all_vs_ref_dT.reserve(200);
+  std::vector<TH2F*> E_all_vs_ref_cfd_dT; E_all_vs_ref_cfd_dT.reserve(200);
+  std::vector<TH2F*> cfd_vs_dT; cfd_vs_dT.reserve(200);
   for (size_t board_i = 0; board_i<Boards_map.size(); ++board_i) for (size_t channel_i = 0; channel_i<16; ++channel_i)
   {
     if (Boards_map[board_i] == EMPTY) 
     {
       dT_all_vs_all.push_back(nullptr);
       dT_all_vs_all_cfd.push_back(nullptr);
+      E_all_vs_ref_dT.push_back(nullptr);
+      E_all_vs_ref_cfd_dT.push_back(nullptr);
+      cfd_vs_dT.push_back(nullptr);
     }
     else
     {
@@ -90,6 +101,12 @@ int studyCFD(int nb_events_max = -1)
       dT_all_vs_all.push_back(new TH2F(name, name, 200,0,200, 2000,-time_window,time_window));
       TString name2 ("cfd_dT_" + DetectorName[Boards_map[board_i]] + "_" + std::to_string(channel_i) + "_label_" + std::to_string(board_i*16+channel_i));
       dT_all_vs_all_cfd.push_back(new TH2F(name2, name2, 200,0,200, 2000,-time_window,time_window));
+      TString name3 ("E_VS_dT_" + DetectorName[Boards_map[board_i]] + "_" + std::to_string(channel_i) + "_label_" + std::to_string(board_i*16+channel_i));
+      E_all_vs_ref_dT.push_back(new TH2F(name3, name3, 1000,-time_window,time_window, 2500,0,50000));
+      TString name4 ("E_VS_cfd_dT_" + DetectorName[Boards_map[board_i]] + "_" + std::to_string(channel_i) + "_label_" + std::to_string(board_i*16+channel_i));
+      E_all_vs_ref_cfd_dT.push_back(new TH2F(name4, name4, 1000,-time_window,time_window, 2500,0,50000));
+      TString name5 ("cfd_vs_dT_" + DetectorName[Boards_map[board_i]] + "_" + std::to_string(channel_i) + "_label_" + std::to_string(board_i*16+channel_i));
+      cfd_vs_dT.push_back(new TH2F(name5, name5+";crrc2;cfd", 1000,-time_window,time_window, 1000,-time_window,time_window));
     }
   }
 
@@ -109,15 +126,15 @@ int studyCFD(int nb_events_max = -1)
 
       // Correct timestamp with cfd :
 
-      if (!hit.outTrace.empty() && key_found(cfd_shifts, hit.board_ID)) 
+      if (!hit.getTrace().empty() && key_found(cfd_shifts, hit.board_ID)) 
       {
-        CFD cfd(hit.outTrace, cfd_shifts[hit.board_ID], 0.75);
+        CFD cfd(hit.getTrace(), cfd_shifts[hit.board_ID], 0.75);
         
         auto zero = cfd.findZero(cfd_thresholds[hit.board_ID]); 
         
         if (zero == CFD::noSignal || zero == CFD::noZero) continue;
 
-        zero = zero * 4000.; // Convert from 4 ns ticks to ps
+        zero = zero * 4000.; // Convert from 4 ns ticks to ps, might change depending on the daq setup
 
         cfd_corrections->Fill(glabel(hit), zero); 
 
@@ -127,9 +144,10 @@ int studyCFD(int nb_events_max = -1)
 
       // Filter bad hits :
 
-      // if (hit.adc < 10) continue;
+      if (hit.adc < 10) continue;
 
-      if (((max_events) ? (reader.nbHits() < nb_events_max) : (true)) && event_builder.fill_buffer(hit)) continue;
+      if (  ((max_events) ? (reader.nbHits() < nb_events_max) : (true)) 
+         && event_builder.fill_buffer(hit)) continue;
 
       ////////////////////
       // Event Building //
@@ -164,7 +182,7 @@ int studyCFD(int nb_events_max = -1)
           for (size_t hit_j = hit_i+1; hit_j<event.size(); ++hit_j)
           {
             auto const & hit_index_j = event[hit_j];
-            auto const & hit_1 = event_builder[hit_index_j];            
+            auto const & hit_1 = event_builder[hit_index_j];
             auto const & glabel_1 = glabel(hit_1);
 
             HitPattern2D->Fill(glabel_0, glabel_1);
@@ -186,7 +204,7 @@ int studyCFD(int nb_events_max = -1)
             if (hit_j == hit_i) continue;
 
             auto const & hit_index_j = event[hit_j];
-            auto const & hit_1 = event_builder[hit_index_j];            
+            auto const & hit_1 = event_builder[hit_index_j];
             auto const & glabel_1 = glabel(hit_1);
 
             auto const & dT = Long64_t(hit_1.timestamp - hit_0.timestamp);
@@ -195,6 +213,11 @@ int studyCFD(int nb_events_max = -1)
             dT_Ref_VS_all     -> Fill(glabel_1, dT    );
             dT_Ref_VS_all_cfd -> Fill(glabel_1, dT_cfd);
 
+            E_all_vs_ref_dT    [glabel_1] -> Fill(dT    , hit_1.adc);
+            E_all_vs_ref_cfd_dT[glabel_1] -> Fill(dT_cfd, hit_1.adc);
+
+            cfd_vs_dT[glabel_1] -> Fill(dT, dT_cfd);
+
             if (glabel_1 == 0) 
             {
               dT_Ge1_Ref -> Fill(dT);
@@ -202,6 +225,7 @@ int studyCFD(int nb_events_max = -1)
               
               E_VS_dT_Ge1_Ref     -> Fill(dT    , hit_1.adc);
               E_VS_dT_Ge1_Ref_cfd -> Fill(dT_cfd, hit_1.adc);
+
             }            
           }
         }
@@ -232,14 +256,17 @@ int studyCFD(int nb_events_max = -1)
     
     auto filledHisto = []<class THist>(THist * histo){return histo && !histo->IsZombie() && histo->Integral()>0;};
 
-    for (auto & histo : neda_psds         ) if (filledHisto(histo)) histo->Write();
-    for (auto & histo : dT_all_vs_all     ) if (filledHisto(histo)) histo->Write();
-    for (auto & histo : dT_all_vs_all_cfd ) if (filledHisto(histo)) histo->Write();
+    for (auto & histo : neda_psds           ) if (filledHisto(histo)) histo->Write();
+    for (auto & histo : dT_all_vs_all       ) if (filledHisto(histo)) histo->Write();
+    for (auto & histo : dT_all_vs_all_cfd   ) if (filledHisto(histo)) histo->Write();
+    for (auto & histo : E_all_vs_ref_dT     ) if (filledHisto(histo)) histo->Write();
+    for (auto & histo : E_all_vs_ref_cfd_dT ) if (filledHisto(histo)) histo->Write();
+    for (auto & histo : cfd_vs_dT           ) if (filledHisto(histo)) histo->Write();
 
   rootfile->Close();
   print("studyCFD.root written");
 
-  // This is not normal, normally the root file takes ownership of the histograms and delete them when Close is called
+  // This is not normal, normally the root file takes ownership of the histograms and deletes them when Close is called
   delete HitPattern;
   delete HitPattern2D;
   delete E_all;
@@ -253,9 +280,11 @@ int studyCFD(int nb_events_max = -1)
   delete E_VS_dT_Ge1_Ref_cfd;
   delete dT_Ref_VS_all_cfd;
 
-  for (auto & histo : neda_psds) delete histo;
-  for (auto & histo : dT_all_vs_all) delete histo;
-  for (auto & histo : dT_all_vs_all_cfd) delete histo;
+  for (auto & histo : neda_psds           ) delete histo;
+  for (auto & histo : dT_all_vs_all       ) delete histo;
+  for (auto & histo : dT_all_vs_all_cfd   ) delete histo;
+  for (auto & histo : E_all_vs_ref_cfd_dT ) delete histo;
+  for (auto & histo : cfd_vs_dT           ) delete histo;
 
   print(timer());
   return 0;

@@ -44,7 +44,7 @@ namespace CaenDataReader
       }
 
       if (m_channel.hasMoreEvents())
-      {
+      { // There is at least one more event to read
         ++m_nb_hits;
         m_caenEvent.clear();
         m_rootHit.readCaenEvent(CaenReaderBase::p_datafile, m_board, m_channel, m_caenEvent);

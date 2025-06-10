@@ -25,6 +25,7 @@ files=(
     randomCo.hpp
     string_functions.hpp
     vector_functions.hpp
+    Classes/FilesManager.hpp
     Classes/Timer.hpp
     MTObjects/MTObject.hpp
 )
