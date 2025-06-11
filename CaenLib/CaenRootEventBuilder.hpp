@@ -74,7 +74,7 @@ namespace CaenDataReader
 
         if (Long64_t(hit.timestamp - first_hit.timestamp) < time_window) 
         {
-          event.emplace_back(hit_i);
+          event.emplace_back(hit_i);  
           continue;
         }
 

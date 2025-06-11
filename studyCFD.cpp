@@ -301,15 +301,29 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 int main(int argc, char** argv)
 {
   std::istringstream iss(argv_to_string(argv));
+
   std::string temp; iss>> temp;
-  std::string file = "empty.caendat";
+  std::vector<std::string> filenames;
   int nb_hits = 0;
-  double tmp_d; iss >> tmp_d;
-  nb_hits = tmp_d;
-  iss >> file;
-  print(file, nb_hits);
-  studyCFD({file}, nb_hits);
+
+  while(iss >> temp)
+  {
+          if (temp == "-f")
+    {
+      iss >> temp;
+      filenames.push_back(temp);
+    }
+    else  if (temp == "-n")
+    {
+      double tmp_d; iss >> tmp_d;
+      nb_hits = tmp_d;
+    }
+  }
+
+  print(filenames, nb_hits);
+  
+  studyCFD(filenames, nb_hits);
 }
 
 
-// g++ -o exec studyCFD.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2 -std=c++17
+// g++ -o studyCFD studyCFD.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2 -std=c++17

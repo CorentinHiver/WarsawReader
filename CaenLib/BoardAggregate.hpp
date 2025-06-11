@@ -59,8 +59,6 @@ namespace CaenDataReader
       BF                = getBit      (tmp_u32, 26    );
       BOARD_ID          = getBitField (tmp_u32, 31, 27);
 
-      if (BOARD_ID == 9) printPause(PATTERN);
-
       // Handle the channel mask that allows to know the channel ID
       maskHelper = std::bitset<8>(DUAL_CHANNEL_MASK);
 

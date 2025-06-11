@@ -6,7 +6,7 @@
 void readRaw()
 {
   std::vector<std::string> filenames = {
-    "/home/corentin/60Co_data/eagleRU_i2514_0023_0000.caendat"
+    "/home/corentin/data/60Co_Easter/eagleRU_i2608_0006_0000.caendat"
   };
   for (auto const & filename : filenames)
   {
@@ -28,9 +28,9 @@ int main()
 }
 
 // Regular :
-// g++ -o exec readRaw.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2
-// g++ -o exec readRaw.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -g -DDEBUG
+// g++ -o readRaw readRaw.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2
+// g++ -o readRaw readRaw.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -g -DDEBUG
 
 // Traces : 
-// g++ -o exec readRaw.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2 -DTRACES
-// g++ -o exec readRaw.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -g -DDEBUG -DTRACES
+// g++ -o readRaw readRaw.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2 -DTRACES
+// g++ -o readRaw readRaw.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -g -DDEBUG -DTRACES

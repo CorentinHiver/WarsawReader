@@ -32,6 +32,7 @@ public:
     if (!m_tree || m_tree->IsZombie()) {error("RootReader::RootReader(TTree * m_tree) : Can't read the given TTree"); return;}
     m_file = dynamic_cast<TFile*>(m_tree->GetDirectory());
     m_hit.readFrom(m_tree);
+    m_tree->SetBranchAddress("m_evtNb", &m_evtNb);
     m_size = m_tree->GetEntries();
   }
 
@@ -45,10 +46,23 @@ public:
     return false;
   }
 
+  bool fillEvent()
+  {
+    if (m_finished) return false;
+    if (readNext()) 
+    {
+      if (m_oldEvt < m_evtNb) m_oldEvt = m_evtNb;
+      else m_event.push_back(m_hit);
+    }
+    else m_finished = true;
+  }
+
   void resetCursor() {m_cursor = 0;}
   
   auto const & getHit() const {return m_hit;}
   auto & getHit() {return m_hit;}
+  auto const & getEvent() const {return m_event;}
+  auto & getEvent() {return m_event;}
   auto getTree() {return m_tree;}
   auto getFile() {return m_file;}
   auto const & getCursor() const {return m_cursor;}
@@ -65,6 +79,11 @@ private:
   TTree *m_tree = nullptr;
   size_t m_cursor = 0;
   size_t m_size = 0;
+
+  RootEvent m_event;
+  int m_evtNb = 0;
+  int m_oldEvt = 0;
+  bool m_finished = false;
 };
 
 

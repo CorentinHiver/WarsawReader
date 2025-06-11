@@ -136,4 +136,4 @@ int main(int argc, char** argv)
   writeTraces(file, nb_hits);
 }
 
-// g++ -o exec writeTraces.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2
+// g++ -o writeTraces writeTraces.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2 -std=c++17

@@ -245,8 +245,11 @@ namespace CaenDataReader
   private:
     bool m_NewTrace = false;
   };
+
+  using RootEvent = std::vector<RootHit>;
 };
 
 using RootCaenHit = CaenDataReader::RootHit;
+using RootCaenEvent = CaenDataReader::RootEvent;
 
 #endif //ROOTHIT_HPP
