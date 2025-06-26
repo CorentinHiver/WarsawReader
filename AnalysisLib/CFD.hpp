@@ -1,10 +1,12 @@
 #ifndef CFD_HPP
 #define CFD_HPP
 
-// #include "../LibCo/libCo.hpp"
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <random>
+#include <unordered_map>
+#include <sstream>
 
 class CFD
 {
@@ -21,8 +23,8 @@ class CFD
     static thread_local std::uniform_real_distribution<double> distribution(0.0, 1.0);
     return distribution(generator);
   }
-    const char* RED   = "\u001b[31m";
-    const char* RESET = "\u001b[0m" ;
+  static constexpr const char* RED   = "\u001b[31m";
+  static constexpr const char* RESET = "\u001b[0m" ;
   
   using CFD_t = std::vector<double>;
 public:
@@ -125,6 +127,32 @@ public:
   // Static variables :
   constexpr static double noZero = 0.;
   constexpr static double noSignal = -1.;
+
+  // Static methods to fill the parameters vectors
+
+  static void loadParameters(std::string filename){
+    std::ifstream paramFile(filename);
+    std::string line;
+    std::getline(paramFile, line);
+
+    // Get the header. Anything can be written in it, but at least BOARD or LABELS
+    // in order to know if the parameters are board wide and the label the BOARD_ID,
+    // or detector per detector with the label the global label (BOARD_ID*16 + Channel_ID*2 + subchannel_ID)
+         if (line.find("BOARDS") != std::string::npos) Param::sType = Param::BOARD;
+    else if (line.find("LABELS") != std::string::npos) Param::sType = Param::LABEL;
+    else std::cout << CFD::RED << "CFD::loadParameters " << filename << " : format issue. Should begin with LABELS or BOARDS" << RESET << std::endl; 
+
+    while(std::getline(paramFile, line))
+    {
+      // Get the parameter of each board or each detector
+      std::istringstream iss(line);
+      int label; iss >> label;
+      double tmp_d;
+      iss >> tmp_d; sShifts    .emplace(label, tmp_d);
+      iss >> tmp_d; sThresholds.emplace(label, tmp_d);
+      iss >> tmp_d; sFractions .emplace(label, tmp_d);
+    }
+  }
   
 private:
   double interpolate0(size_t const & bin) const noexcept 
@@ -135,6 +163,30 @@ private:
     else return bin - cfd_0 / (cfd_1 - cfd_0);
   }
   size_t m_size = 0;
+
+  
+public:
+  // Parameters :
+
+  using Shifts     = std::unordered_map<int, int   >;
+  using Thresholds = std::unordered_map<int, double>;
+  using Fractions  = std::unordered_map<int, double>;
+
+  static inline Shifts     sShifts     = {};
+  static inline Thresholds sThresholds = {};
+  static inline Fractions  sFractions  = {};
+  
+  class Param
+  {
+  public:
+    enum Type {BOARD, LABEL, UNDEFINED};
+    static inline int sType = UNDEFINED;
+    static inline constexpr void setType(int type) noexcept {sType = type;}
+  };
+  
+  
 };
+
+
 
 #endif //CFD_HPP

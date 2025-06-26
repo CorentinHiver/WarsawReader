@@ -40,6 +40,8 @@ namespace CaenDataReader
       }
     }
 
+    bool eof() {return p_datafile.eof();}
+
   protected:    
     std::ifstream p_datafile;
     std::string   m_filename;

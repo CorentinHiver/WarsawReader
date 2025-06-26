@@ -6,7 +6,26 @@
 
 #include "TFile.h"
 
-constexpr int reader_version = 0;
+constexpr int reader_version = 1;
+
+//////////////////////////////////////
+// Version 1.                       //
+// Is now included :                //
+//    - Modularized CFD parameters  //
+// Todo :                           //
+//    - A trigger logic             //
+//                                  //
+//////////////////////////////////////
+
+
+/*
+How to use the trigger : 
+- First, create your own trigger in the folder Triggers by following the instructions
+- Then, include your trigger in the compilation command found at the end of this file : 
+  g++ (the rest of the line) -DTRIGGER="\"Triggers/TheNameOfYourTriggerFile.hpp\""
+  
+  Attention : do not forget the ' \" ', if you know how to get rid of this requirement contact me
+*/
 
 constexpr Long64_t time_window          = 2e6 ; // ps
 constexpr size_t   reserved_buffer_size = 500000ul;
@@ -19,7 +38,7 @@ constexpr bool applyCFD = true;
 // that these hard-coded values                              //
 ///////////////////////////////////////////////////////////////
 
-std::unordered_map<int, int> cfd_shifts = {
+CFD::Shifts cfd_shifts = {
   {0, 5},
   {1, 5},
   {6, 2},
@@ -27,7 +46,7 @@ std::unordered_map<int, int> cfd_shifts = {
   {8, 2}
 };
 
-std::unordered_map<int, double> cfd_thresholds = {
+CFD::Thresholds cfd_thresholds = {
   {0, -50},
   {1, -50},
   {6, -500},
@@ -35,7 +54,7 @@ std::unordered_map<int, double> cfd_thresholds = {
   {8, -500}
 };
 
-std::unordered_map<int, double> cfd_fractions = {
+CFD::Fractions cfd_fractions = {
   {0, 0.5},
   {1, 0.5},
   {6, 0.5},
@@ -43,15 +62,10 @@ std::unordered_map<int, double> cfd_fractions = {
   {8, 0.5}
 };
 
-namespace Caen2Root
-{
-  enum ReadingMode{File, FileList, Folder}; 
-  auto readingMode = File;
-}
-
 int main(int argc, char** argv)
 {
   Timer timer;
+
   // Parameters :
   std::vector<std::string> filenames;
   std::string outpath = "./";
@@ -66,20 +80,17 @@ int main(int argc, char** argv)
     {
            if (temp == "-f")
       {
-        Caen2Root::readingMode = Caen2Root::File;
         iss >> temp;
         filenames.push_back(temp);
       }
       else if (temp == "-F")
       {
-        Caen2Root::readingMode = Caen2Root::Folder;
         iss >> temp;
         FilesManager files; files.addFolder(temp, -1, {"caendat"});
         for (auto const & file : files) filenames.push_back(file);
       }
       else if (temp == "-L")
       {
-        Caen2Root::readingMode = Caen2Root::FileList;
         throw_error("list mode -L not implemented yet");
       }
       else if (temp == "-o")
@@ -121,7 +132,9 @@ int main(int argc, char** argv)
       RootCaenHit outHit;
       outHit.writeTo(tree);
 
-      auto fillTree = [&](){
+      // Pre-declaration of this piece of code
+      auto fillTree = [&]()
+      {
         // 3. Perform the event building 
 
         eventBuilder.fast_event_building(time_window);
@@ -131,6 +144,10 @@ int main(int argc, char** argv)
         for (auto const & event : eventBuilder)
         {
           evtMult = event.size();
+          #ifdef TRIGGER
+            
+          #endif //TRIGGER
+
           for (auto const & hit_i : event)
           {
             outHit.copy(eventBuilder[hit_i]);
@@ -151,11 +168,11 @@ int main(int argc, char** argv)
 
         // 1. Apply the cfd
 
-        if (applyCFD && !inHit.getTrace().empty() && key_found(cfd_shifts, inHit.board_ID)) 
+        if (applyCFD && !inHit.getTrace().empty() && key_found(CFD::sShifts, inHit.board_ID)) 
         {
-          CFD cfd(inHit.getTrace(), cfd_shifts[inHit.board_ID], cfd_fractions[inHit.board_ID]);
+          CFD cfd(inHit.getTrace(), CFD::sShifts[inHit.board_ID], CFD::sFractions[inHit.board_ID]);
           
-          auto zero = cfd.findZero(cfd_thresholds[inHit.board_ID]); 
+          auto zero = cfd.findZero(CFD::sThresholds[inHit.board_ID]); 
           if (zero == CFD::noSignal) inHit.cfd = inHit.precise_ts;
           else
           {
@@ -177,11 +194,12 @@ int main(int argc, char** argv)
       fillTree();
 
       rootFile->cd();
+
         print(tree->GetEntries());
         tree->Write();
+
       rootFile->Close();
       print(rootFile->GetName(), "written");
-      // delete outHit;
     }
   }
   print(timer());

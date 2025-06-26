@@ -14,7 +14,8 @@ namespace CaenDataReader
     void makePureVirtual(bool const & isVirtual = false) override {print(isVirtual);}; // To make this class real (printed to get rid of the warning)
 
     /**
-     * @brief Main function, reads an entire board aggregate
+     * @brief Main function, reads an entire board aggregate 
+     * IS NOT compatible with skipAll() == true
      * 
      * @return true while the end of the file is not reached
      */
@@ -22,16 +23,17 @@ namespace CaenDataReader
     {
       if (!readBoardHeader()) return false;
 
-      while(boardNewChannel()) 
-        while (readEvent())
-          if (CaenReaderBase::p_datafile.eof()) return false; // Safety, should never be triggered in principle
+        while(boardNewChannel()) 
+          while (readEvent())
+            if (CaenReaderBase::p_datafile.eof()) return false; // Safety, should never be triggered in principle
 
-      return !CaenReaderBase::p_datafile.eof();
+        return !CaenReaderBase::p_datafile.eof();
     }
 
     /**
      * @brief Does exactly the same as RawReader::readBoardAggregate, 
-     * but explicits each step instead of calling functions
+     * but explicits each step instead of calling functions.
+     * IS compatible with skipAll() == true
      */
     bool readBoardAggregatePlain()
     {
@@ -57,26 +59,30 @@ namespace CaenDataReader
 
       m_board.size      = getBitField (tmp_u32, 27    ) * sizeof(tmp_u32); // To get the number of octets
       m_board.check_bin = getBitField (tmp_u32, 31, 28);
-      
-      // 2. Miscellaneous :
-      read_buff(&tmp_u32, CaenReaderBase::p_datafile, m_board.read_size); // Read the whole word
-      debug("word n°2", std::bitset<32>(tmp_u32));
-      m_board.DUAL_CHANNEL_MASK = getBitField (tmp_u32, 7     );
-      m_board.PATTERN           = getBitField (tmp_u32, 22,  8);
-      m_board.BF                = getBit      (tmp_u32, 26    );
-      m_board.BOARD_ID          = getBitField (tmp_u32, 31, 27);
 
-      // Handle the channel mask that allows to know the channel ID
-      m_board.maskHelper = std::bitset<8>(m_board.DUAL_CHANNEL_MASK);
-
-      // 3. Counter :
-      read_buff(&m_board.COUNTER, CaenReaderBase::p_datafile, m_board.read_size);
-      debug("COUNTER", std::bitset<32>(m_board.COUNTER));
-      m_board.COUNTER &= mask(22);
-
-      // 4. Timestamp : 
-      read_buff(&m_board.TIME_TAG, CaenReaderBase::p_datafile, m_board.read_size);
-      debug("TIME_TAG", std::bitset<32>(m_board.TIME_TAG));
+      if (sSkipData) skip(CaenReaderBase::p_datafile, m_board.header_size - sizeof(tmp_u32));
+      else 
+      {
+        // 2. Miscellaneous :
+        read_buff(&tmp_u32, CaenReaderBase::p_datafile, m_board.read_size); // Read the whole word
+        debug("word n°2", std::bitset<32>(tmp_u32));
+        m_board.DUAL_CHANNEL_MASK = getBitField (tmp_u32, 7     );
+        m_board.PATTERN           = getBitField (tmp_u32, 22,  8);
+        m_board.BF                = getBit      (tmp_u32, 26    );
+        m_board.BOARD_ID          = getBitField (tmp_u32, 31, 27);
+  
+        // Handle the channel mask that allows to know the channel ID
+        m_board.maskHelper = std::bitset<8>(m_board.DUAL_CHANNEL_MASK);
+  
+        // 3. Counter :
+        read_buff(&m_board.COUNTER, CaenReaderBase::p_datafile, m_board.read_size);
+        debug("COUNTER", std::bitset<32>(m_board.COUNTER));
+        m_board.COUNTER &= mask(22);
+  
+        // 4. Timestamp : 
+        read_buff(&m_board.TIME_TAG, CaenReaderBase::p_datafile, m_board.read_size);
+        debug("TIME_TAG", std::bitset<32>(m_board.TIME_TAG));
+      }    
 
       while (m_board.hasMoreChannels())
       {
@@ -103,6 +109,7 @@ namespace CaenDataReader
           // 2. Format
           read_buff(&tmp_u32, CaenReaderBase::p_datafile, m_board.read_size);
           debug("Format:", std::bitset<32>(tmp_u32));
+
           channel.NUM_SAMPLES = getBitField (tmp_u32, 15) * 8; // The data stored is NUM_SAMPLES/8 (see doc)
           channel.DP          = getBitField (tmp_u32, 19, 16);
           channel.AP2         = getBitField (tmp_u32, 21, 20);
@@ -121,6 +128,8 @@ namespace CaenDataReader
         while (channel.hasMoreEvents())
         {
           auto const pos_begin_event = CaenReaderBase::p_datafile.tellg();
+
+          if (sSkipData) skip(CaenReaderBase::p_datafile, sizeof(tmp_u32) + channel.NUM_SAMPLES * sizeof(channel.NUM_SAMPLES) + 2*sizeof(tmp_u32));
 
           /////////////////////
           // READ CAEN EVENT //
@@ -179,15 +188,17 @@ namespace CaenDataReader
     auto const & getBoard() const {return m_board;}
     auto       & getBoard()       {return m_board;}
     
-    void handleTraces(bool const & b) {m_board.handle_traces = b;} 
+    void handleTraces(bool const & b = true) {m_board.handle_traces = b;} 
+    static void skipData(bool const & b = true) {sSkipData = b;}
     
-  private:
-
-    BoardAggregate m_board;
-
     bool readBoardHeader() {return m_board.readHeader(CaenReaderBase::p_datafile);}
     bool boardNewChannel() {return m_board.newChannel(CaenReaderBase::p_datafile);}
     bool readEvent()       {return m_board.readEvent (CaenReaderBase::p_datafile);}    
+
+  private:
+
+    static inline bool sSkipData = false;
+    BoardAggregate m_board;
   };
 };
 

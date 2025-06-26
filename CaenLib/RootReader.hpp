@@ -54,7 +54,7 @@ public:
       if (m_oldEvt < m_evtNb) m_oldEvt = m_evtNb;
       else m_event.push_back(m_hit);
     }
-    else m_finished = true;
+    else return (m_finished = true);
   }
 
   void resetCursor() {m_cursor = 0;}
@@ -80,7 +80,7 @@ private:
   size_t m_cursor = 0;
   size_t m_size = 0;
 
-  RootEvent m_event;
+  RootCaenEvent m_event;
   int m_evtNb = 0;
   int m_oldEvt = 0;
   bool m_finished = false;

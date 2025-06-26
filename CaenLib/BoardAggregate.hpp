@@ -15,6 +15,7 @@ namespace CaenDataReader
     bool handle_traces = true;
 
     size_t read_size = 0;
+    static constexpr size_t header_size = 4*sizeof(tmp_u32);
 
     uint32_t  size              = 0; // Size in long words (32 bits)
     uint8_t   check_bin         = 0;
