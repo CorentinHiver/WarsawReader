@@ -102,6 +102,11 @@ namespace CaenDataReader
       return (channels.back().readEvent(data, read_size));
     }
 
+    bool skipEvent(std::istream& data)
+    {
+      return (channels.back().skipEvent(data, read_size));
+    }
+
     bool newChannelAggregate(std::istream& data)
     {
       if (!this->newChannel(data)) return false;

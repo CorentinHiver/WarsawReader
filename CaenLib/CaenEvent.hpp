@@ -24,6 +24,13 @@ namespace CaenDataReader
 
     CaenEvent (uint8_t const & _EX) : EX(_EX) {}
 
+    void static skip(std::istream& data, int const & nb_samples)
+    {
+      CaenDataReader::skip(data, sizeof(tmp_u32));
+      CaenDataReader::skip(data, nb_samples * sizeof(nb_samples));
+      CaenDataReader::skip(data, 2*sizeof(tmp_u32));
+    }
+
     void read(std::istream& data, int const & nb_samples, bool const & handle_traces)
     {
       read_buff(&tmp_u32, data);
@@ -46,7 +53,7 @@ namespace CaenDataReader
       }
       else {
         auto const & size_to_skip = nb_samples * sizeof(nb_samples);
-        skip(data, size_to_skip);
+        CaenDataReader::skip(data, size_to_skip);
       }
   
       // if (channel.E2)  // TODO: do we need to read EXTRAS2 if it is disabled, i.e. if channel.E2=false ?

@@ -99,6 +99,24 @@ namespace CaenDataReader
       else return false;
     }
 
+    bool skipEvent(std::istream& data, size_t & board_size)
+    {
+      if (hasMoreEvents())
+      {
+        auto const pos_before = data.tellg();
+
+        events.emplace_back(EX);
+        events.back().skip(data, NUM_SAMPLES);
+        
+        auto const & read_length = int_cast(data.tellg() - pos_before);
+        read_size  += read_length;
+        board_size += read_length;
+  
+        return true;
+      }
+      else return false;
+    }
+
     friend std::ostream& operator<<(std::ostream& out, ChannelAggregate const & channel) {
       out << 
         " ID "           << channel.ID                  <<

@@ -29,15 +29,13 @@ void caenIntegrityCheck(std::string filename = "")
     auto & channel = board.channels;
     auto checkBoard = [&]() -> bool 
     {
-      auto readOK = reader.readBoardAggregate();
-      if (board.size == board.read_size)
+      try
       {
-        return readOK;
+        auto readOK = reader.readBoardAggregate();
       }
-      else
+      catch (CaenRawReader::ErrorEof const & errorEof)
       {
         print("Board size mismatch :", board);
-        return false;
       }
     };
     while(checkBoard()) continue;

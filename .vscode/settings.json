@@ -80,6 +80,7 @@
     "parallel_world.C": "cpp",
     "caenInspect.C": "cpp",
     "caenInspect copy.C": "cpp",
-    "caenIntegrityCheck.C": "cpp"
+    "caenIntegrityCheck.C": "cpp",
+    "*.icc": "cpp"
   }
 }

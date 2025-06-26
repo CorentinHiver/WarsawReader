@@ -13,6 +13,11 @@ namespace CaenDataReader
 
     void makePureVirtual(bool const & isVirtual = false) override {print(isVirtual);}; // To make this class real (printed to get rid of the warning)
 
+    struct ErrorEof
+    {
+      public: ErrorEof(){}
+    } static errorEof;
+
     /**
      * @brief Main function, reads an entire board aggregate 
      * IS NOT compatible with skipAll() == true
@@ -24,8 +29,8 @@ namespace CaenDataReader
       if (!readBoardHeader()) return false;
 
         while(boardNewChannel()) 
-          while (readEvent())
-            if (CaenReaderBase::p_datafile.eof()) return false; // Safety, should never be triggered in principle
+          while ((sSkipData) ? readEvent() : skipEvent())
+            if (CaenReaderBase::p_datafile.eof()) throw errorEof; // Safety, should never be triggered in principle
 
         return !CaenReaderBase::p_datafile.eof();
     }
@@ -194,6 +199,7 @@ namespace CaenDataReader
     bool readBoardHeader() {return m_board.readHeader(CaenReaderBase::p_datafile);}
     bool boardNewChannel() {return m_board.newChannel(CaenReaderBase::p_datafile);}
     bool readEvent()       {return m_board.readEvent (CaenReaderBase::p_datafile);}    
+    bool skipEvent()       {return m_board.skipEvent (CaenReaderBase::p_datafile);}    
 
   private:
 
