@@ -4,8 +4,6 @@
 #include "LibCo/FilesManager.hpp"
 #include "LibCo/Timer.hpp"
 
-#include "TFile.h"
-
 constexpr int reader_version = 1;
 
 //////////////////////////////////////
@@ -71,7 +69,15 @@ int main(int argc, char** argv)
   std::string outpath = "./";
   bool handleTraces = true;
   Long64_t nbHitsMax = -1;
-  if (argc < 3) {print("Not enough parameters"); return 1;}
+  auto printHelp = [](){ 
+    print("-f [file name]");
+    print("-F [folder name]");
+    print("-h");
+    print("-n [number of hits]");
+    print("-o [output path]");
+    print("--no-traces");
+  };
+  if (argc < 3) {printHelp(); return 1;}
   else
   {
     std::istringstream iss(argv_to_string(argv));
@@ -107,6 +113,10 @@ int main(int argc, char** argv)
         iss >> tmp_d;
         nbHitsMax = tmp_d;
       }
+      else if (temp == "-h")
+      {
+        printHelp();
+      }
     }
 
     for (auto const & filename : filenames)
@@ -126,8 +136,8 @@ int main(int argc, char** argv)
 
       int evtNb = 0;
       int evtMult = 0;
-      tree->Branch("evtNb", &evtNb);
-      tree->Branch("evtMult", &evtMult);
+      tree -> Branch("evtNb", &evtNb);
+      tree -> Branch("evtMult", &evtMult);
 
       RootCaenHit outHit;
       outHit.writeTo(tree);
@@ -144,9 +154,10 @@ int main(int argc, char** argv)
         for (auto const & event : eventBuilder)
         {
           evtMult = event.size();
-          #ifdef TRIGGER
-            
-          #endif //TRIGGER
+
+        #ifdef TRIGGER
+          
+        #endif //TRIGGER
 
           for (auto const & hit_i : event)
           {
@@ -191,7 +202,7 @@ int main(int argc, char** argv)
         fillTree();
       }
 
-      fillTree();
+      fillTree(); // Fill the tree with the last event
 
       rootFile->cd();
 
