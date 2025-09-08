@@ -81,6 +81,14 @@
     "caenInspect.C": "cpp",
     "caenInspect copy.C": "cpp",
     "caenIntegrityCheck.C": "cpp",
-    "*.icc": "cpp"
+    "*.icc": "cpp",
+    "allocator": "cpp",
+    "charconv": "cpp",
+    "csetjmp": "cpp",
+    "buffer": "cpp",
+    "netfwd": "cpp",
+    "format": "cpp",
+    "text_encoding": "cpp",
+    "cfenv": "cpp"
   }
 }

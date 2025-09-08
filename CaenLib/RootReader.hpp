@@ -54,7 +54,7 @@ public:
       if (m_oldEvt < m_evtNb) m_oldEvt = m_evtNb;
       else m_event.push_back(m_hit);
     }
-    else return (m_finished = true);
+    return (m_finished = true);
   }
 
   void resetCursor() {m_cursor = 0;}

@@ -25,21 +25,27 @@ void caenIntegrityCheck(std::string filename = "")
        if (file.extension() == "caendat")
   {
     CaenRawReader reader(filename);
-    auto & board = reader.getBoard();
-    auto & channel = board.channels;
+
+    int i = 0;
+    
     auto checkBoard = [&]() -> bool 
     {
+      ++i;
       try
       {
-        auto readOK = reader.readBoardAggregate();
+        return reader.readBoardAggregate();
       }
       catch (CaenRawReader::ErrorEof const & errorEof)
       {
-        print("Board size mismatch :", board);
+        auto & board = reader.getBoard();
+        print("Early end of file : board", i, "with size", board.size, "B and actual size", board.read_size, "B");
+        return false;
       }
     };
+
     while(checkBoard()) continue;
   }
+
   else if (file.extension() == "root")
   {
     RootReader reader(filename);
@@ -64,3 +70,4 @@ int main(int argc, char** argv)
 }
 
 // /home/corentin/data/tests/run_0102_06-06-2025_12h09m04s/eagleRU_i2628_0102_0000.caendat
+// g++ -o check UserFriendly/caenIntegrityCheck.C -Wall -Wextra `root-config --cflags` `root-config --glibs` -g -lreadline -lhistory

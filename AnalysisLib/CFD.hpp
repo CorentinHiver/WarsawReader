@@ -10,6 +10,7 @@
 
 class CFD
 {
+protected:
   // Some helper functions (from libCo):
   using size_t = std::size_t;
 
@@ -18,7 +19,7 @@ class CFD
   template <typename T, typename std::enable_if<!std::is_floating_point<T>::value, bool>::type = true>
   inline static constexpr bool is_floating() noexcept { return false;}
 
-  inline double fast_uniform() noexcept {
+  virtual inline double fast_uniform() noexcept {
     static thread_local std::minstd_rand generator(std::random_device{}());
     static thread_local std::uniform_real_distribution<double> distribution(0.0, 1.0);
     return distribution(generator);
@@ -27,6 +28,7 @@ class CFD
   static constexpr const char* RESET = "\u001b[0m" ;
   
   using CFD_t = std::vector<double>;
+
 public:
 
   CFD() noexcept = default;
@@ -66,9 +68,17 @@ public:
   }
 
   template<class T = double>
+  CFD& setTrace(std::vector<T> const & _trace)
+  {
+    *this = _trace;
+    return *this;
+  }
+
+  template<class T = double>
   CFD& operator=(std::vector<T> const & _trace)
   {
     if (_trace.empty()) return *this;
+    m_size = _trace.size();
 
     double baseline = 0;
     // for (size_t sample_i = 0; sample_i<nb_samples; ++sample_i) baseline += _trace[sample_i];
@@ -85,6 +95,7 @@ public:
         trace.push_back(static_cast<double>(sample  + fast_uniform()) - baseline);
       }
     }
+    return *this;
   }
 
   template<class T = double>
@@ -93,12 +104,14 @@ public:
     this -> calculate(shift, fraction);
   }
 
-  void calculate(size_t const & shift, double const & fraction)
+  virtual void calculate(size_t const & shift, double const & fraction)
   {
     if (fraction>1.) {std::cout << RED << "in CFD(trace, shift, fraction): fraction>1 !!" << RESET << std::endl; return;}
 
-
     cfd.clear();
+
+    if (m_size < 2*shift) {std::cout << RED << "in CFD(trace, shift, fraction): m_size = " << m_size << " < 2*shift = " << 2*shift << " !!" << RESET << std::endl; return;}
+    
     cfd.reserve(m_size - 2*shift);
     // for (size_t bin = 0; bin<shift; ++bin) cfd.push_back(0);
     for (size_t bin = 2*shift; bin<m_size - shift; ++bin){
@@ -128,9 +141,10 @@ public:
   constexpr static double noZero = 0.;
   constexpr static double noSignal = -1.;
 
-  // Static methods to fill the parameters vectors
+  // TODO Static methods to fill the parameters vectors
 
-  static void loadParameters(std::string filename){
+  static void loadParameters(std::string filename)
+  {
     std::ifstream paramFile(filename);
     std::string line;
     std::getline(paramFile, line);
@@ -154,7 +168,7 @@ public:
     }
   }
   
-private:
+protected:
   double interpolate0(size_t const & bin) const noexcept 
   {
     auto const & cfd_0 = cfd[bin];
@@ -166,7 +180,7 @@ private:
 
   
 public:
-  // Parameters :
+  // TODO Parameters :
 
   using Shifts     = std::unordered_map<int, int   >;
   using Thresholds = std::unordered_map<int, double>;

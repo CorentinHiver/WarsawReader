@@ -29,8 +29,8 @@ namespace CaenDataReader
       if (!readBoardHeader()) return false;
 
         while(boardNewChannel()) 
-          while ((sSkipData) ? readEvent() : skipEvent())
-            if (CaenReaderBase::p_datafile.eof()) throw errorEof; // Safety, should never be triggered in principle
+          while ((sSkipData) ? skipEvent() : readEvent())
+            if (CaenReaderBase::p_datafile.eof()) throw errorEof;
 
         return !CaenReaderBase::p_datafile.eof();
     }

@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <iomanip>
+#include <map>
 
 using hr_clock_t = std::chrono::high_resolution_clock;
 using time_point_t = std::chrono::time_point<hr_clock_t>;
