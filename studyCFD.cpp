@@ -18,6 +18,7 @@ static constexpr std::array<int, 10> Boards_map = {EAGLE, EAGLE, EMPTY, EMPTY, E
 
 int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 {
+  if (filenames.empty()) {print("No file !"); return;}
   Timer timer;
   bool max_events = (nb_events_max>0);
   std::unordered_map<int, int> cfd_shifts = {
@@ -112,7 +113,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
   for (auto const & filename : filenames)
   {
-    CaenRootReader reader(filename); //reader.handleTraces(false); //(not handling traces removes cfd handling)
+    CaenRootReader reader(filename);
     CaenRootEventBuilder event_builder(reserved_buffer_size);
     while(((max_events) ? (reader.nbHits() < nb_events_max) : (true)) && reader.readHit())
     {
