@@ -119,7 +119,7 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
 
       auto const & detectorType = getDetectorType(hit.board_ID, hit.channel_ID);
 
-      if (key_found(shifts, detectorType))
+      if (Colib::key_found(shifts, detectorType))
       {
         cfd.calculate(shifts[detectorType], 0.75);
         
@@ -127,7 +127,7 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
         cfdGraph->SetLineColor(kGray);
         cfdGraph->Draw("same");
 
-        if (key_found(thresholds, detectorType))
+        if (Colib::key_found(thresholds, detectorType))
         {
           auto const & zero = cfd.findZero(thresholds[detectorType]) * 4;
           if (zero != CFD::noSignal)
@@ -158,7 +158,7 @@ int main(int argc, char** argv)
     print("adcMin [int] : sets the minimum adc value to store the trace");
     print("adcMax [int] : sets the maximum adc value to store the trace");
   }
-  istringstream iss(argv_to_string(argv));
+  istringstream iss(Colib::argv_to_string(argv));
 
   string file = "empty.caendat";
   iss >> file >> file;

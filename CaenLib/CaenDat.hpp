@@ -15,7 +15,7 @@ namespace CaenDataReader1725
     }
     void setup()
     {
-      auto temp = split(m_file.filename().shortName(), '_');
+      auto temp = Colib::split(m_file.filename().shortName(), '_');
       try {
         m_fileNumber = std::stoi(temp.back());
         m_runNumber = std::stoi(temp[temp.size()-2]);
@@ -43,7 +43,7 @@ namespace CaenDataReader1725
     auto const & path() {return m_file.path();}
   
   private:
-    File m_file;
+    Colib::File m_file;
     int m_fileNumber = -1;
     int m_runNumber = -1;
   };

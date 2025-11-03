@@ -128,11 +128,11 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
       // Correct timestamp with cfd :
 
-      if (!hit.getTrace().empty() && key_found(cfd_shifts, hit.board_ID))
+      if (!hit.getTrace().empty() && Colib::key_found(cfd_shifts, hit.board_ID))
       {
         CFD cfd(hit.getTrace(), cfd_shifts[hit.board_ID], 0.75, 10);
         
-        auto zero = cfd.findZero(cfd_thresholds[hit.board_ID]);
+        auto zero = cfd.findZero();
         
         if (zero == CFD::noSignal)
         {
@@ -305,7 +305,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
 int main(int argc, char** argv)
 {
-  std::istringstream iss(argv_to_string(argv));
+  std::istringstream iss(Colib::argv_to_string(argv));
 
   std::string temp; iss>> temp;
   std::vector<std::string> filenames;
