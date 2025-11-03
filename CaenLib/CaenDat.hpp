@@ -3,7 +3,7 @@
 
 #include "utils.hpp"
 
-namespace CaenDataReader
+namespace CaenDataReader1725
 {
   class CaenDat
   {
@@ -21,7 +21,7 @@ namespace CaenDataReader
         m_runNumber = std::stoi(temp[temp.size()-2]);
       }
       catch (std::invalid_argument const & error){
-        throw_error(m_file.filename().string()+" : not a valid name (should be runName_boardVersion_runNumber_fileNumber.caendat)");
+        Colib::throw_error(m_file.filename().string()+" : not a valid name (should be runName_boardVersion_runNumber_fileNumber.caendat)");
       }
     }
   

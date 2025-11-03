@@ -3,7 +3,7 @@
 
 #include "utils.hpp"
 
-namespace CaenDataReader
+namespace CaenDataReader1725
 {
   struct Extra2
   {
@@ -19,15 +19,16 @@ namespace CaenDataReader
 
     Extra2(uint32_t const & word, uint32_t const & timestamp, uint8_t const & _flag) : 
       flag(_flag)
-    {                  
+    {
       switch (flag)
       {
         case FineTimestamp_flag:
+          // First step : extract the extended and fine timestamp from the EXTRAS2 bit field
           extended_timestamp  = getBitField(word, 31, 16);
           fine_timestamp      = getBitField(word, 9, 0) * ticks_to_ns / 1.024;
           
           // Convert to ps :
-          extended_timestamp  = ((extended_timestamp << 32) | timestamp) * ticks_to_ps; // TODO : check if the shift is correct
+          extended_timestamp  = ((extended_timestamp << 32) | timestamp) * ticks_to_ps;
           precise_timestamp   = extended_timestamp + fine_timestamp;
           break;
           
@@ -36,7 +37,7 @@ namespace CaenDataReader
           trapezoid_baseline = getBitField(word, 15, 0) / 4;
 
           // Convert to ps :
-          extended_timestamp  = ((extended_timestamp << 32) | timestamp) * ticks_to_ps; // TODO : check if the shift is correct
+          extended_timestamp  = ((extended_timestamp << 32) | timestamp) * ticks_to_ps;
           break;
 
         case TriggerCount_flag:
@@ -48,7 +49,6 @@ namespace CaenDataReader
           event_before_zero_crossing = getBitField(word, 31, 16);
           event_after_zero_crossing  = getBitField(word, 15,  0);
           break;
-        
       }
     }
 

@@ -3,7 +3,7 @@
 
 #include "utils.hpp"
 
-namespace CaenDataReader
+namespace CaenDataReader1725
 {
   class AgavaHeader
   {

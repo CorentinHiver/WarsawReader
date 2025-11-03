@@ -1,9 +1,10 @@
-#ifndef TIMER_H
-#define TIMER_H
+#ifndef TIMER_HPP
+#define TIMER_HPP
 
-#include <chrono>
 #include <iomanip>
 #include <map>
+#include <chrono>
+#include <unordered_map>
 
 using hr_clock_t = std::chrono::high_resolution_clock;
 using time_point_t = std::chrono::time_point<hr_clock_t>;
@@ -14,7 +15,7 @@ std::string nicer_seconds(T const & time, int nb_decimals = 3)
 {
   T _time = time;
   std::string unit;
-        if (_time<120.  )  {             ; unit = " s"  ;}
+        if (_time<120.  ) {             ; unit = " s"  ;}
   else if (_time<3600. )  {_time/=60.   ; unit = " min";}
   else if (_time<86400.)  {_time/=3600. ; unit = " h"  ;}
   else                    {_time/=86400.; unit = " j"  ;}
@@ -60,11 +61,7 @@ public:
 
   auto Time(std::string const & unit)
   {
-    if (m_units.find(unit) == m_units.end()) 
-    {
-      std::cout << "in Timer::Time(string unit) : unit" << " " << unit << " unkown... ms by default" << std::endl; 
-      return Time();
-    }
+    // if (!key_found(m_units, unit)) {print("in Timer::Time(string unit) : unit", unit, "unkown... ms by default"); return Time();}
     return Time()/m_units[unit];
   }
 
@@ -110,7 +107,7 @@ private:
 
   duration_milli_t d_milli;
   std::string m_unit = "ms";
-  std::map<std::string, double> m_units = 
+  std::unordered_map<std::string, double> m_units = 
   {
     {"ms" , 1.},
     {"s"  , 1000.},
@@ -125,4 +122,4 @@ std::ostream& operator<<(std::ostream& out, Timer & timer)
   return out;
 }
 
-#endif //TIMER_H
+#endif //TIMER_HPP

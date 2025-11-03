@@ -4,8 +4,11 @@
 #include "utils.hpp"
 #include "ChannelAggregate.hpp"
 
-namespace CaenDataReader
+namespace CaenDataReader1725
 {  
+  struct CheckBinMissed
+  {} static checkBinMissed;
+
   class BoardAggregate
   {
   public:
@@ -42,7 +45,7 @@ namespace CaenDataReader
       if (getBitField (tmp_u32, 31, 28) != check_bin_ref) // Check whether the check bin is correct
       {
         error("Check bin missed : ", std::bitset<32>(tmp_u32)); 
-        return false;
+        throw checkBinMissed;
       }
 
       this->clear();

@@ -5,7 +5,7 @@
 #include "AgavaHeader.hpp"
 #include "BoardAggregate.hpp"
 
-namespace CaenDataReader
+namespace CaenDataReader1725
 {
   class CaenReaderBase
   {
@@ -19,7 +19,7 @@ namespace CaenDataReader
 
     virtual ~CaenReaderBase() {if (p_datafile.is_open()) p_datafile.close();}
 
-    void open(std::string const & filename)
+    virtual void open(std::string const & filename)
     {
       m_filename = filename  ;
       caenFile   = m_filename;
@@ -27,7 +27,7 @@ namespace CaenDataReader
       if (!p_datafile.is_open())
       {
         error(std::strerror(errno));
-        throw_error("Could not open file '"+ m_filename+"'");
+        Colib::throw_error("Could not open file '"+ m_filename+"'");
         return;
       }
 
@@ -40,7 +40,7 @@ namespace CaenDataReader
       }
     }
 
-    bool eof() {return p_datafile.eof();}
+    virtual bool eof() {return p_datafile.eof();}
 
   protected:    
     std::ifstream p_datafile;

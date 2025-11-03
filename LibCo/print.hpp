@@ -51,10 +51,17 @@ namespace Colib
 void print() {std::cout << std::endl;}
 
 template <class T>
-std::ostream& operator<<(std::ostream& cout, std::vector<T> const & v)
+std::ostream& operator<<(std::ostream& out, std::vector<T> const & v)
 {
-  for (auto const & e : v) cout << e << " ";
-  return cout;
+  for (auto const & e : v) out << e << " ";
+  return out;
+}
+
+template <class T>
+std::ofstream& operator<<(std::ofstream& fout, std::vector<T> const & v)
+{
+  for (auto const & e : v) fout << e << " ";
+  return fout;
 }
 
 
@@ -215,17 +222,6 @@ std::string nicer_bool(bool const & some_bool)
   );
 }
 
-namespace Colib
-{
-  template <class T>
-  std::string fill(T value, size_t width, char const & c = '0') 
-  {
-    std::ostringstream oss;
-    oss << std::setw(width) << std::setfill(c) << value;
-    return oss.str();
-  }
-}
-
 template <size_t __length__, char fillWith = '0', class T>
 void printfill(T const & t){
   std::cout << std::setfill(fillWith) << std::setw(__length__) << t;
@@ -264,82 +260,5 @@ public:
   }
 };
 
-/////////////////////
-// NCURSES LIBRARY //
-/////////////////////
-
-// #include <ncurses.h>
-
-
-#ifdef NCURSES_VERSION
-
-namespace Colib
-{
-  namespace Ncurses
-  {
-    class Manager
-    {
-    public:
-
-      static Manager* getInstance() 
-      {
-        if (instance == nullptr) 
-        { // First check (no locking)
-          std::lock_guard<std::mutex> lock(mtx); // Locking
-          if (instance == nullptr) 
-          { // Second check (with locking)
-            instance = new Manager();
-          }
-        }
-        return instance;
-      }
-
-      // Method to clean up the Singleton instance
-      static void destroyInstance() 
-      {
-        std::lock_guard<std::mutex> lock(mtx);
-        if (instance != nullptr) 
-        {
-          delete instance;
-          instance = nullptr;
-        }
-      }
-
-    private:
-      Manager() 
-      {
-        initscr();
-        cbreak();
-        noecho();
-        intrflush(stdscr, FALSE);
-        keypad(stdscr, TRUE); 
-      }
-      ~Manager(){endwin();}
-       // Private copy constructor and assignment operator to prevent copies
-      Manager(const Manager&) = delete;
-      Manager& operator=(const Manager&) = delete;
-
-      // The single instance
-      static Manager* instance;
-      static std::mutex mtx;
-      static thread_local bool s_initialized;
-    };
-
-    // Initialize static members
-    Manager* Ncurses::Manager::instance = nullptr;
-    std::mutex Ncurses::Manager::mtx;
-    thread_local bool Ncurses::Manager::s_initialized = false;
-
-    void Initialize() {Manager::getInstance();}
-
-    static void cut_long_lines()
-    {
-      Ncurses::Initialize();
-      scrollok(stdscr, FALSE);
-    }
-  }
-}
-
-#endif
 
 #endif //PRINT_HPP

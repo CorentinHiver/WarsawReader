@@ -3,7 +3,7 @@
 
 #include "CaenReaderBase.hpp"
 
-namespace CaenDataReader
+namespace CaenDataReader1725
 {
   class RawReader : public CaenReaderBase
   {
@@ -19,7 +19,7 @@ namespace CaenDataReader
     } static errorEof;
 
     /**
-     * @brief Main function, reads an entire board aggregate 
+     * @brief Main function, reads an entire board aggregate
      * IS NOT compatible with skipAll() == true
      * 
      * @return true while the end of the file is not reached
@@ -208,6 +208,6 @@ namespace CaenDataReader
   };
 };
 
-using CaenRawReader = CaenDataReader::RawReader;
+using CaenRawReader1725 = CaenDataReader1725::RawReader;
 
 #endif //CAENRAWREADER_HPP

@@ -7,7 +7,7 @@
 #include <readline/history.h>
 
 
-void caenIntegrityCheck(std::string filename = "")
+void caendatIntegrityCheck(std::string filename = "")
 {
   if (filename == "")
   {
@@ -18,55 +18,48 @@ void caenIntegrityCheck(std::string filename = "")
     filename = removeBlankSpace(filename);
   }
 
-  CaenRawReader::skipData();
+  CaenRawReader1725::skipData();
 
   std::string user_input;
   File file(filename);
-       if (file.extension() == "caendat")
+  if (file.extension() == "caendat")
   {
-    CaenRawReader reader(filename);
+    CaenRawReader1725 reader(filename);
 
     int i = 0;
     
-    auto checkBoard = [&]() -> bool 
+    while(true)
     {
       ++i;
       try
       {
-        return reader.readBoardAggregate();
+        if (!reader.readBoardAggregate()) break;
       }
-      catch (CaenRawReader::ErrorEof const & errorEof)
+      catch (CaenRawReader1725::ErrorEof const & errorEof)
       {
         auto & board = reader.getBoard();
-        print("Early end of file : board", i, "with size", board.size, "B and actual size", board.read_size, "B");
-        return false;
+        print("Early end of file :", i, "th board with size", board.size, "octets and actual size", board.read_size, "octets");
+        break;
       }
-    };
-
-    while(checkBoard()) continue;
+      catch (CaenDataReader1725::CheckBinMissed const & checkBinMissed)
+      {
+        auto & board = reader.getBoard();
+        print("Bin missmatch :", i, "th board with size", board.size, "B and actual size", board.read_size, "B");
+        break;
+      }
+    }
   }
 
-  else if (file.extension() == "root")
+  else // Not a .caendat
   {
-    RootReader reader(filename);
-    int evtNb = 0;
-    reader.getTree()->SetBranchAddress("evtNb", &evtNb);
-    while(reader.readNext())
-    {
-      auto const & nbLines = Colib::getTerminalRows();
-      if (reader.getCursor() % nbLines == 0) {
-        std::getline(std::cin, user_input);
-        if (user_input == "q") break;
-      }
-      print(evtNb, reader.getHit());
-    }
+    error("Can't read anything else but .caendat files");
   }
 }
 
 int main(int argc, char** argv)
 {
   if (argc == 1) error("Please give a file name");
-  else caenIntegrityCheck(argv[1]);
+  else caendatIntegrityCheck(argv[1]);
 }
 
 // /home/corentin/data/tests/run_0102_06-06-2025_12h09m04s/eagleRU_i2628_0102_0000.caendat

@@ -3,6 +3,7 @@
 #include "TFile.h"
 #include "AnalysisLib/CFD.hpp"
 #include "LibCo/Timer.hpp"
+#include "LibCo/libCo.hpp"
 
 #include "CaenLib/CaenRootReader.hpp"
 #include "CaenLib/CaenRootEventBuilder.hpp"
@@ -18,7 +19,7 @@ static constexpr std::array<int, 10> Boards_map = {EAGLE, EAGLE, EMPTY, EMPTY, E
 
 int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 {
-  if (filenames.empty()) {print("No file !"); return;}
+  if (filenames.empty()) {print("No file !"); return 1;}
   Timer timer;
   bool max_events = (nb_events_max>0);
   std::unordered_map<int, int> cfd_shifts = {
@@ -62,7 +63,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
   auto E_all = new TH2F("E_all", "E_all", 200,0,200, 10000,0,100000);
   auto neda_psd = new TH2F("neda_psd", "neda_psd", 16,0,16, 1000,-5,5);
   std::vector<TH2F*> neda_psds; neda_psds.reserve(16);
-  for (int i = 0; i<16; ++i) 
+  for (int i = 0; i<16; ++i)
   {
     TString name ("neda_psd"+std::to_string(i));
     neda_psds.push_back(new TH2F(name, name, 1000,-2*time_window,2*time_window, 1000,-5,5));
@@ -88,7 +89,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
   std::vector<TH2F*> cfd_vs_dT; cfd_vs_dT.reserve(200);
   for (size_t board_i = 0; board_i<Boards_map.size(); ++board_i) for (size_t channel_i = 0; channel_i<16; ++channel_i)
   {
-    if (Boards_map[board_i] == EMPTY) 
+    if (Boards_map[board_i] == EMPTY)
     {
       dT_all_vs_all.push_back(nullptr);
       dT_all_vs_all_cfd.push_back(nullptr);
@@ -113,8 +114,8 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
   for (auto const & filename : filenames)
   {
-    CaenRootReader reader(filename);
-    CaenRootEventBuilder event_builder(reserved_buffer_size);
+    CaenRootReader1725 reader(filename);
+    CaenRootEventBuilder1725 event_builder(reserved_buffer_size);
     while(((max_events) ? (reader.nbHits() < nb_events_max) : (true)) && reader.readHit())
     {
       ////////////////////
@@ -123,23 +124,26 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
       auto & hit = reader.getHit();
 
-      if (reader.nbHits() % int(1e5) == 0) print(nicer_double(reader.nbHits(), 1));
+      if (reader.nbHits() % int(1e5) == 0) print(Colib::nicer_double(reader.nbHits(), 1));
 
       // Correct timestamp with cfd :
 
-      if (!hit.getTrace().empty() && key_found(cfd_shifts, hit.board_ID)) 
+      if (!hit.getTrace().empty() && key_found(cfd_shifts, hit.board_ID))
       {
-        CFD cfd(hit.getTrace(), cfd_shifts[hit.board_ID], 0.75);
+        CFD cfd(hit.getTrace(), cfd_shifts[hit.board_ID], 0.75, 10);
         
-        auto zero = cfd.findZero(cfd_thresholds[hit.board_ID]); 
+        auto zero = cfd.findZero(cfd_thresholds[hit.board_ID]);
         
-        if (zero == CFD::noSignal || zero == CFD::noZero) continue;
-
-        zero = zero * 4000.; // Convert from 4 ns ticks to ps, might change depending on the daq setup
-
-        cfd_corrections->Fill(glabel(hit), zero); 
-
-        hit.cfd = hit.extended_ts + zero; 
+        if (zero == CFD::noSignal)
+        {
+          zero = 0;
+        } else {
+          zero = zero * CaenDataReader1725::ticks_to_ps;
+  
+          cfd_corrections->Fill(glabel(hit), zero);
+  
+          hit.cfd = hit.extended_ts + zero;
+        }
       }
       else hit.cfd = hit.precise_ts;
 
@@ -205,10 +209,10 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
             if (hit_j == hit_i) continue;
 
             auto const & hit_index_j = event[hit_j];
-            auto const & hit_1 = event_builder[hit_index_j];
-            auto const & glabel_1 = glabel(hit_1);
+            auto const & hit_1       = event_builder[hit_index_j];
+            auto const & glabel_1    = glabel(hit_1);
 
-            auto const & dT = Long64_t(hit_1.timestamp - hit_0.timestamp);
+            auto const & dT     = Long64_t(hit_1.timestamp - hit_0.timestamp);
             auto const & dT_cfd = Long64_t(hit_1.cfd - hit_0.cfd);
             
             dT_Ref_VS_all     -> Fill(glabel_1, dT    );
@@ -217,12 +221,12 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
             E_all_vs_ref_dT    [glabel_1] -> Fill(dT    , hit_1.adc);
             E_all_vs_ref_cfd_dT[glabel_1] -> Fill(dT_cfd, hit_1.adc);
 
-            cfd_vs_dT[glabel_1] -> Fill(dT, dT_cfd);
-            cfd_VS_dT_all->Fill(glabel_1, dT-dT_cfd);
+            cfd_vs_dT[glabel_1] -> Fill(dT      , dT_cfd   );
+            cfd_VS_dT_all       -> Fill(glabel_1, dT-dT_cfd);
 
             if (glabel_1 == 0) 
             {
-              dT_Ge1_Ref -> Fill(dT);
+              dT_Ge1_Ref     -> Fill(dT    );
               cfd_dT_Ge1_Ref -> Fill(dT_cfd);
               
               E_VS_dT_Ge1_Ref     -> Fill(dT    , hit_1.adc);
@@ -312,7 +316,8 @@ int main(int argc, char** argv)
           if (temp == "-f")
     {
       iss >> temp;
-      filenames.push_back(temp);
+      auto files = Colib::findFilesWildcard(temp);
+      for (auto const & file : files) filenames.push_back(file);
     }
     else  if (temp == "-n")
     {
@@ -325,6 +330,5 @@ int main(int argc, char** argv)
   
   studyCFD(filenames, nb_hits);
 }
-
 
 // g++ -o studyCFD studyCFD.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2 -std=c++17

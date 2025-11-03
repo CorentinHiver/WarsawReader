@@ -1,5 +1,5 @@
-#ifndef CAENDATAREADER_UTILS_HPP
-#define CAENDATAREADER_UTILS_HPP
+#ifndef CaenDataReader1725_UTILS_HPP
+#define CaenDataReader1725_UTILS_HPP
 
 #include "../LibCo/libCo.hpp"
 
@@ -20,7 +20,7 @@ namespace CaenDataReader
   template<typename T> inline constexpr T getBitField(T const & data, uint const & bit_up) noexcept 
   {
   #ifdef DEBUG
-    if (bit_up > sizeof(T)*8) throw_error("getBitField overflow");
+    if (bit_up > sizeof(T)*8) Colib::throw_error("getBitField overflow");
   #endif // DEBUG
     return data & mask(bit_up);
   }
@@ -29,7 +29,7 @@ namespace CaenDataReader
   template<typename T> inline constexpr T getBitField(T const & data, uint const & bit_up, uint const & bit_low) noexcept 
   {
   #ifdef DEBUG
-    if (bit_up > sizeof(T)*8) throw_error("getBitField overflow");
+    if (bit_up > sizeof(T)*8) Colib::throw_error("getBitField overflow");
   #endif // DEBUG
     return (data & mask(bit_up, bit_low)) >> (bit_low);
   }
@@ -37,7 +37,7 @@ namespace CaenDataReader
   template<typename T> inline constexpr bool getBit(T & data, uint const & bit) 
   {
   #ifdef DEBUG
-    if (bit > sizeof(T)*8) throw_error("getBit overflow");
+    if (bit > sizeof(T)*8) Colib::throw_error("getBit overflow");
   #endif // DEBUG
     return bool_cast(getBitField(data, bit, bit));
   }
@@ -105,10 +105,14 @@ namespace CaenDataReader
     skip(data, size_to_skip);
     size_read += size_to_skip;
   }
-
-  // Some constants. Should think of a better way to save this information
-  constexpr int ticks_to_ns = 4; // ns
-  constexpr double ticks_to_ps = ticks_to_ns * 1000.; // ps
 }
 
-#endif //CAENDATAREADER_UTILS_HPP
+namespace CaenDataReader1725
+{  
+  // Some constants. Should think of a better way to save this information
+  inline constexpr int ticks_to_ns = 4; // ns
+  inline constexpr double ticks_to_ps = ticks_to_ns * 1000.; // ps
+  using namespace CaenDataReader;
+}
+
+#endif //CaenDataReader1725_UTILS_HPP

@@ -4,8 +4,12 @@
 #include "RootHit.hpp"
 #include "CaenReaderBase.hpp"
 
-namespace CaenDataReader
+
+namespace CaenDataReader1725
 {
+  /**
+ * @brief Reads a .caendat file written by a 1725 board and provides an interface to write in a root files
+ */
   class RootReader : public CaenReaderBase
   {
   public:
@@ -77,5 +81,6 @@ namespace CaenDataReader
   };
 };
 
-using CaenRootReader = CaenDataReader::RootReader;
+/// @brief Alias to class CaenDataReader1725::RootReader : reads a .caendat file written by a 1725 board and provides an interface to write in a root files
+using CaenRootReader1725 = CaenDataReader1725::RootReader;
 #endif //CAENROOTREADER_HPP

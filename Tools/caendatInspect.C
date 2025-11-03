@@ -1,3 +1,7 @@
+/**
+ * Simply call it with root 
+ */
+
 #include "../CaenLib/CaenRootReader.hpp"
 #include "../CaenLib/RootReader.hpp"
 #include "TSystem.h"
@@ -7,7 +11,7 @@
 #include <readline/history.h>
 
 
-void caenInspect(std::string filename = "")
+void caendatInspect(std::string filename = "")
 {
   if (filename == "")
   {
@@ -22,7 +26,7 @@ void caenInspect(std::string filename = "")
   File file(filename);
        if (file.extension() == "caendat")
   {
-    CaenRootReader reader(filename);
+    CaenRootReader1725 reader(filename);
     while(reader.readHit())
     {
       auto const & nbLines = Colib::getTerminalRows();
@@ -38,7 +42,7 @@ void caenInspect(std::string filename = "")
     RootReader reader(filename);
     int evtNb = 0;
     reader.getTree()->SetBranchAddress("evtNb", &evtNb);
-    while(reader.readNext())
+    while(reader.readNextHit())
     {
       auto const & nbLines = Colib::getTerminalRows();
       if (reader.getCursor() % nbLines == 0) {

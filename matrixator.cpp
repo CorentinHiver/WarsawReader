@@ -5,15 +5,12 @@ double matrixator(std::vector<std::string> filenames, int nbHitsMax = -1)
 {
   for (auto const & filename : filenames)
   {
-    if (extension(filename) == "root")
+    if (Colib::extension(filename) == "root")
     {
-      RootReader reader(filename);
-      while(reader.fillEvent())
+      RootReader reader(filename, nbHitsMax);
+      while(reader.readNextEvent())
       {
-        if (reader.eventReady())
-        {
-          
-        }
+        
       }
     }
   }

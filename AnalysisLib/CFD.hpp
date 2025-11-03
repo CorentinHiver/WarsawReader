@@ -11,33 +11,75 @@
 class CFD
 {
 protected:
-  // Some helper functions (from libCo):
-  using size_t = std::size_t;
+  /////////////////////////////////////////
+  // Some helper functions (from libCo): //
+  /////////////////////////////////////////
 
+  // Vector functions
+  template <typename T>
+  T minimum_index(std::vector<T> const & vector)
+  {
+    int index = 0;
+    T value = vector[index];
+    for (size_t i = 0; i<vector.size(); i++) if (vector[i]<value) 
+    {
+      value = vector[i];
+      index = i;
+    }
+    return value;
+  }
+
+  // Type name
+  using size_t = std::size_t;
+  using CFD_t = std::vector<double>;
+  
+  // Type check
   template <typename T, typename std::enable_if<std::is_floating_point<T>::value, bool>::type = true>
   inline static constexpr bool is_floating() noexcept { return true;}
   template <typename T, typename std::enable_if<!std::is_floating_point<T>::value, bool>::type = true>
   inline static constexpr bool is_floating() noexcept { return false;}
 
-  virtual inline double fast_uniform() noexcept {
+  // Random generation
+  virtual inline double random_fast_uniform() noexcept {
     static thread_local std::minstd_rand generator(std::random_device{}());
     static thread_local std::uniform_real_distribution<double> distribution(0.0, 1.0);
     return distribution(generator);
   }
+
+  // Consol colors
   static constexpr const char* RED   = "\u001b[31m";
   static constexpr const char* RESET = "\u001b[0m" ;
   
-  using CFD_t = std::vector<double>;
-
 public:
+  /// @brief Default constructor
+  CFD() noexcept = default; 
 
-  CFD() noexcept = default;
-
+  /** @brief Constructs a CFD object from a trace
+  * @details 
+  * Fills an internal vector with a trace after the baseline is determined 
+  * as the mean value of the first nb_samples_baseline samples, 
+  * and subtracted to all the samples of the trace. 
+  * A random number in [0;1[ is added to integer values to smooth the values 
+  **/
   template<class T = double>
   CFD(std::vector<T> const & _trace, size_t nb_samples_baseline = 1) :
     m_size(_trace.size())
   {
-    if (_trace.empty()) return;
+    setTrace(_trace, nb_samples_baseline);
+  }
+
+  CFD& operator=(CFD const & other)
+  {
+    this -> trace  = other.trace ;
+    this -> cfd    = other.cfd   ;
+    this -> m_size = other.m_size;
+    return *this;
+  }
+
+  template<class T = double>
+  CFD& setTrace(std::vector<T> const & _trace, size_t nb_samples_baseline = 1)
+  {    
+    if (_trace.empty()) return *this;
 
     double baseline = _trace[0];
     if (nb_samples_baseline > 1)
@@ -54,52 +96,14 @@ public:
         trace.push_back(sample - baseline);
       }
       else {
-        trace.push_back(static_cast<double>(sample  + fast_uniform()) - baseline);
-      }
-    }
-  }
-
-  CFD& operator=(CFD const & other)
-  {
-    this -> trace = other.trace;
-    this -> cfd = other.cfd;
-    this -> m_size = other.m_size;
-    return *this;
-  }
-
-  template<class T = double>
-  CFD& setTrace(std::vector<T> const & _trace)
-  {
-    *this = _trace;
-    return *this;
-  }
-
-  template<class T = double>
-  CFD& operator=(std::vector<T> const & _trace)
-  {
-    if (_trace.empty()) return *this;
-    m_size = _trace.size();
-
-    double baseline = 0;
-    // for (size_t sample_i = 0; sample_i<nb_samples; ++sample_i) baseline += _trace[sample_i];
-    // baseline /= nb_samples;
-    
-    trace.reserve(m_size);
-
-    for (auto const & sample : _trace) 
-    {
-      if constexpr (is_floating<T>()) {
-        trace.push_back(sample - baseline);
-      }
-      else {
-        trace.push_back(static_cast<double>(sample  + fast_uniform()) - baseline);
+        trace.push_back(static_cast<double>(sample  + random_fast_uniform()) - baseline);
       }
     }
     return *this;
   }
 
   template<class T = double>
-  CFD(std::vector<T> const & _trace, int const & shift, double const & fraction) : CFD(_trace)
+  CFD(std::vector<T> const & _trace, int const & shift, double const & fraction, size_t nb_samples_baseline = 1) : CFD(_trace, nb_samples_baseline)
   {
     this -> calculate(shift, fraction);
   }
@@ -120,6 +124,7 @@ public:
     }
   }
 
+  /// @brief Calculates the last zero crossing before the calculated cfd signal goes below the given threshold
   double findZero(double const & threshold)
   {
     if (threshold>0) std::cout << RED << "in CFD::findZero(threshold) : threshold > 0 !" << RESET << std::endl;
@@ -133,9 +138,24 @@ public:
     }
     return noSignal; // The signal never crosses the threshold -> the signal is too small, the cfd parameters are wrong, or the threshold is too large
   }
+
+  /// @brief Calculates the last zero crossing before the minimum of the calculated cfd signal
+  double findZero()
+  {
+    auto const & min_bin = minimum_index(cfd);
+    if (min_bin == 0) return noSignal;
+    for (size_t bin_j = min_bin; bin_j>0; --bin_j){     // Looping back for looking for the zero crossing
+      if (cfd[bin_j] > 0) return interpolate0(bin_j); // Zero crossing found, return the interpolated zero crossing between samples before and after
+    }
+    return noZero; // The 0 crossing happened before the first sample, so impossible to determine it
+  }
   
   CFD_t trace;
   CFD_t cfd;
+
+  /////////////////////////
+  // Parameters handling //
+  /////////////////////////
 
   // Static variables :
   constexpr static double noZero = 0.;

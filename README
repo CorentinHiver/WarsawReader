@@ -1,0 +1,14 @@
+Compile lines at the end of the .cpp files
+If none (.C files), call the cops
+No for real, call them with root, they are simply macros
+
+- General purpose tools : 
+
+caen2root                   Converts .caendat raw datafile into time-ordered and event-built root file
+Tools/caendatInspect        Dumps raw data from .caendat datafile in the terminal
+Tools/caendatIntegrityCheck Checks if the raw .caendat datafile is not corrupted
+
+- Special tools (hard-coded crate names) :
+
+writeTraces    Writes the traces
+studyCFD       After event-building, checks the time correlations between detectors

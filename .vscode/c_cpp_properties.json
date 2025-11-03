@@ -4,8 +4,7 @@
             "name": "Linux",
             "includePath": [
                 "${default}",
-                "~/Installation/root/install/**",
-                "~/miniconda3/envs/work-env/include/**"
+                "~/miniconda3/envs/work-env/include/"
             ],
             "defines": [],
             "cStandard": "c17",

@@ -3,8 +3,9 @@
 
 #include "utils.hpp"
 
-namespace CaenDataReader
+namespace CaenDataReader1725
 {
+  /// @brief A sample containing the sampled trace, the analog and the digital probes
   struct Sample
   {
     uint16_t sample = 0;

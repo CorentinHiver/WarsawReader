@@ -21,15 +21,15 @@ std::string firstPart       (std::string const & string, char const & sep) { ret
 std::string lastPart        (std::string const & string, char const & sep) { return (string.substr(   string.find_last_of(sep)+1));  }
 /// @brief Returns the string to the right of the first occurrence of sep in the string
 std::string removeFirstPart (std::string const & string, char const & sep) { return (string.substr(   string.find_first_of(sep) ));  }
-/// @brief Returns the string to the left of the last occurrence of sep in the string 
+/// @brief Returns the string to the left of the last occurrence of sep in the string
 std::string removeLastPart  (std::string const & string, char const & sep) { return (string.substr(0, string.find_last_of(sep)  ));  }
 
 /**
  * @brief Cuts a string into pieces separated by the given separator like ';' or ' ' or ','
  * 
  * @param removeVoids: For instance, we have string = ";1;2;3;;5".
- * with    removeVoids this function returns {"1", "2", "3", "5"}
- * without removeVoids this function returns {"", "1", "2", "3", "", "5"}
+ * without removeVoids this function returns {"1", "2", "3", "5"}
+ * with removeVoids this function returns {"", "1", "2", "3", "", "5"}
  * 
 */
 void fillList(std::vector<std::string>& list, const std::string& input, const std::string& separator, const bool& removeVoids = false)
@@ -244,7 +244,7 @@ std::string argv_to_string(char** argv, int const & start_i = 0)
 }
 
 /// @brief Create a null terminated C-style array of char from a string
-/// @attention you'll have to delete the allocated memory
+/// @attention you'll have to delete the allocated memory using delete_argv()
 char** string_to_argv(std::string const & string)
 {
   // Breaks down the string into an array of substrings (separated by a space in the string)
@@ -304,5 +304,6 @@ std::string concatenate(ARGS&&... args)
 /// @brief concatenate string, returns a c_str (char**)
 template<class... ARGS>
 std::string ctcstr(ARGS&&... args) {return concatenate(std::forward<ARGS>(args)...);}
+
 
 #endif //STRING_FUNCTIONS_HPP

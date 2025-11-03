@@ -1,7 +1,7 @@
 #ifndef FILEMANAGER_HPP
 #define FILEMANAGER_HPP
 
-#include "libCo.hpp"
+#include "../libCo.hpp"
 
 using ListFiles = std::vector<std::string> ;
 using ListFolders = std::vector<std::string> ;
@@ -23,22 +23,19 @@ public:
   virtual bool addFile (std::string const & _filename) {return addFiles(_filename);}
   // Adds a given number of files with a .root or .fast inside the given folder (by default all the files, or the nb_files first ones)
   virtual bool addFolder    (std::string folder, long nb_files = -1, std::vector<std::string> const & extensions = {"root", "fast"});
-  virtual bool addFolder    (Path const & folder, long nb_files = -1, std::vector<std::string> const & extensions = {"root", "fast"})
-  {
-    return this -> addFolder(folder.string(), nb_files, extensions);
-  }
   virtual void flushFiles ();
-  void Print        () { for (auto const & file : m_listFiles) print(file);}
+
+  void Print        () { for (auto const & file   : m_listFiles)  print(file  );}
   void printFolders () { for (auto const & folder : m_listFolder) print(folder);}
 
   //Getters :
   Path const & path() const {return m_path;}
   auto const & get() const {return m_listFiles;}
   auto & get() {return m_listFiles;}
-  ListFiles   const & getListFiles     () const { return m_listFiles ;}
-  ListFolders const & getListFolders   () const { return m_listFolder;}
+  ListFiles   const & getListFiles  () const { return m_listFiles ;}
+  ListFolders const & getListFolders() const { return m_listFolder;}
 
-  ListFiles const & getFilesInFolder (std::string folder)
+  ListFiles const & getFilesInFolder(std::string folder)
   {
     if (folder.back()!='/') folder.push_back('/');
     return m_listFilesInFolder[folder];
@@ -50,14 +47,14 @@ public:
   float diskSize() const 
   {
     float ret = 0;
-    for (std::size_t i = 0; i<size(); i++)
+    for (size_t i = 0; i < this -> size(); i++)
     {
-      ret+=size_file(m_listFiles[i]);
+      ret+=Colib::sizeFile(m_listFiles[i]);
     }
     return ret;
   }
 
-  bool empty () const { return m_listFiles.empty();}
+  bool empty   () const { return m_listFiles.empty();}
   bool isEmpty () const { return this->empty();}
   operator bool() const {return !empty();}
 
@@ -105,13 +102,23 @@ protected:
   std::map<std::string, ListFiles> m_listFilesInFolder;
   bool isReadable = false;
   bool verbose = false;
+
+public:
+  class FolderEmpty
+  {
+    public:
+    FolderEmpty(std::string const & folder)
+    {
+      print(folder, "empty !");
+    }
+  };
 };
 
 bool FilesManager::addFiles(std::string const & _filename)
 {
-  m_path = getPath(_filename);
+  m_path = Colib::getPath(_filename);
   uint numberFiles = 0;
-  if (extension(_filename) == "list")
+  if (Colib::extension(_filename) == "list")
   {// using the "data" file as an input containing the path to the actual data .root or .fast files
     std::ifstream inputsFile (_filename);
     if (!inputsFile.is_open() || !inputsFile.good())
@@ -123,7 +130,7 @@ bool FilesManager::addFiles(std::string const & _filename)
     while(inputsFile.good())
     {
       getline(inputsFile, oneline);
-      if( oneline.size() > 1  &&  (extension(oneline) == "root" || extension(oneline) == "fast"))
+      if( oneline.size() > 1  &&  (Colib::extension(oneline) == "root" || Colib::extension(oneline) == "fast"))
       {
         m_listFiles.push_back(oneline);
         numberFiles++;
@@ -132,20 +139,20 @@ bool FilesManager::addFiles(std::string const & _filename)
     inputsFile.close();
     return true;
   }
-  else if (extension(_filename) == "root" || extension(_filename) == "fast")
+  else if (Colib::extension(_filename) == "root" || Colib::extension(_filename) == "fast")
   {// there is only one .root or .fast file
     m_listFiles.push_back(_filename);
     numberFiles = 1;
     return true;
   }
-  else {std::cout << "File " << _filename << "not taken into account. Extension" << extension(_filename)
+  else {std::cout << "File " << _filename << "not taken into account. Extension" << Colib::extension(_filename)
   << "unkown..." << std::endl << "Abort..." << std::endl;return false;}
 }
 
 bool FilesManager::addFolder(std::string _foldername, long _nb_files, std::vector<std::string> const & extensions)
 {
-  push_back_if_none(_foldername, '/');
-  auto listfile = list_files_in_folder(_foldername, extensions); // Default .root OR .fast files only
+  Colib::pushBackIfNone(_foldername, '/');
+  auto listfile = Colib::listFilesInFolder(_foldername, extensions); // Default .root OR .fast files only
   if (listfile.size() > 0)
   {
     std::sort(listfile.begin(), listfile.end());// Sorts the entries
@@ -159,7 +166,7 @@ bool FilesManager::addFolder(std::string _foldername, long _nb_files, std::vecto
   }
   else
   {
-    throw std::runtime_error("Folder '"+_foldername+"' empty !!");
+    throw FolderEmpty(_foldername);
     return false;
   }
 }

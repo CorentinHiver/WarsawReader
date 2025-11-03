@@ -1,10 +1,14 @@
+#include "CaenLib/utils.hpp"
 #include "AnalysisLib/CFD.hpp"
 #include "CaenLib/CaenRootReader.hpp"
 #include "CaenLib/CaenRootEventBuilder.hpp"
 #include "LibCo/FilesManager.hpp"
 #include "LibCo/Timer.hpp"
+#include "LibCo/libCo.hpp"
 
 constexpr int reader_version = 1;
+
+using namespace Colib;
 
 //////////////////////////////////////
 // Version 1.                       //
@@ -70,7 +74,7 @@ int main(int argc, char** argv)
   bool handleTraces = true;
   Long64_t nbHitsMax = -1;
   auto printHelp = [](){ 
-    print("-f [file name]");
+    print("-f [caen file name] (include wildcards * and ?)");
     print("-F [folder name]");
     print("-h");
     print("-n [number of hits]");
@@ -87,7 +91,8 @@ int main(int argc, char** argv)
            if (temp == "-f")
       {
         iss >> temp;
-        filenames.push_back(temp);
+        auto files = Colib::findFilesWildcard(temp);
+        for (auto const & file : files) filenames.push_back(file);
       }
       else if (temp == "-F")
       {
@@ -124,9 +129,9 @@ int main(int argc, char** argv)
       File file(filename);
       if (!file) {error("can't find ", file); continue;}
       
-      CaenRootReader reader(filename);
+      CaenRootReader1725 reader(filename);
       reader.handleTraces(handleTraces);
-      CaenRootEventBuilder eventBuilder(reserved_buffer_size);
+      CaenRootEventBuilder1725 eventBuilder(reserved_buffer_size);
 
       auto rootFilename = outpath + file.shortName()+".root";
       auto rootFile = TFile::Open(rootFilename.c_str(), "recreate");
@@ -156,7 +161,7 @@ int main(int argc, char** argv)
           evtMult = event.size();
 
         #ifdef TRIGGER
-          
+          // TODO:
         #endif //TRIGGER
 
           for (auto const & hit_i : event)
@@ -187,7 +192,7 @@ int main(int argc, char** argv)
           if (zero == CFD::noSignal) inHit.cfd = inHit.precise_ts;
           else
           {
-            zero = zero * 4000.; // Convert from 4 ns ticks to ps, !! might change depending on the daq setup !!  
+            zero = zero * CaenDataReader1725::ticks_to_ns; // Convert from 4 ns ticks to ps, !! might change depending on the daq setup !!  
             inHit.cfd = inHit.extended_ts + zero;
           }
         }

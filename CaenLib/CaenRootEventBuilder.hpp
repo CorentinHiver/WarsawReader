@@ -3,7 +3,7 @@
 
 #include "RootHit.hpp"
 
-namespace CaenDataReader
+namespace CaenDataReader1725
 {
   class RootEventBuilder
   {
@@ -54,7 +54,6 @@ namespace CaenDataReader
 
     void fast_event_building(Long64_t const & time_window) noexcept
     {
-      
       // 1. Initialize the event buffer
           
       if (!m_aligned) this -> align();
@@ -78,7 +77,7 @@ namespace CaenDataReader
           continue;
         }
 
-        // -- Piece of code only executed when the event is closed -- //
+        // -- Piece of code only executed when the event is full -- //
         
         // 4. Fill the event buffer
 
@@ -119,6 +118,6 @@ namespace CaenDataReader
   };
 };
 
-using CaenRootEventBuilder = CaenDataReader::RootEventBuilder;
+using CaenRootEventBuilder1725 = CaenDataReader1725::RootEventBuilder;
 
 #endif //CAENROOTEVENTBUILDER_HPP

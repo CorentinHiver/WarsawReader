@@ -2,12 +2,58 @@
 #define LIBROOT_HPP
 
 #include "libRootHeader.hpp"
+#include "libCo.hpp"
+
 /////////////////////////////////////////////////////////////
 // Generic functions using some actually nice ROOT classes //
 /////////////////////////////////////////////////////////////
 
 namespace Colib
 {
+  //////////////////////
+  // String functions //
+  //////////////////////
+
+  /// @brief Returns the list of strings that match the regex pattern
+  Colib::Strings match_regex(Colib::Strings list, std::string pattern)
+  {
+    TRegexp reg((TString(pattern.c_str()).ReplaceAll("*", ".*")).ReplaceAll("?", "."));
+    std::vector<TString> strings; for (auto const & e : list) strings.push_back(e.c_str());
+    Colib::Strings ret;
+    for (size_t i = 0; i < strings.size(); ++i) if (strings[i].Index(reg) != kNPOS) ret.push_back(list[i]);
+    return ret;
+  }
+
+  ///////////////////////
+  // TObject functions //
+  ///////////////////////
+
+  template<class T>
+  auto unload(T* obj)
+  {
+    obj->SetDirectory(nullptr);
+    delete obj;
+  }
+
+  template<class TheTObject>
+  auto clone(std::string name, std::string new_name, TFile* file = nullptr)
+  {
+    if (file == nullptr) file = gFile;
+    file->cd();
+    return dynamic_cast<TheTObject*> (file->Get<TheTObject>(name.c_str())->Clone(new_name.c_str()));
+  }
+
+  template<class Histo>
+  auto clone(Histo* histo, std::string new_name = "")
+  {
+    if (new_name == "") new_name = histo->GetName() + std::string("_clone");
+    return dynamic_cast<Histo*> (histo->Clone(new_name.c_str()));
+  }
+
+  /////////////////////
+  // Graph functions //
+  /////////////////////
+  
   /// @brief This method allows one to get the x and y values of where the user clicks on the graph
   void GetPoint(TVirtualPad * vpad, double& x, double& y)
   {
@@ -20,36 +66,6 @@ namespace Colib
     delete cutg;
   }
 
-  Strings match_regex(Strings list, std::string pattern)
-  {
-    TRegexp reg((TString(pattern.c_str()).ReplaceAll("*", ".*")).ReplaceAll("?", "."));
-    std::vector<TString> strings; for (auto const & e : list) strings.push_back(e.c_str());
-    Strings ret;
-    for (size_t i = 0; i < strings.size(); ++i) if (strings[i].Index(reg) != kNPOS) ret.push_back(list[i]);
-    return ret;
-  }
-
-  template<class T>
-  auto unload(T* obj)
-  {
-    obj->SetDirectory(nullptr);
-    delete obj;
-  }
-
-  template<class T>
-  auto clone(std::string name, std::string new_name, TFile* file = nullptr)
-  {
-    if (file == nullptr) file = gFile;
-    file->cd();
-    return dynamic_cast<T*> (file->Get<T>(name.c_str())->Clone(new_name.c_str()));
-  }
-
-  template<class T>
-  auto clone(T* histo, std::string new_name = "")
-  {
-    if (new_name == "") new_name = histo->GetName() + std::string("_clone");
-    return dynamic_cast<T*> (histo->Clone(new_name.c_str()));
-  }
 }
 
 /////////////////////////////////////
@@ -88,7 +104,7 @@ namespace Colib
   THist* Sub(THist* h1, THist* h2, double factor = 1.)
   {
     auto ret = (THist*) h1->Clone(TString(h1->GetName())+"_minus_"+TString(h2->GetName()));
-    ret->SetTitle(TString(h1->GetName())+"-" + ((factor == 1.) ? "" : std::to_string(factor).c_str()) + TString(h2->GetName()));
+    ret->SetTitle(TString(h1->GetTitle())+"-" + ((factor == 1.) ? "" : std::to_string(factor).c_str()) + TString(h2->GetTitle()));
     ret->Add(h2, -factor);
     return ret;
   }
@@ -98,7 +114,7 @@ namespace Colib
   THist* SubInteger(THist* h1, THist* h2, double factor = 1)
   {
     auto ret = (THist*) h1->Clone(TString(h1->GetName())+"_minus_"+TString(h2->GetName()));
-    ret->SetTitle(TString(h1->GetName())+"-"+TString(h2->GetName()));
+    ret->SetTitle(TString(h1->GetTitle())+"-"+TString(h2->GetTitle()));
     for (int bin_i = 0; bin_i<h1->GetNbinsX(); ++bin_i) 
     {
       auto const & diff = static_cast<int>(factor*h2->GetBinContent(bin_i));
@@ -111,7 +127,7 @@ namespace Colib
   TH1* Mult(TH1* h1, TH1* h2, double factor = 1)
   {
     auto ret = (TH1*) h1->Clone(TString(h1->GetName())+"_times_"+TString(h2->GetName()));
-    ret->SetTitle(TString(h1->GetName())+"#times"+TString(h2->GetName()));
+    ret->SetTitle(TString(h1->GetTitle())+"#times"+TString(h2->GetTitle()));
     for (int bin = 1; bin<h1->GetNbinsX(); ++bin) ret->SetBinContent(bin, h1->GetBinContent(bin)*h2->GetBinContent(bin)*factor);
     return ret;
   }
@@ -120,6 +136,41 @@ namespace Colib
   TH1* Multiply(TH1* histo, double const & factor)
   {
     for (int bin_i = 0; bin_i<histo->GetNbinsX(); ++bin_i) histo->SetBinContent(bin_i, histo->GetBinContent(bin_i)*factor);
+    return histo;
+  }
+
+  template<class... Args>
+  auto CellDiv(TH1* h1, TH1* h2, TH1* filled, double factor = 1, Args... args)
+  {
+    auto const & binCont = h2 -> GetBinContent(std::forward<Args>(args)...);
+    if (binCont != 0)     filled -> SetBinContent(std::forward<Args>(args)..., h1 -> GetBinContent(std::forward<Args>(args)...)/(binCont*factor));
+    else                  filled -> SetBinContent(std::forward<Args>(args)..., 0);
+  }
+
+  /// @brief Clone h1 and divide it by factor*h2
+  TH1* Div(TH1* h1, TH1* h2, double factor = 1)
+  {
+    if (factor == 0) {warning("Colib::Div(TH1* h1, TH1* h2, double factor) : Can't divide by factor = 0. Returning nullptr."); return nullptr;}
+    auto ret = (TH1*) h1 -> Clone(TString(h1 -> GetName())+"_div_"+TString(h2 -> GetName()));
+    ret -> SetTitle(TString(h1 -> GetTitle())+"/"+TString(h2 -> GetTitle()));
+    for (int binx = 1; binx<h1 -> GetNbinsX(); ++binx) 
+      if (h1 -> GetNbinsY() > 2) // 2,3D
+        for (int biny = 1; biny<h1 -> GetNbinsY(); ++biny)
+          if (h1 -> GetNbinsZ() > 2) // 3D
+            for (int binz = 1; binz<h1 -> GetNbinsZ(); ++binz)
+              CellDiv(h1, h2, ret, factor, binx, biny, binz);
+          else // 2D
+            CellDiv(h1, h2, ret, factor, binx, biny);
+      else // 1D
+        CellDiv(h1, h2, ret, factor, binx);
+    return ret;
+  }
+  
+  /// @brief Divide h1 by a factor
+  TH1* Divide(TH1* histo, double const & factor)
+  {
+    if (factor == 0) {warning("Colib::Divide(TH1* histo, double factor) : Can't divide by factor = 0. Returning nullptr."); return nullptr;}
+    for (int bin_i = 0; bin_i<histo->GetNbinsX(); ++bin_i) histo->SetBinContent(bin_i, histo->GetBinContent(bin_i)/factor);
     return histo;
   }
 
@@ -135,6 +186,7 @@ namespace Colib
   }
 
   /// @brief 
+  /// @param x: true if index refers to a X bin, false if x refers to a Y bin
   bool AddTH1(TH2* histo2, TH1* histo1, int index, bool x = true)
   {
     if (!histo2) {print("TH2 do not exists"); return -1;}
@@ -185,11 +237,11 @@ namespace Colib
   }
 
     
-  void resizViewRange(TH1F * histo)
+  void resizeViewRange(TH1F * histo)
   {
     histo->GetXaxis()->SetRange(histo->FindFirstBinAbove(histo->GetMinimum()), histo->FindLastBinAbove(histo->GetMinimum()));
   }
-  void resizViewRange(TH1F * histo, float const & min)
+  void resizeViewRange(TH1F * histo, float const & min)
   {
     histo->GetXaxis()->SetRange(min, histo->FindLastBinAbove(histo->GetMinimum()));
   }
@@ -976,21 +1028,102 @@ namespace Colib
   /// @brief Set Y histogram proj in matrix at binX.
   void setX(TH2* matrix, TH1* proj, int const & binX)
   {
-    if (matrix == nullptr){throw_error("Matrix histo nullptr in Colib::setX");}
-    if (proj == nullptr) {throw_error("Projection histo nullptr in Colib::setX");}
+    if (matrix == nullptr){Colib::throw_error("Matrix histo nullptr in Colib::setX");}
+    if (proj == nullptr) {Colib::throw_error("Projection histo nullptr in Colib::setX");}
     for (int binY = 0; binY<matrix->GetNbinsY(); binY++) matrix->SetBinContent(binX, binY, proj->GetBinContent(binY));
   }
 
   /// @brief Set X histogram proj in matrix at binY.
   void setY(TH2* matrix, TH1* proj, int const & binY)
   {
-    if (matrix == nullptr){throw_error("Matrix histo nullptr in Colib::setY");}
-    if (proj == nullptr) {throw_error("Projection histo nullptr in Colib::setY");}
+    if (matrix == nullptr){Colib::throw_error("Matrix histo nullptr in Colib::setY");}
+    if (proj == nullptr) {Colib::throw_error("Projection histo nullptr in Colib::setY");}
     for (int binX = 0; binX<matrix->GetNbinsX(); binX++) matrix->SetBinContent(binX, binY, proj->GetBinContent(binY));
+  }
+
+  /**
+   * @brief Returns the average number of hits per keV for by default 5 energy interval.
+   * @details This is used to estimate the significance of a peak in a low-count spectrum. 
+   * Let's consider an example. We have a spectrum with 4000 bins with a total integral I=1000.
+   * But the lower energy region has more counts than the high-energy. So by dividing in 4 zones, we can
+   * have something like (700, 200, 75, 25) in the regions [0,1000], [1000, 2000], [2000, 3000], [3000, 4000]
+   * @todo Il semble qu'il y a un décalage de quelques bins
+   * 
+   * @param spectrum : gamma spectrum with x axis in keV
+   * @param dE_zone : divide the histogram into zones of dE_zone keV large to calculate the count per keV
+   * @return std::vector<double> 
+   */
+  std::vector<double> countsPerKeV(TH1* spectrum, int dE_zone = 5)
+  {
+    auto const & nX = spectrum->GetNbinsX();
+    std::vector<double> ret(nX+1);
+    if (!checkHisto(spectrum)) {error("Colib::countsPerKeV(TH1* spectrum) : spectrum does not exists"); return ret;}
+    auto const & xmax = spectrum->GetXaxis()->GetXmax();
+    auto const & xmin = spectrum->GetXaxis()->GetXmin();
+    auto const & range = xmax - xmin;
+    auto const & n_zones = size_cast(range/dE_zone); // Get the number of zones
+    auto const & nX_zone = nX/n_zones;
+    std::vector<double> data;
+    for (size_t zone_i = 0; zone_i<n_zones; ++zone_i)
+    {
+      auto const & bin_low = 1+zone_i*nX_zone;
+      auto const & bin_high = (zone_i+1)*nX_zone;
+      auto const & integral = spectrum->Integral(bin_low, bin_high);
+      data.push_back(integral/dE_zone);
+    }
+    for (int bin_i = 1; bin_i<=nX; ++bin_i) ret[bin_i] = (nX_zone==0) ? data[int(bin_i/nX_zone)] : 0;
+    return ret;
+  }
+
+  /**
+   * @brief Returns the average number of hits per keV for by default 5 energy interval.
+   * @details This is used to estimate the significance of a peak in a low-count spectrum. 
+   * Let's consider an example. We have a spectrum with 4000 bins with a total integral I=1000.
+   * But the lower energy region has more counts than the high-energy. So by dividing in 4 zones, we can
+   * have something like (700, 200, 75, 25) in the regions [0,1000], [1000, 2000], [2000, 3000], [3000, 4000]
+   * @todo Il semble qu'il y a un décalage de quelques bins
+   * 
+   * @param spectrum : gamma spectrum with x axis in keV
+   * @param dE_zone : divide the histogram into zones of dE_zone keV large to calculate the count per keV
+   * @return std::vector<double> 
+   */
+  TH1F* countsPerKeVHisto(TH1* spectrum, int dE_zone = 5, int bckg_nbIterations = 15)
+  {
+    TH1F* ret = nullptr;
+    if (!checkHisto(spectrum)) {error("Colib::countsPerKeV(TH1* spectrum) : spectrum does not exists"); return ret;}
+    // auto bckg = spectrum->ShowBackground(bckg_nbIterations);
+
+    auto const & nX = spectrum->GetNbinsX();
+    auto const & xmin = spectrum->GetXaxis()->GetXmin();
+    auto const & xmax = spectrum->GetXaxis()->GetXmax();
+
+    auto const & name = spectrum->GetName()+TString("_countsPerKeV");
+    auto const & title = spectrum->GetTitle()+TString("_countsPerKeV");
+    ret = new TH1F(name, title, nX, xmin, xmax);
+
+    auto const & range = xmax - xmin;
+    auto const & n_zones = size_cast(range/dE_zone); // Get the number of zones
+    auto const & nX_zone = nX/n_zones;
+    std::vector<double> data;
+    for (size_t zone_i = 0; zone_i<n_zones; ++zone_i)
+    {
+      auto const & bin_low = 1+zone_i*nX_zone;
+      auto const & bin_high = (zone_i+1)*nX_zone;
+      auto const & integral = spectrum->Integral(bin_low, bin_high);
+      data.push_back(integral/dE_zone);
+    }
+    for (int bin_i = 1; bin_i<=nX; ++bin_i) 
+    {
+      int data_i = int(bin_i/nX_zone);
+      if (data_i<data.size()) ret->SetBinContent(bin_i, data[data_i]);
+      else break;
+    }
+    return ret;
   }
 
   void simulatePeak(TH1* histo, double const & x_center, double const & x_resolution, int const & nb_hits)
   {
+    if (!histo) {error("in simulate_peak : histo is nullptr"); return;}
     TRandom* random = new TRandom();
     for (int it = 0; it<nb_hits; ++it) histo->Fill(random->Gaus(x_center, x_resolution/2.35));
     delete random;
@@ -1002,13 +1135,15 @@ namespace Colib
     if (draw) 
     {
       auto name = histo->GetName()+std::string("_simulated");
-      TH1D* newHisto = nullptr;
-      if (gFile) newHisto = gFile->Get<TH1D>(name.c_str());
-      if (!newHisto) {print("Creating", name); newHisto = static_cast<TH1D*> (histo->Clone(name.c_str()));}
+      // TH1D* newHisto = nullptr;
+      // if (gFile) newHisto = gFile->Get<TH1D>(name.c_str());
+      // if (!newHisto) {print("Creating", name); newHisto = static_cast<TH1D*> (histo->Clone(name.c_str()));}
+      auto newHisto = countsPerKeVHisto(histo, 20, 15); // maybe externialise these parameters
+      // for (int bin = 1; bin<=histo->GetNbinsX(); ++bin) newHisto -> SetBinContent(bin, int(newHisto->GetBinContent(bin)));
       Colib::simulatePeak(newHisto, x_center, x_resolution, nb_hits);
       newHisto->SetLineColor(kRed);
-      newHisto->Draw();
-      histo->Draw("same");
+      histo->Draw();
+      newHisto->Draw("same");
     }
     else Colib::simulatePeak(histo, x_center, x_resolution, nb_hits); 
   }
@@ -1039,6 +1174,144 @@ namespace Colib
     return ret;
   }
 
+  TH1F* integrate(TH1F const * histo)
+  {
+    if (!histo) {error("in Colib::integrat(histo) : histo is nullptr"); return nullptr;}
+    auto ret = dynamic_cast<TH1F*>(histo->Clone(histo->GetName()+TString("_integrated")));
+
+    int integral = 0;
+    for (int x = 1; x <= histo->GetNbinsX(); ++x)
+    {
+      integral += histo->GetBinContent(x);
+      ret->SetBinContent(x, integral);
+    }
+    return ret;
+  }
+
+  /**
+   * @brief Removes a gamma line in a bidim, replacing it by the background calculated with TH1::ShowBackground
+   * @attention Needs to be a symmetrized histogram, but without background subtraction
+   */
+  auto removeLine(TH2F* histo, int bin_min, int max_bin, int nb_it = 20)
+  {
+    auto ret = (TH2F*) histo->Clone(TString(histo->GetName())+"_clean");
+    for (int x = 1; x<=histo->GetXaxis()->GetNbins(); ++x)
+    {
+      auto proj(histo->ProjectionY("temp", x, x));
+      auto bckg(proj->ShowBackground(nb_it));
+      for (int y = bin_min+1; y<=max_bin; ++y) 
+      {
+        ret->SetBinContent(y, x, bckg->GetBinContent(y));
+        ret->SetBinContent(x, y, bckg->GetBinContent(y));
+      }
+      delete proj;
+      delete bckg;
+    }
+    return ret;
+  }
+
+  /**
+   * @brief Removes a gamma line in a bidim, replacing it by the background calculated with TH1::ShowBackground
+   * @attention Needs to be a symmetrized histogram, but without background subtraction
+   */
+  auto removeLines(TH2F* histo, std::vector<std::pair<int, int>> bins, int nb_it = 20)
+  {
+    auto ret = (TH2F*) histo->Clone(TString(histo->GetName())+"_clean");
+    for (int x = 1; x<=histo->GetXaxis()->GetNbins(); ++x)
+    {
+      auto proj(histo->ProjectionY("temp", x, x));
+      auto bckg(proj->ShowBackground(nb_it));
+      for (auto const & range : bins) for (int y = range.first; y<=range.second; ++y) 
+      {
+        ret->SetBinContent(y, x, bckg->GetBinContent(y));
+        ret->SetBinContent(x, y, bckg->GetBinContent(y));
+      }
+      delete proj;
+      delete bckg;
+    }
+    return ret;
+  }
+
+  /// @brief Displays the mean Y value for each X bin
+  TH1F* meanYvsX(TH2 const * histo, int minYbin = 1, int maxYbin = -1)
+  {
+    if (minYbin < 1) {throw_error("In meanYvsX(histo, minYbin, maxYbin) : minYbin < 1 !!");}
+
+    auto const & histoName = std::string(histo -> GetName ());
+    auto const & histoTitle= std::string(histo -> GetTitle ());
+
+    auto const & xaxis  = histo -> GetXaxis();
+    auto const & xname  = std::string(xaxis -> GetName ());
+    auto const & xtitle = std::string(xaxis -> GetTitle());
+    auto const & xbins  = xaxis -> GetNbins();
+    auto const & xmin   = xaxis -> GetXmin();
+    auto const & xmax   = xaxis -> GetXmax();
+    
+    auto const & yaxis  = histo -> GetYaxis();
+    auto const & yname  = std::string(yaxis -> GetName ());
+    auto const & ytitle = std::string(yaxis -> GetTitle());
+    auto const & ybins  = yaxis -> GetNbins();
+    auto const & ymin   = yaxis -> GetXmin();
+    auto const & ymax   = yaxis -> GetXmax();
+
+    auto const & name  = histoName  + "_mean_" + yname  + "_VS_" + xname ;
+    auto const & title = histoTitle + "_mean_" + ytitle + "_VS_" + xtitle;
+
+    auto const & ret = new TH1F(name.c_str(), title.c_str(), xbins, xmin, xmax);
+
+    maxYbin = ((maxYbin>0) ? maxYbin : ybins);
+    int const & nYbins  = maxYbin - minYbin;
+
+    for (int binx = 0; binx < xbins; ++binx)
+    {
+      double ymean = 0.;
+      double ytot = 0.;
+      for (int biny = minYbin; biny <= maxYbin; ++biny) 
+      {
+        ymean += histo->GetBinContent(binx, biny) * histo->GetYaxis()->GetBinCenter(biny);
+        ytot  += histo->GetBinContent(binx, biny);
+      }
+      ret -> SetBinContent(binx, ymean/ytot);
+    }
+    return ret;
+  }
+  
+  /// @brief Initial intention : in a G4 simu, from the E_deposit VS E_gamma TH2, 
+  /// count the number of E_deposit==0 for each E_gamma, hence the efficiency
+  TH1F* normalizedYGatevsX(TH2 const * histo, int binGate, int minYbin = 1)
+  {
+    auto const & histoName = std::string(histo -> GetName ());
+    auto const & histoTitle= std::string(histo -> GetTitle ());
+
+    auto const & xaxis  = histo -> GetXaxis();
+    auto const & xname  = std::string(xaxis -> GetName ());
+    auto const & xtitle = std::string(xaxis -> GetTitle());
+    auto const & xbins  = xaxis -> GetNbins();
+    auto const & xmin   = xaxis -> GetXmin();
+    auto const & xmax   = xaxis -> GetXmax();
+    
+    auto const & yaxis  = histo -> GetYaxis();
+    auto const & yname  = std::string(yaxis -> GetName ());
+    auto const & ytitle = std::string(yaxis -> GetTitle());
+    auto const & ybins  = yaxis -> GetNbins();
+    auto const & ymin   = yaxis -> GetXmin();
+    auto const & ymax   = yaxis -> GetXmax();
+
+    auto const & name  = histoName  + "_bin"+ std::to_string(binGate) + "_" + yname  + "_VS_" + xname ;
+    auto const & title = name + ";" + xtitle;
+
+    auto const & ret = new TH1F(name.c_str(), title.c_str(), xbins, xmin, xmax);
+
+    double ytot = 0.;
+    for (int binx = 0; binx < xbins; ++binx)
+    {
+      ytot = 0.;
+      for (int biny = minYbin; biny < ybins; ++biny) ytot += histo->GetBinContent(binx, biny);
+      double value = (ytot>0.) ? (1-histo->GetBinContent(binx, binGate) / ytot) : 0.;
+      ret -> SetBinContent(binx, value);
+    }
+    return ret;
+  }
 }
 
 ////////////////////////////////////////
@@ -1190,39 +1463,7 @@ namespace Colib
     return ret;
   }
 
-  /**
-   * @brief Returns the average number of hits per keV for by default 5 energy interval.
-   * @details This is used to estimate the significance of a peak in a low-count spectrum. 
-   * Let's consider an example. We have a spectrum with 4000 bins with a total integral I=1000.
-   * But the lower energy region has more counts than the high-energy. So by dividing in 4 zones, we can
-   * have something like (700, 200, 75, 25) in the regions [0,1000], [1000, 2000], [2000, 3000], [3000, 4000]
-   * @todo Il semble qu'il y a un décalage de quelques bins
-   * 
-   * @param spectrum : gamma spectrum with x axis in keV
-   * @param dE_zone : divide the histogram into zones of dE_zone keV large to calculate the count per keV
-   * @return std::vector<double> 
-   */
-  std::vector<double> countsPerKeV(TH1* spectrum, int dE_zone = 5)
-  {
-    auto const & nX = spectrum->GetNbinsX();
-    std::vector<double> ret(nX+1);
-    if (!checkHisto(spectrum)) {error("Colib::countsPerKeV(TH1* spectrum) : spectrum does not exists"); return ret;}
-    auto const & xmax = spectrum->GetXaxis()->GetXmax();
-    auto const & xmin = spectrum->GetXaxis()->GetXmin();
-    auto const & range = xmax - xmin;
-    auto const & n_zones = size_cast(range/dE_zone); // Get the number of zones
-    auto const & nX_zone = nX/n_zones;
-    std::vector<double> data;
-    for (size_t zone_i = 0; zone_i<n_zones; ++zone_i)
-    {
-      auto const & bin_low = 1+zone_i*nX_zone;
-      auto const & bin_high = (zone_i+1)*nX_zone;
-      auto const & integral = spectrum->Integral(bin_low, bin_high);
-      data.push_back(integral/dE_zone);
-    }
-    for (int bin_i = 1; bin_i<=nX; ++bin_i) ret[bin_i] = data[int(bin_i/nX_zone)];
-    return ret;
-  }
+  
 
   TH2F* copy(TH2F const * spectrumFrom, TH2F* spectrumTo)
   {
@@ -1296,6 +1537,27 @@ namespace Colib
     delete intermediate; // Free intermediate memory
     return result;
   }
+
+  TH1F* valuesHisto(TH1 * const histo)
+  {
+    TH1F* ret = nullptr;
+    if (!checkHisto(histo)) {error("Colib::countsPerKeV(TH1* histo) : histo does not exists"); return ret;}
+    
+    auto const & bins = histo->GetNbinsX();
+    auto const & xmin = histo->GetXaxis()->GetXmin();
+    auto const & xmax = histo->GetXaxis()->GetXmax();
+    auto const & vmin = histo->GetMinimum();
+    auto const & vmax = histo->GetMaximum();
+
+    auto const & name = histo->GetName()+TString("_valuesHisto");
+    auto const & title = histo->GetTitle()+TString("_valuesHisto");
+
+    ret = new TH1F(name, title, vmax, vmin, vmax);
+
+    for (int bin = 0; bin<bins; ++bin) ret->Fill(histo->GetBinContent(bin));
+
+    return ret;
+  }
   
 }
 
@@ -1318,7 +1580,7 @@ namespace Colib
   /**
    * @brief Time alignement of a tree that contains a leaf representing timestamps (whose type is Timestamp)
    * 
-   * @tparam Timestamp: usually ULong64_t (by default) but can change 
+   * @tparam Timestamp: ULong64_t by default 
    * @param tree 
    * @param NewIndex : the time-ordered index vector
    * @param time_leaf_name : the name of the leaf that contains the timestamp
@@ -1419,25 +1681,25 @@ namespace Colib
   static const std::unordered_map<std::type_index, std::string> typeRootMap = 
   {
     // Bool :
-    {typeid(          true), "O"},
+    {static_cast<std::type_index>(typeid(          true)), "O"},
 
     // Integers :
-    {typeid(  char_cast(1)), "B"}, {typeid( uchar_cast(1)), "b"},
-    {typeid( short_cast(1)), "S"}, {typeid(ushort_cast(1)), "s"},
-    {typeid(   int_cast(1)), "I"}, {typeid(  uint_cast(1)), "i"},
-    {typeid(  long_cast(1)), "G"}, {typeid( ulong_cast(1)), "g"},
+    {static_cast<std::type_index>(typeid(  char_cast(1))), "B"}, {static_cast<std::type_index>(typeid( uchar_cast(1))), "b"},
+    {static_cast<std::type_index>(typeid( short_cast(1))), "S"}, {static_cast<std::type_index>(typeid(ushort_cast(1))), "s"},
+    {static_cast<std::type_index>(typeid(   int_cast(1))), "I"}, {static_cast<std::type_index>(typeid(  uint_cast(1))), "i"},
+    {static_cast<std::type_index>(typeid(  long_cast(1))), "G"}, {static_cast<std::type_index>(typeid( ulong_cast(1))), "g"},
 
     // Floating point :
-    {typeid(double_cast(1)), "D"}, {typeid( float_cast(1)), "F"},
+    {static_cast<std::type_index>(typeid(double_cast(1))), "D"}, {static_cast<std::type_index>(typeid( float_cast(1))), "F"},
 
     // ROOT types :
-    {typeid(Long64_cast(1)), "L"}, {typeid(ULong64_cast(1)), "l"}
+    {static_cast<std::type_index>(typeid(Long64_cast(1))), "L"}, {static_cast<std::type_index>(typeid(ULong64_cast(1))), "l"}
   };
 
   template<class T>
   std::string typeRoot(T const & t)
   {
-    auto const & typeIndex = std::type_index(typeid(t));
+    auto const & typeIndex = static_cast<std::type_index>(typeid(t));
     auto it = typeRootMap.find(typeIndex);
     if (it != typeRootMap.end()) return it->second;
     else                         return "Unknown";
@@ -1447,7 +1709,7 @@ namespace Colib
   std::string typeRoot()
   {
     T t;
-    auto const & typeIndex = std::type_index(typeid(t));
+    auto const & typeIndex = static_cast<std::type_index>(typeid(t));
     auto it = typeRootMap.find(typeIndex);
     if (it != typeRootMap.end()) return it->second;
     else                         return "Unknown";
@@ -1466,53 +1728,10 @@ namespace Colib
   template<class T>
   auto createBranchArray(TTree* tree, T * array, std::string const & name, std::string const & name_size, int buffsize = 64000)
   {
-    auto const & type_root_format = name+"["+name_size+"]/"+typeRoot<T>();
+    auto const & type_root_format = name+"["+name_size+"]/"+typeRoot(**array);
     return (tree -> Branch(name.c_str(), array, type_root_format.c_str(), buffsize));
   }
 
-}
-
-/////////////////////////
-//   BINNING CLASSES   //
-/////////////////////////
-
-/**
- * @brief Binning of a root histogram (TH1) : number of bins, min value, max value
- * @attention LEGACY code
- */
-struct THBinning
-{
-  THBinning() = default;
-  THBinning(std::initializer_list<double> initList)
-  {
-    if (initList.size() != 3) 
-    {
-      throw std::invalid_argument("Initialization of THBinning must contain only 3 elements");
-    }
-
-    auto it = initList.begin();
-    bins = static_cast<int>(*it++);
-    min  = static_cast<float>(*it++);
-    max  = static_cast<float>(*it  );
-  }
-
-  THBinning(double _bins, double _min, double _max) 
-  {
-    bins = static_cast<int>(_bins);
-    min  = static_cast<float>(_min) ;
-    max  = static_cast<float>(_max) ;
-  }
-
-  // The three parameters :
-  int   bins = 0  ;
-  float min  = 0.f;
-  float max  = 0.f;
-};
-
-std::ostream& operator<<(std::ostream& cout, THBinning binning)
-{
-  cout << binning.bins << " " << binning.min << " " << binning.max << " ";
-  return cout;
 }
 
 /////////////////////
@@ -1524,7 +1743,7 @@ namespace Colib
   /// @brief Project matrix on Y axis at a given X bin. This fills proj.
   void projectY(TH2* matrix, TH1* proj, int const & binX)
   {
-    if (matrix == nullptr) {throw_error("Matrix histo nullptr in Colib::projectY");}
+    if (matrix == nullptr) {Colib::throw_error("Matrix histo nullptr in Colib::projectY");}
     auto const & nbBins = matrix->GetNbinsY();
     if (proj == nullptr) proj = new TH1F();
     proj->SetBins(nbBins,getYmin(matrix), getYmax(matrix));
@@ -1534,7 +1753,7 @@ namespace Colib
   /// @brief Project matrix on Y axis between bin binXmin included and binXmax excluded [binXmin;binXmax[. This fills proj.
   void projectY(TH2* matrix, TH1* proj, int const & binXmin, int const & binXmax)
   {
-    if (matrix == nullptr) {throw_error("Matrix histo nullptr in Colib::projectY");}
+    if (matrix == nullptr) {Colib::throw_error("Matrix histo nullptr in Colib::projectY");}
     auto const & nbBins = matrix->GetNbinsY();
     if (proj == nullptr) proj = new TH1F();
     proj->SetBins(nbBins, getYmin(matrix), getYmax(matrix));
@@ -1551,7 +1770,7 @@ namespace Colib
   /// @brief Project the whole matrix on the X axis. This fills proj.
   void projectX(TH2* matrix, TH1* proj)
   {
-    if (matrix == nullptr) {throw_error("Matrix histo nullptr in Colib::projectX");}
+    if (matrix == nullptr) {Colib::throw_error("Matrix histo nullptr in Colib::projectX");}
     auto const & nbBins = matrix->GetNbinsX();
     if (proj == nullptr) proj = new TH1F();
     proj->SetBins(nbBins, getXmin(matrix), getXmax(matrix));
@@ -1561,7 +1780,7 @@ namespace Colib
   /// @brief Project on X axis at a given Y bin. This fills proj.
   void projectX(TH2* matrix, TH1* proj, int const & binY)
   {
-    if (matrix == nullptr) {throw_error("Matrix histo nullptr in Colib::projectX");}
+    if (matrix == nullptr) {Colib::throw_error("Matrix histo nullptr in Colib::projectX");}
     auto const & nbBins = matrix->GetNbinsX();
     if (proj == nullptr) proj = new TH1F();
     proj->SetBins(nbBins,getXmin(matrix), getXmax(matrix));
@@ -1571,7 +1790,7 @@ namespace Colib
   /// @brief Project on X axis between bin binYmin included and binYmax excluded [binYmin;binYmax[. This fills proj.
   void projectX(TH2* matrix, TH1* proj, int const & binYmin, int const & binYmax)
   {
-    if (matrix == nullptr) {throw_error("Matrix histo nullptr in Colib::projectX");}
+    if (matrix == nullptr) {Colib::throw_error("Matrix histo nullptr in Colib::projectX");}
     auto const & nbBins = matrix->GetNbinsX();
     if (proj == nullptr) proj = new TH1F();
     proj->SetBins(nbBins, getXmin(matrix), getXmax(matrix));
@@ -1675,7 +1894,7 @@ namespace Colib
   {
     if (histo == nullptr) {error("in myProjection2D : histo is nullptr"); return nullptr;}
 
-    static Strings types = {"XY", "YX", "XZ", "ZX", "YZ", "ZY"};
+    static Colib::Strings types = {"XY", "YX", "XZ", "ZX", "YZ", "ZY"};
     if (!found(types, type)) {error("in myProjection2D(type, histo) :", type, "is not known"); return nullptr;}
     // Preparing the return histo :
     if (name == "") name = histo->GetName()+std::string("_p")+type;
@@ -1845,9 +2064,9 @@ namespace Colib
    *    - "S" (symmetric): Loop through the X bins, find the background on the Y projection, then symmetrize the bidim
    * @param nice: if true, the minimum values of the bin content is 1.
    */
-  void removeBackground(TH1 * histo, int const & niter = 20, std::string const & fit_options = "", bool nice = false) noexcept
+  TH1 * removeBackground(TH1 * histo, int const & niter = 20, std::string const & fit_options = "", bool nice = false) noexcept
   {
-    if (!histo || histo->IsZombie()) return;
+    if (!histo || histo->IsZombie()) return nullptr;
     auto const & dim = histo->GetDimension();
     if (dim == 1)
     {
@@ -1860,61 +2079,7 @@ namespace Colib
       }
       if (gPad) gPad->Update();
     }
-
-    else if (dim == 2)
-    {
-      error ("weird, removeBackground(TH2*) should have been called ....");
-      return;
-      // char choice = 0; // 0 : X, 1 : Y, 2 : symmetric
-      // // if (bidim_options.find("Y")) choice = 1;
-      // // if (bidim_options.find("S")) choice = 2;
-      // auto bidim = dynamic_cast<TH2F*>(histo);
-
-      // auto const & nXbins = bidim -> GetNbinsX();
-      // auto const & nYbins = bidim -> GetNbinsY();
-
-      // if (choice == 2)
-      // {
-      //   if (nXbins != nYbins) {error("Colib::removeBackground for 2D spectra is suited only for symmetric spectra"); return;}
-      // }
-
-      // switch (choice)
-      // {
-      //   case 0: case 2: 
-      //     // Subtract the background of Y spectra gating on each X bins
-      //     for (int binX = 0; binX<nXbins; binX++)
-      //     {
-      //       TH1F* histo1D = nullptr; 
-      //       projectY(bidim, histo1D, binX);
-      //       removeBackground(histo1D, niter);
-      //       setX(bidim, histo1D, binX);
-      //       delete histo1D;
-      //     }
-      //   break;
-
-      //   case 1:
-      //     // Subtract the background of X spectra gating on each Y bins
-      //     for (int binY = 0; binY<nYbins; binY++)
-      //     {
-      //       TH1F* histo1D = nullptr; new TH1F("temp","temp",nYbins, bidim->GetYaxis()->GetXmax(), bidim->GetYaxis()->GetXmin());
-      //       projectX(bidim, histo1D, binY);
-      //       removeBackground(histo1D, niter);
-      //       setY(bidim, histo1D, binY);
-      //       delete histo1D;
-      //     }
-      //   break;
-      // }
-
-      // if (choice == 2)
-      // {
-      //   //2. Re-symmetrize the matrix : (PROTOTYPAL !)
-      //   print("Symmetrization : ");
-      //   for (int binY = 0; binY<nYbins; binY++) for (int binX = 0; binX<nXbins; binX++)
-      //   {
-      //     histo->SetBinContent(binX, binY, histo->GetBinContent(binY, binX));
-      //   }
-      // }
-    }
+    return histo;
   }
 
   /// @brief Based on Radware methods D.C. Radford/Nucl. Instr. and Meth. in Phys. Res. A 361 (1995) 306-316
@@ -2143,7 +2308,7 @@ namespace Colib
 
   /// @brief Attempt to adapt the derivative with different smoothing approaches
   /// @param: choice == 0, derivative with quadratic weight
-  /// choise == 1, slope of points before and after
+  /// choice == 1, slope of points before and after
   /// @todo
   TH1F* peaky(const TH1F* histo, int choice = 0, size_t smooth = 1)
   {
@@ -2487,9 +2652,9 @@ namespace Colib
     }
   
     template<class THist = TH1>
-    Strings get_names_of(TPad * pad = nullptr)
+    Colib::Strings get_names_of(TPad * pad = nullptr)
     {
-      Strings ret;
+      Colib::Strings ret;
       if (!pad) 
       {
         pad = (TPad*)gPad;
@@ -2594,6 +2759,32 @@ namespace Colib
         }
       }
       return false;
+    }
+
+    template<class THist = TH1>
+    void multiply_histos(double coeff, TPad* pad = nullptr, TString options = "nosw2")
+    {
+      if (!pad)
+      {
+        pad = (TPad*)gPad;
+        if (!pad) {error("no pad"); return;}
+      }
+      auto histos = Colib::Pad::get_histos<THist>(pad);
+      if (histos.empty()){error("no", TClass::GetClass(typeid(THist))->GetName(), "drawn in pad"); return;}
+      double maxi = 0;
+      for (auto const & hist : histos) if (maxi < hist->GetMaximum()) maxi = hist->GetMaximum();
+      if (maxi==0.0) {error("max is 0"); return;}
+      bool hasLegend = Colib::Pad::has_legend(pad);
+      bool first = true;
+      for (auto & hist : histos) 
+      {
+        gPad->GetListOfPrimitives()->Remove(hist);
+        hist->Scale(coeff, options);
+        if (first) {hist->Draw(); first = false;}
+        else hist->Draw("same");
+      }
+      if (hasLegend) gPad->BuildLegend();
+      pad->Update();
     }
     
     template<class THist = TH1>
@@ -2747,7 +2938,7 @@ namespace Colib
       {
         latex.push_back(new TLatex());
         latex.back()->SetTextSize(0.04);
-        latex.back()->SetTextAlign(12); // Align the text
+        latex.back()->SetTextAlign(12);
         std::string text = std::to_string(int(raw_X[i]-0.5));
         latex.back()->DrawLatex(raw_X[i], raw_Y[i], text.c_str());
       }
@@ -2780,9 +2971,9 @@ namespace Colib
     else return nullptr;
   }
 
-  Strings get_list_histo(TFile * file, std::string const & class_name = "TH1F")
+  Colib::Strings get_list_histo(TFile * file, std::string const & class_name = "TH1F")
   {
-    Strings ret;
+    Colib::Strings ret;
     if (!file) {error("in get_list_histo(TFile * file, std::string class_name) : file is nullptr"); return ret;}
     auto list = file->GetListOfKeys();
     for (auto&& keyAsObj : *list)
@@ -2808,7 +2999,7 @@ namespace Colib
     return ret;
   }
   
-  Strings get_TH1F_names(std::string const & filename)
+  Colib::Strings get_TH1F_names(std::string const & filename)
   {
     auto file = TFile::Open(filename.c_str());
     auto ret =  get_list_histo(file, "TH1F");
@@ -2816,7 +3007,7 @@ namespace Colib
     return ret;
   }
   
-  Strings get_TH1F_names(TFile * file)
+  Colib::Strings get_TH1F_names(TFile * file)
   {
     return get_list_histo(file, "TH1F");
   }
@@ -2834,7 +3025,7 @@ namespace Colib
     return ret;
   }
   
-  TH1F_map get_TH1F_map(TFile * file, Strings & names)
+  TH1F_map get_TH1F_map(TFile * file, Colib::Strings & names)
   {
     TH1F_map ret;
     names = get_TH1F_names(file);
@@ -2855,10 +3046,10 @@ namespace Colib
    * Internally perform a file->cd()
    */
   template<class T>
-  Strings file_get_names_of(TFile* file = nullptr)
+  Colib::Strings file_get_names_of(TFile* file = nullptr)
   {
     // init
-    Strings ret;
+    Colib::Strings ret;
     T *temp_obj = new T(); 
   
     // Check the files :
@@ -2925,7 +3116,7 @@ namespace Colib
   /// @brief allows one to fuse all the histograms with the same name from different files
   void fuse_all_histo(std::string const & folder, std::string const & outRoot = "fused_histo.root", bool const & bidim = true)
   {
-    auto const files = list_files_in_folder(folder, {"root"});
+    auto const files = listFilesInFolder(folder, {"root"});
     bool first_file = true;
     std::vector<std::unique_ptr<TH1>> all_TH1F;
     for (auto const & filename : files)
@@ -3281,8 +3472,8 @@ namespace Colib
   {
     auto const & bins = hist->GetNbinsX();
     
-    if (bin_min<length) throw_error("Colib::adaptative_mean : bin_min must be at least length bins from the edge.");
-    if ((bins-bin_max)<length) throw_error("Colib::adaptative_mean : bin_max must be at least length bins from the edge.");
+    if (bin_min<length) Colib::throw_error("Colib::adaptative_mean : bin_min must be at least length bins from the edge.");
+    if ((bins-bin_max)<length) Colib::throw_error("Colib::adaptative_mean : bin_max must be at least length bins from the edge.");
 
     TH1F* out = new TH1F("out", "out", bins, hist->GetXaxis()->GetXmin(), hist->GetXaxis()->GetXmax());
     int sum = 0;
@@ -3335,12 +3526,12 @@ namespace Colib
     // Get the size of each file and the total amount of files
     double total_size = 0;
     std::vector<double> size_files;
-    Strings name_files;
+    Colib::Strings name_files;
     for (int i = 0; i < nb_files; ++i) 
     {
       TObjString* str = (TObjString*)files->At(i);
       auto const & name = str->GetString().Data();
-      auto const & size = size_file(name, "Mo");
+      auto const & size = sizeFile(name, "Mo");
       if (size > size_file_Mo) {error("Input size > output size case not handled:", size, ">", size_file_Mo, "for", name); return;}
       name_files.push_back(name);
       size_files.push_back(size);
@@ -3371,7 +3562,7 @@ namespace Colib
       {
         mutex.lock();
         // Take the needed number of files :
-        Strings files;
+        Colib::Strings files;
         double thread_size = 0;
         for (; infile_i<nb_files; ++infile_i)
         {
@@ -3557,7 +3748,9 @@ namespace Colib
     }
   };
   
-  
+  /**
+   * @brief Reads an gamma-efficiency file, made of pairs of energy-efficiency in % 
+   */
   class Efficiency
   {
   public:
@@ -3567,7 +3760,7 @@ namespace Colib
       {
         std::ifstream file(filename, std::ios::in);
         int energy = 0; double value = 0;
-        while (file >> energy >> value) m_data.push_back(value/100);
+        while (file >> energy >> value) m_data.push_back(value/100.);
         m_max = maximum(m_data);
       }
     }
@@ -3609,6 +3802,9 @@ namespace Colib
     TF1* function = nullptr;
   };
   
+  /**
+   * @brief Apply the efficiency to gamma spectrum to get effiency-corrected intensities directly in the TH1
+    */
   TH1D* apply_efficiency(TH1* histo, Efficiency const & eff)
   {
     auto const & xaxis = histo->GetXaxis();
@@ -3627,67 +3823,65 @@ namespace Colib
     }
     return ret;
   }
-
-}
-
-
-
-/// @brief Needs to be a simmetrized histogram BEFORE background subtraction
-auto removeLine(TH2F* histo, int bin_min, int max_bin, int nb_it = 20)
-{
-  auto ret = (TH2F*) histo->Clone(TString(histo->GetName())+"_clean");
-  for (int x = 1; x<=histo->GetXaxis()->GetNbins(); ++x)
+    
+  /**
+   * @brief Binning of a root histogram (TH1) : number of bins, min value, max value
+   * @attention LEGACY code
+   */
+  struct THBinning
   {
-    auto proj(histo->ProjectionY("temp", x, x));
-    auto bckg(proj->ShowBackground(nb_it));
-    for (int y = bin_min+1; y<=max_bin; ++y) 
+    THBinning() = default;
+    THBinning(std::initializer_list<double> initList)
     {
-      ret->SetBinContent(y, x, bckg->GetBinContent(y));
-      ret->SetBinContent(x, y, bckg->GetBinContent(y));
-    }
-    delete proj;
-    delete bckg;
-  }
-  return ret;
-}
+      if (initList.size() != 3) 
+      {
+        throw std::invalid_argument("Initialization of THBinning must contain only 3 elements");
+      }
 
-/// @brief Needs to be a simmetrized histogram BEFORE background subtraction
-auto removeLines(TH2F* histo, std::vector<std::pair<int, int>> bins, int nb_it = 20)
-{
-  auto ret = (TH2F*) histo->Clone(TString(histo->GetName())+"_clean");
-  for (int x = 1; x<=histo->GetXaxis()->GetNbins(); ++x)
+      auto it = initList.begin();
+      bins = static_cast<int>(*it++);
+      min  = static_cast<float>(*it++);
+      max  = static_cast<float>(*it  );
+    }
+
+    THBinning(double _bins, double _min, double _max) 
+    {
+      bins = static_cast<int>(_bins);
+      min  = static_cast<float>(_min) ;
+      max  = static_cast<float>(_max) ;
+    }
+
+    // The three parameters :
+    int   bins = 0  ;
+    float min  = 0.f;
+    float max  = 0.f;
+  };
+
+  std::ostream& operator<<(std::ostream& cout, THBinning binning)
   {
-    auto proj(histo->ProjectionY("temp", x, x));
-    auto bckg(proj->ShowBackground(nb_it));
-    for (auto const & range : bins) for (int y = range.first; y<=range.second; ++y) 
-    {
-      ret->SetBinContent(y, x, bckg->GetBinContent(y));
-      ret->SetBinContent(x, y, bckg->GetBinContent(y));
-    }
-    delete proj;
-    delete bckg;
+    cout << binning.bins << " " << binning.min << " " << binning.max << " ";
+    return cout;
   }
-  return ret;
-}
 
-Strings wildcard(std::string const & name)
-{
-  TString result = gSystem->GetFromPipe(("ls "+name).c_str());
-  return getList(result.Data(), "\n");
 }
 
 
 void libRoot()
 {
   print("Welcome, may you find some usefull stuff around");
+  using namespace Colib;
 }
 
 #endif //LIBROOT_HPP
 
 
+/////////////////
+// Legacy code //
+/////////////////
+
  // unique_TFile file(TFile::Open(filename.c_str(), "READ"));
   // file -> cd();
-  // if (!file.get()->IsOpen()) throw_error("Can't open"+filename);
+  // if (!file.get()->IsOpen()) Colib::throw_error("Can't open"+filename);
   // print("Reading", filename);
   
   // TIter nextKey(file->GetListOfKeys());
@@ -3710,7 +3904,7 @@ void libRoot()
   //       {
   //         print(all_TH1F[histo_nb]->GetName());
   //         if (name == all_TH1F[histo_nb]->GetName()) all_TH1F[histo_nb]->Add(histo);
-  //         else throw_error("Root files not identical !!!");
+  //         else Colib::throw_error("Root files not identical !!!");
   //       }
   //       histo_nb++;
   //     }
@@ -3806,8 +4000,8 @@ void libRoot()
   //     m_trees.push_back( m_files.back() -> Get<TTree>(m_name.c_str()) );
   //   }
   
-  //   Strings m_input_files_expressions;
-  //   Strings m_files_vec;
+  //   Colib::Strings m_input_files_expressions;
+  //   Colib::Strings m_files_vec;
   
   //   UInt_t    m_tree_cursor = 0;
   //   ULong64_t m_evt_cursor = 0;
