@@ -6,7 +6,10 @@
 #include "../LibCo/randomCo.hpp"
 
 /*
-So, overall it works. However the process is mainly sped up if the resources are correcly managed.
+So, overall it works. However the process is only sped up if the resources are correcly managed.
+Namely, you need to really understand the architecture of your GPU and limit as much as possible data transfers,
+i.e. copying data from CPU to GPU. So for instance, if you copy the traces once and make a lot of operations on it,
+then it can become efficient. If you copy lots of traces and make only one operation it becomes much slowers than CPU.
 */
 
 __global__
@@ -99,7 +102,7 @@ int main() {
   }
   
   {
-    BatchCFD cfds(traces, shift, fraction);
+    BatchCFD cfds(traces., shift, fraction);
     Timer timer;
     auto results = cfds.getResults();
     std::cout << "Time: " << timer() << " seconds\n";

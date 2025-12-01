@@ -18,6 +18,12 @@ namespace CaenDataReader1725
     {
     }
 
+    /// @brief DEV - Resets the reader. The user needs to handle closing and/or writting the ROOT interface (TTrees, TFiles...)
+    void reset()
+    {
+      m_nb_hits = 0;
+    }
+
     void makePureVirtual(bool const & isVirtual = false) override {print(isVirtual);}; // To make this class real (printed to get rid of the warning)
 
     RootReader(std::string const & filename, TTree * tree) : 
@@ -31,7 +37,7 @@ namespace CaenDataReader1725
       m_rootHit.writeTo(tree);
     }
 
-    bool readHit()
+    bool readHit() override
     {
       if (read_board_header)
       { // We hit a new board aggregate, reading the header
@@ -48,16 +54,16 @@ namespace CaenDataReader1725
       }
 
       if (m_channel.hasMoreEvents())
-      { // There is at least one more event to read
+      { // There is at least one more caen event (=detector hit) to read
         ++m_nb_hits;
         m_caenEvent.clear();
         m_rootHit.readCaenEvent(CaenReaderBase::p_datafile, m_board, m_channel, m_caenEvent);
       }
       else
-      { // At the end of the channel aggregate, need to handle the different aggregate headers : 
+      { // At the end of each channel aggregate, different aggregate headers need proper handling: 
         read_channel_header = true; // Need to read the next channel aggregate header
         read_board_header = !m_board.hasMoreChannels(); // If this was last channel aggregate of the board aggregate, need to read the next board aggregate header
-        return this -> readHit(); // Reads the next hit. Iteration : should never be called more than twice in a row
+        return this -> readHit(); // Reads the next hit. Iteration : in principle, never called more than twice in a row
       }
       return true;
     }
@@ -65,18 +71,16 @@ namespace CaenDataReader1725
     void handleTraces(bool const & b) {m_rootHit.handle_traces = b;} 
 
     auto & getHit() {return m_rootHit;}
-    auto const & nbHits() const {return m_nb_hits;}
 
   private:
-    int m_nb_hits = 0;
 
     RootHit m_rootHit;
     
-    BoardAggregate m_board;
-    ChannelAggregate m_channel;
-    CaenEvent m_caenEvent;
+    BoardAggregate    m_board     ;
+    ChannelAggregate  m_channel   ;
+    CaenEvent         m_caenEvent ;
 
-    bool read_board_header = true;
+    bool read_board_header   = true;
     bool read_channel_header = true;
   };
 };

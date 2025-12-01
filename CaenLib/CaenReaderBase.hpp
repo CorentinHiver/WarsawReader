@@ -42,7 +42,11 @@ namespace CaenDataReader1725
 
     virtual bool eof() {return p_datafile.eof();}
 
+    virtual bool readHit() {++m_nb_hits; return false;}
+    auto const & nbHits() const {return m_nb_hits;}
+
   protected:    
+    size_t m_nb_hits = 0;
     std::ifstream p_datafile;
     std::string   m_filename;
     CaenDat caenFile;

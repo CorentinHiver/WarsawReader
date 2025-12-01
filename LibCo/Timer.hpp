@@ -6,10 +6,6 @@
 #include <chrono>
 #include <unordered_map>
 
-using hr_clock_t = std::chrono::high_resolution_clock;
-using time_point_t = std::chrono::time_point<hr_clock_t>;
-using duration_milli_t = std::chrono::duration<double, std::milli>;
-
 template <typename T>
 std::string nicer_seconds(T const & time, int nb_decimals = 3)
 {
@@ -27,7 +23,11 @@ std::string nicer_seconds(T const & time, int nb_decimals = 3)
 }
 
 class Timer
-{
+{    
+  using hr_clock_t = std::chrono::high_resolution_clock;
+  using time_point_t = std::chrono::time_point<hr_clock_t>;
+  using duration_milli_t = std::chrono::duration<double, std::milli>;
+
 public:
   Timer(){Restart();}
 

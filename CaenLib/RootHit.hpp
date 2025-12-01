@@ -20,8 +20,9 @@ namespace CaenDataReader
    * @attention When not using it in a root environnemnet, one must call RootHit::clean() to correctly delete the pointer to the trace
    * @todo Check wether when reading from root tree, one needs to delete the trace in the destructor.
    */
-  struct RootHit
+  class RootHit
   {
+  public:
     // Fields :
     int  label           = 0;
     int  board_ID        = 0;
@@ -33,7 +34,7 @@ namespace CaenDataReader
     uint64_t extended_ts = 0; // TRIGGER_TIME_TAG + extended timestamp [47 bits]
     uint64_t precise_ts  = 0; // TRIGGER_TIME_TAG + extended timestamp + fine timestamp[47 bits]
     uint64_t cfd         = 0;
-    Trace* trace = nullptr;
+    Trace* trace = nullptr  ;
     
     // Options :
     uint16_t trigger_bin = 0;
@@ -105,10 +106,6 @@ namespace CaenDataReader
       if (handle_traces) 
       {
         debug("Trace with :", channel.NUM_SAMPLES, "samples");
-        // if (m_NewTrace)
-        // {
-          // trace = new Trace;
-        // }
         trace->resize(channel.NUM_SAMPLES);
         DP1  ->resize(channel.NUM_SAMPLES);
         for (size_t sample_i = 0; sample_i<trace->size(); ++sample_i)
@@ -116,7 +113,7 @@ namespace CaenDataReader
           auto & sample = (*trace)[sample_i];             // Simple aliasing
           CaenDataReader1725::read_buff(&sample, data);   // Reading the buffer
           if(getBit(sample, 15)) trigger_bin = sample_i;  // Gets the index of the sample where the trigger time tag have been measured
-          (*DP1)[sample_i] = getBit(sample, 14);        // Gets the digital probe DP1 value for this sample
+          (*DP1)[sample_i] = getBit(sample, 14);          // Gets the digital probe DP1 value for this sample
           sample &= mask(13);                             // Removes the trigger_bin and DP1 bit values from the sample 
         }
       }
@@ -140,13 +137,13 @@ namespace CaenDataReader
       {
         case CaenDataReader1725::Extra2::ExtendedTimestamp_flag : 
           extended_ts = caenEvent.extra.extended_timestamp;
-          timestamp = caenEvent.extra.extended_timestamp; 
+          timestamp   = caenEvent.extra.extended_timestamp; 
           break;
 
-        case CaenDataReader1725::Extra2::FineTimestamp_flag     : 
-          precise_ts = caenEvent.extra.precise_timestamp;
+        case CaenDataReader1725::Extra2::FineTimestamp_flag : 
           extended_ts = caenEvent.extra.extended_timestamp;
-          timestamp = caenEvent.extra.precise_timestamp ; 
+          precise_ts  = caenEvent.extra.precise_timestamp ;
+          timestamp   = caenEvent.extra.precise_timestamp ; 
           break;
 
         default: 
@@ -175,11 +172,19 @@ namespace CaenDataReader
     }
 
     /// @brief Returns three graphs : ret = {trace, DP1, Trigger}
-    std::vector<TGraph*> getTracesGraphs() const
+    std::vector<TGraph*> getTracesGraphs(size_t nb_samples_baseline = 0) const
     {
       std::vector<TGraph*> graphs;
       if (!trace) {return graphs;}
       if (trace->size() == 0) {error("trace has no samples"); return graphs;}
+      
+      double baseline = 0;
+      if (0 < nb_samples_baseline)
+      {
+        if (trace->size() < nb_samples_baseline) {error("trace has not enough samples for baseline(",nb_samples_baseline," samples required)"); return graphs;}
+        for (size_t sample_i = 0; sample_i<nb_samples_baseline; ++sample_i) baseline += trace->at(sample_i);
+        baseline /= nb_samples_baseline;
+      }
 
       auto const & N = trace->size();
       auto const & maxS = Colib::maximum(*trace);
@@ -187,16 +192,16 @@ namespace CaenDataReader
       std::vector<int> DP1_int (N, 0);
       std::vector<int> trig_int(N, 0);
 
-      for (size_t i = 0; i<N; ++i)
+      for (size_t i = 0; i<N; ++i) 
       {
-        data_int[i] = int((*trace)[i]);
+        data_int[i] = int((*trace)[i]) - baseline;
         if (DP1_int[i]) DP1_int[i] = maxS;
         if (i == trigger_bin) trig_int[i] = maxS;
       }
 
-      graphs.push_back(new TGraph(data_int.size(), Colib::linspace<int>(data_int.size()).data(), data_int.data()));
-      graphs.push_back(new TGraph(DP1_int .size(), Colib::linspace<int>(DP1_int .size()).data(), DP1_int .data()));
-      graphs.push_back(new TGraph(trig_int.size(), Colib::linspace<int>(trig_int.size()).data(), trig_int.data()));
+      graphs.push_back(new TGraph(data_int.size(), Colib::linspace<int>(data_int.size(), 0, CaenDataReader1725::ticks_to_ns).data(), data_int.data()));
+      graphs.push_back(new TGraph(DP1_int .size(), Colib::linspace<int>(DP1_int .size(), 0, CaenDataReader1725::ticks_to_ns).data(), DP1_int .data()));
+      graphs.push_back(new TGraph(trig_int.size(), Colib::linspace<int>(trig_int.size(), 0, CaenDataReader1725::ticks_to_ns).data(), trig_int.data()));
 
       graphs[0] -> SetName("Trace"  ); graphs[0] -> SetTitle("Trace"  );
       graphs[1] -> SetName("DP1"    ); graphs[1] -> SetTitle("DP1"    );
@@ -206,14 +211,21 @@ namespace CaenDataReader
     }
 
     /// @brief Returns the graph of the trace
-    TGraph* getTraceGraph() const
+    TGraph* getTraceGraph(size_t nb_samples_baseline = 0) const
     {
       if (!trace) {return nullptr;}
       auto const & N = trace->size();
       if (N == 0) {error("trace has no samples"); return nullptr;}
+      double baseline = 0;
+      if (0 < nb_samples_baseline)
+      {
+        if (trace->size() < nb_samples_baseline) {error("trace has not enough samples for baseline(",nb_samples_baseline," samples required)"); return nullptr;}
+        for (size_t sample_i = 0; sample_i<nb_samples_baseline; ++sample_i) baseline += trace->at(sample_i) - baseline;
+        baseline /= nb_samples_baseline;
+      }
       std::vector<int> data_int; data_int.reserve(N);
-      for (auto const sample : data_int) data_int.push_back(sample);
-      auto graph = new TGraph(data_int.size(), Colib::linspace<int>(data_int.size()).data(), data_int.data());
+      for (auto const sample : *trace) data_int.push_back(sample);
+      auto graph = new TGraph(data_int.size(), Colib::linspace<int>(data_int.size(), 0, CaenDataReader1725::ticks_to_ns).data(), data_int.data());
       graph -> SetName ("Trace"); 
       graph -> SetTitle("Trace");
       return graph;
@@ -238,6 +250,16 @@ namespace CaenDataReader
     }
 
     auto const & getTrace() const {return *trace;}
+
+    std::vector<int> getTraceBaselineRemoved(size_t nb_samples_baseline) const 
+    {
+      std::vector<int> _trace; _trace.reserve(trace->size());
+      int baseline = 0;
+      for (size_t i = 0; i<nb_samples_baseline; ++i) baseline += trace->at(i);
+      baseline /= nb_samples_baseline;
+      for (auto const & sample : *trace) _trace.push_back(sample - baseline);
+      return _trace;
+    }
 
     friend std::ostream& operator<<(std::ostream& out, RootHit const & hit)
     {
@@ -305,10 +327,10 @@ namespace CaenDataReader
     // bool m_NewTrace = false;
   };
 
-  using RootEvent = std::vector<RootHit>;
+  // using RootEvent = std::vector<RootHit>;
 };
 
 using RootCaenHit = CaenDataReader1725::RootHit;
-using RootCaenEvent = CaenDataReader1725::RootEvent;
+// using RootCaenEvent = CaenDataReader1725::RootEvent;
 
 #endif //ROOTHIT_HPP

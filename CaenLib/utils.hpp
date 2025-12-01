@@ -110,7 +110,7 @@ namespace CaenDataReader
 namespace CaenDataReader1725
 {  
   // Some constants. Should think of a better way to save this information
-  inline constexpr int ticks_to_ns = 4; // ns
+  inline constexpr double ticks_to_ns = 4; // ns
   inline constexpr double ticks_to_ps = ticks_to_ns * 1000.; // ps
   using namespace CaenDataReader;
 }

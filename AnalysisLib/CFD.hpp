@@ -19,15 +19,11 @@ protected:
   template <typename T>
   T minimum_index(std::vector<T> const & vector)
   {
-    int index = 0;
-    T value = vector[index];
-    for (size_t i = 0; i<vector.size(); i++) if (vector[i]<value) 
-    {
-      value = vector[i];
-      index = i;
-    }
-    return value;
+    return std::distance(std::begin(vector), std::min_element(std::begin(vector), std::end(vector)));
   }
+
+  template <typename T>
+  T minimum(std::vector<T> const & vector) {return *std::min_element(std::begin(vector), std::end(vector));}
 
   // Type name
   using size_t = std::size_t;
@@ -92,13 +88,11 @@ public:
 
     for (auto const & sample : _trace) 
     {
-      if constexpr (is_floating<T>()) {
-        trace.push_back(sample - baseline);
-      }
-      else {
-        trace.push_back(static_cast<double>(sample  + random_fast_uniform()) - baseline);
-      }
+      if constexpr (is_floating<T>()) trace.push_back(sample - baseline);
+      else trace.push_back(static_cast<double>(sample  + random_fast_uniform()) - baseline);
     }
+    // for (auto const & s : trace) std::cout << s << std::endl;
+    // std::cin.get();
     return *this;
   }
 
@@ -116,9 +110,9 @@ public:
 
     if (m_size < 2*shift) {std::cout << RED << "in CFD(trace, shift, fraction): m_size = " << m_size << " < 2*shift = " << 2*shift << " !!" << RESET << std::endl; return;}
     
-    cfd.reserve(m_size - 2*shift);
-    // for (size_t bin = 0; bin<shift; ++bin) cfd.push_back(0);
-    for (size_t bin = 2*shift; bin<m_size - shift; ++bin){
+    cfd.reserve(m_size);
+    for (size_t bin = 5*shift; bin<m_size - shift; ++bin)
+    {
       auto const & value = fraction * trace[bin] - trace[bin - shift] ;
       cfd.push_back(value);
     }
@@ -139,12 +133,12 @@ public:
     return noSignal; // The signal never crosses the threshold -> the signal is too small, the cfd parameters are wrong, or the threshold is too large
   }
 
-  /// @brief Calculates the last zero crossing before the minimum of the calculated cfd signal
+  /// @brief Finds the last zero crossing before the cfd trace reaches its minimum
   double findZero()
   {
-    auto const & min_bin = minimum_index(cfd);
-    if (min_bin == 0) return noSignal;
-    for (size_t bin_j = min_bin; bin_j>0; --bin_j){     // Looping back for looking for the zero crossing
+    if (0 < minimum(cfd)) return noSignal;                // If never crosses zero, returns noSignal
+    auto const & min_bin = minimum_index(cfd);        // Get the minimum bin number
+    for (size_t bin_j = min_bin; bin_j>0; --bin_j){   // Looping back to look for the zero crossing
       if (cfd[bin_j] > 0) return interpolate0(bin_j); // Zero crossing found, return the interpolated zero crossing between samples before and after
     }
     return noZero; // The 0 crossing happened before the first sample, so impossible to determine it
@@ -217,8 +211,6 @@ public:
     static inline int sType = UNDEFINED;
     static inline constexpr void setType(int type) noexcept {sType = type;}
   };
-  
-  
 };
 
 

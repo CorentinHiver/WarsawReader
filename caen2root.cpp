@@ -11,6 +11,14 @@ constexpr int reader_version = 1;
 using namespace Colib;
 
 //////////////////////////////////////
+// Version 1.02                     //
+// Is now included :                //
+//    - Label-base trigger logic    //
+//    - Wildcard file gathering     //
+//                                  //
+//////////////////////////////////////
+
+//////////////////////////////////////
 // Version 1.                       //
 // Is now included :                //
 //    - Modularized CFD parameters  //
@@ -72,14 +80,20 @@ int main(int argc, char** argv)
   std::vector<std::string> filenames;
   std::string outpath = "./";
   bool handleTraces = true;
-  Long64_t nbHitsMax = -1;
+  size_t nbHitsMax = -1;
+  bool hitsMaxSet = false;
+
+  std::vector<int> trigger_labels;
+  std::vector<int> trigger_boards;
+
   auto printHelp = [](){ 
-    print("-f [caen file name] (include wildcards * and ?)");
-    print("-F [folder name]");
-    print("-h");
-    print("-n [number of hits]");
-    print("-o [output path]");
-    print("--no-traces");
+    print("-f --files            [caen file name (include wildcards * and ?)] ");
+    print("-F --files_and_number [caen file name (include wildcards * and ?)] [nb_files (-1 = all, 1.e3 (=1000) format accepted)]");
+    print("-h --help");
+    print("-n                    [number of hits (-1 = all, 1.e3 (=1000) format accepted)]");
+    print("-o --output           [output path]");
+    print("-t --trigger          [--label [global_label(16 x boardID + channelID)]] [--board [boardID]] [--file [filename]]");
+    print("   --no-traces");
   };
   if (argc < 3) {printHelp(); return 1;}
   else
@@ -88,21 +102,29 @@ int main(int argc, char** argv)
     std::string temp;
     while(iss >> temp)
     {
-           if (temp == "-f")
+           if (temp == "-f" || temp ==  "--files")
       {
         iss >> temp;
-        auto files = Colib::findFilesWildcard(temp);
-        for (auto const & file : files) filenames.push_back(file);
+        for (auto const & file : Colib::findFilesWildcard(temp)) filenames.push_back(file);
       }
-      else if (temp == "-F")
+      else if (temp == "-F" || temp == "--files_and_number")
       {
         iss >> temp;
-        FilesManager files; files.addFolder(temp, -1, {"caendat"});
-        for (auto const & file : files) filenames.push_back(file);
+        double nb = -1; iss >> nb;
+        size_t nb_i = nb; // cast to size_t ()
+        if (nb_i == 0) continue;
+        auto const & files = Colib::findFilesWildcard(temp);
+        for (size_t file_i = 0; file_i<files.size() && file_i<nb_i; ++file_i) filenames.push_back(files[file_i]);
       }
-      else if (temp == "-L")
+      else if (temp == "-h" || temp == "--help")
       {
-        throw_error("list mode -L not implemented yet");
+        printHelp();
+      }
+      else if (temp == "-n")
+      {
+        double tmp_d; iss >> tmp_d;
+        nbHitsMax = tmp_d;
+        hitsMaxSet = true;
       }
       else if (temp == "-o")
       {
@@ -112,17 +134,38 @@ int main(int argc, char** argv)
       {
         handleTraces = false;
       }
-      else if (temp == "-n")
+      else if (temp == "-t" || temp == "--trigger")
       {
-        double tmp_d;
-        iss >> tmp_d;
-        nbHitsMax = tmp_d;
-      }
-      else if (temp == "-h")
-      {
-        printHelp();
+        iss >> temp;
+        if (temp == "--label")
+        {
+          int label;
+          iss >> label;
+          trigger_labels.push_back(label);
+        }
+        else if (temp == "--board")
+        {
+          int boardID;
+          iss >> boardID;
+          for (int label = boardID*16; label < (boardID+1)*16; ++label) trigger_labels.push_back(label);
+        }
+        else if (temp == "--file")
+        {
+          iss >> temp;
+          std::ifstream trigger_file(temp);
+          if (!trigger_file.is_open()) throw_error("Can't open trigger file "+temp+" !!");
+          std::string line;
+          while(std::getline(trigger_file, line))
+          {
+            std::istringstream iss(line);
+            int label;
+            while(iss >> label) trigger_labels.push_back(label);
+          }
+        }
       }
     }
+
+    if (filenames.empty()) throw_error("No files !!");
 
     for (auto const & filename : filenames)
     {
@@ -154,22 +197,33 @@ int main(int argc, char** argv)
 
         eventBuilder.fast_event_building(time_window);
 
-        // 4. Write the hits to the tree
+        // 4. Write the events to the ROOT tree
 
         for (auto const & event : eventBuilder)
         {
           evtMult = event.size();
+          ++evtNb;
 
         #ifdef TRIGGER
           // TODO:
         #endif //TRIGGER
 
-          for (auto const & hit_i : event)
+          static thread_local auto trigger_label = !trigger_labels.empty();
+          bool trigger = true;
+          if (trigger_label) 
+          {
+            trigger = false;
+            for (auto const & hit_i : event) 
+            {
+              if (Colib::found(trigger_labels, eventBuilder[hit_i].label)) trigger = true;
+            }
+          }
+
+          if (trigger) for (auto const & hit_i : event)
           {
             outHit.copy(eventBuilder[hit_i]);
             tree -> Fill();
           }
-          ++evtNb;
         }
 
         // 5. Reset event builder
@@ -179,7 +233,7 @@ int main(int argc, char** argv)
 
       while(reader.readHit())
       {
-        if (nbHitsMax>0 && reader.nbHits()>nbHitsMax) break;
+        if (hitsMaxSet && nbHitsMax < reader.nbHits()) break;
         if (reader.nbHits() > 0 && reader.nbHits() % int(1e5) == 0) print(nicer_double(reader.nbHits(), 1));
 
         // 1. Apply the cfd
@@ -211,8 +265,8 @@ int main(int argc, char** argv)
 
       rootFile->cd();
 
-        print(tree->GetEntries());
-        tree->Write();
+      print(tree->GetEntries());
+      tree->Write();
 
       rootFile->Close();
       print(rootFile->GetName(), "written");

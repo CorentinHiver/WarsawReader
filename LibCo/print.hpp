@@ -123,7 +123,7 @@ template <class... ARGS> void debug(ARGS &&...
 #endif //DEBUG
 }
 
-#else
+#else // if COMULTITHREADING
 
 std::mutex print_mutex;
 

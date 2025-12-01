@@ -31,7 +31,7 @@ namespace Colib
     void Print        () { for (auto const & file   : m_listFiles)  print(file  );}
     void printFolders () { for (auto const & folder : m_listFolder) print(folder);}
   
-    //Getters :
+    // Getters :
     Path const & path() const {return m_path;}
     auto const & get() const {return m_listFiles;}
     auto & get() {return m_listFiles;}

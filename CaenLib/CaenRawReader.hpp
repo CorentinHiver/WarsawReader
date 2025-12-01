@@ -11,7 +11,7 @@ namespace CaenDataReader1725
     RawReader(std::string const & filename) : CaenReaderBase(filename)
     {}
 
-    void makePureVirtual(bool const & isVirtual = false) override {print(isVirtual);}; // To make this class real (printed to get rid of the warning)
+    void makePureVirtual(bool const & isVirtual = false) override {print(isVirtual);}; // To make this class real (print to get rid of the warning)
 
     struct ErrorEof
     {
@@ -168,7 +168,7 @@ namespace CaenDataReader1725
           }
       
           // if (channel.E2)  // TODO: do we need to read EXTRAS2 if it is disabled, i.e. if channel.E2=false ?
-            read_buff(&event.EXTRAS2, CaenReaderBase::p_datafile);
+          read_buff(&event.EXTRAS2, CaenReaderBase::p_datafile);
           debug("EXTRAS2", std::bitset<32>(event.EXTRAS2));
       
           event.EX = channel.EX;
@@ -185,6 +185,8 @@ namespace CaenDataReader1725
           auto const & event_length = int_cast(CaenReaderBase::p_datafile.tellg() - pos_begin_event);
           channel.read_size  += event_length;
           m_board.read_size  += event_length;
+
+          ++m_nb_hits;
         }
       }
       return true;

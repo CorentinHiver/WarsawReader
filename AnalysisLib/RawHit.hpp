@@ -17,9 +17,9 @@ static constexpr std::array<int, 10> Boards_map = {EAGLE, EAGLE, EMPTY, EMPTY, E
 /// @brief Detector type from board and channel ID
 constexpr inline int getDetectorType(int const & board_ID, int const & channel_ID)
 {
-  if (DetectorName.size() <= size_cast(board_ID))
+  if (Boards_map.size() <= size_cast(board_ID))
   {
-    error("getDetectorType(board, event) : DetectorNames.size() <= BOARD_ID !! Check the configuration");
+    Colib::throw_error(Colib::concatenate("getDetectorType(board, event) : DetectorName.size()", Boards_map.size() ,"<= BOARD_ID", size_cast(board_ID),"!! Check the configuration"));
     return -1;
   }
   auto detectorType = Boards_map[board_ID];

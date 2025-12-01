@@ -31,27 +31,12 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
   };
 
   std::unordered_map<int, double> cfd_thresholds = {
-    {0, -50},
-    {1, -50},
+    {0, -50 },
+    {1, -50 },
     {6, -500},
     {7, -500},
     {8, -500}
   };
-
-  std::string path = "/home/corentin/";
-  // std::string path = "../../";
-
-  // std::vector<std::string> filenames = {path+"data/60Co_Easter/eagleRU_i2607_0005_0000.caendat"};
-  // std::vector<std::string> filenames = {
-  //   path+"data/60Co_Easter/eagleRU_i2606_0004_0000.caendat",
-  //   path+"data/60Co_Easter/eagleRU_i2606_0004_0001.caendat",
-  //   path+"data/60Co_Easter/eagleRU_i2606_0004_0002.caendat"
-  // };
-  // std::vector<std::string> filenames = {
-  //   path+"data/coulexNov2024/coulexRU_i2097_3020_0000.caendat",
-  //   path+"data/coulexNov2024/coulexRU_i2097_3020_0001.caendat",
-  //   path+"data/coulexNov2024/coulexRU_i2097_3020_0002.caendat"
-  // };
 
   auto constexpr static glabel = [](RootCaenHit const & hit){
     return hit.board_ID * 16 + hit.channel_ID * 2 + hit.subchannel_ID;
@@ -116,7 +101,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
   {
     CaenRootReader1725 reader(filename);
     CaenRootEventBuilder1725 event_builder(reserved_buffer_size);
-    while(((max_events) ? (reader.nbHits() < nb_events_max) : (true)) && reader.readHit())
+    while(((max_events) ? (reader.nbHits() < size_cast(nb_events_max)) : (true)) && reader.readHit())
     {
       ////////////////////
       // Buffer Filling //
@@ -132,7 +117,8 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
       {
         CFD cfd(hit.getTrace(), cfd_shifts[hit.board_ID], 0.75, 10);
         
-        auto zero = cfd.findZero();
+        auto zero = cfd.findZero(cfd_thresholds[hit.board_ID]);
+        // auto zero = cfd.findZero();
         
         if (zero == CFD::noSignal)
         {
@@ -151,7 +137,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
       if (hit.adc < 10) continue;
 
-      if (  ((max_events) ? (reader.nbHits() < nb_events_max) : (true)) 
+      if (  ((max_events) ? (reader.nbHits() < size_cast(nb_events_max)) : (true)) 
          && event_builder.fill_buffer(hit)) continue;
 
       ////////////////////

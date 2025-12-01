@@ -18,8 +18,66 @@
 
 using namespace std;
 
+// #define LOW_PASS
+#ifdef LOW_PASS
+  
+  #include <fftw3.h>
+  // #include "TFFTRealComplex.h"
+  // #include "TFFTComplexReal.h"
+
+
+  std::vector<int> lowpass_fft_root(const std::vector<int>& trace,
+                                      double samplingRate,
+                                      double cutoffFreq)
+  {
+      const int N = trace.size();
+      if (N == 0) return {};
+
+      // Convert trace to double
+      std::vector<double> in(N);
+      for (int i = 0; i < N; ++i)
+          in[i] = static_cast<double>(trace[i]);
+
+      // Forward FFT
+      fftw_complex* freq = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * (N / 2 + 1));
+      fftw_plan fwd = fftw_plan_dft_r2c_1d(N, in.data(), freq, FFTW_ESTIMATE);
+      fftw_execute(fwd);
+
+      // Frequency bin width
+      const double df = samplingRate / N;
+
+      // Apply low-pass filter
+      for (int i = 0; i < N / 2 + 1; ++i) {
+          const double f = i * df;
+          if (f > cutoffFreq) {
+              freq[i][0] = 0.0;
+              freq[i][1] = 0.0;
+          }
+      }
+
+      // Inverse FFT
+      fftw_plan inv = fftw_plan_dft_c2r_1d(N, freq, in.data(), FFTW_ESTIMATE);
+      fftw_execute(inv);
+
+      // Normalize inverse FFT
+      for (int i = 0; i < N; ++i)
+          in[i] /= N;
+
+      fftw_destroy_plan(fwd);
+      fftw_destroy_plan(inv);
+      fftw_free(freq);
+
+      std::vector<int> out; out.reserve(in.size());
+      for (auto const & s : in) out.push_back(int_cast(s));
+
+      return out; // keep as double for precision
+  }
+#endif //LOW_PASS
+
 int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax = -1)
 {
+  auto rootFile = TFile::Open("writeTraces.root", "recreate"); rootFile->cd();
+
   Timer timer;
   bool max_events = (nb_events_max>0);
   bool finished = false;
@@ -38,8 +96,6 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
   // CaenRawReader725 reader(file);
   CaenRootReader1725 reader(file);
   reader.handleTraces(true);
-
-  auto rootFile = TFile::Open("writeTraces.root", "recreate"); rootFile->cd();
 
   vector<string> folders_names;
 
@@ -94,17 +150,60 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
       // auto graph  = new TGraph(cfd.trace.size(), Colib::linspace_for(cfd.trace, 0., 4.).data(), cfd.trace.data());
       // auto graph2 = new TGraph(samplesT .size(), Colib::linspace_for(samplesT , 0., 4.).data(), samplesT .data());
       // auto graph3 = new TGraph(samplesDP1 .size(), Colib::linspace_for(samplesDP1 , 0., 4.).data(), samplesDP1 .data());
-      
-      auto canvas = std::make_unique<TCanvas>(name.c_str(), name.c_str()); canvas->cd();
-      // graph->Draw();
-      // graph2->SetLineColor(kGreen);
-      // graph->GetXaxis()->SetTitle("time [ns]");
-      // graph->GetYaxis()->SetTitle("pulse height [ADC]");
-      // graph2->Draw("same");
-      // graph3->SetLineColor(kBlue);
-      // graph3->Draw("same");
 
-      auto graphs = hit.getTracesGraphs();
+
+#ifdef LOW_PASS
+
+      auto canvas0 = std::make_unique<TCanvas>((name+"filter").c_str(), (name+"filter").c_str()); canvas0->cd();
+      
+      auto dataGraph = hit.getTraceBaselineRemoved(10);
+
+      auto graph1  = new TGraph(dataGraph  .size(), Colib::linspace<int>(dataGraph  .size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraph  .data());
+      auto dataGraphs2 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.02);
+      auto dataGraphs3 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.03);
+      auto dataGraphs4 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.04);
+      auto dataGraphs45 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.045);
+      auto dataGraphs5 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.05);
+      auto dataGraphs6 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.06);
+
+      auto graphs2 = new TGraph(dataGraphs2.size(), Colib::linspace<int>(dataGraphs2.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs2.data());
+      auto graphs3 = new TGraph(dataGraphs3.size(), Colib::linspace<int>(dataGraphs3.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs3.data());
+      auto graphs4 = new TGraph(dataGraphs4.size(), Colib::linspace<int>(dataGraphs4.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs4.data());
+      auto graphs45 = new TGraph(dataGraphs45.size(), Colib::linspace<int>(dataGraphs45.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs45.data());
+      auto graphs5 = new TGraph(dataGraphs5.size(), Colib::linspace<int>(dataGraphs5.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs5.data());
+      auto graphs6 = new TGraph(dataGraphs6.size(), Colib::linspace<int>(dataGraphs6.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs6.data());
+
+      graph1 -> SetTitle("Trace");
+      graphs2 -> SetTitle("cutoff 0.02");
+      graphs3 -> SetTitle("cutoff 0.03");
+      graphs4 -> SetTitle("cutoff 0.04");
+      graphs45 -> SetTitle("cutoff 0.045");
+      graphs5 -> SetTitle("cutoff 0.05");
+      graphs6 -> SetTitle("cutoff 0.06");
+      
+      graph1-> SetLineColor (kBlack);
+      graphs2-> SetLineColor(kViolet);
+      graphs3-> SetLineColor(kPink);
+      graphs4-> SetLineColor(kBlue);
+      graphs45-> SetLineColor(12);
+      graphs5-> SetLineColor(kGreen);
+      graphs6-> SetLineColor(8);
+
+      graph1 -> Draw();
+      graphs2 ->Draw("same");
+      graphs3 ->Draw("same"); 
+      graphs4 ->Draw("same"); 
+      graphs45 ->Draw("same"); 
+      graphs5 ->Draw("same"); 
+      graphs6 ->Draw("same"); 
+      
+      canvas0->Write();
+
+#endif //LOW_PASS
+
+      auto canvas = std::make_unique<TCanvas>(name.c_str(), name.c_str()); canvas->cd();
+
+      auto graphs = hit.getTracesGraphs(10);
 
       graphs[0] -> SetLineColor(kBlack);
       graphs[0] -> GetXaxis() -> SetTitle("time [ns]");
@@ -115,7 +214,7 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
       graphs[1] -> Draw("same");
       graphs[2] -> Draw("same");
 
-      CFD cfd(*hit.trace);
+      CFD cfd(*hit.trace, 2);
 
       auto const & detectorType = getDetectorType(hit.board_ID, hit.channel_ID);
 
@@ -123,13 +222,14 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
       {
         cfd.calculate(shifts[detectorType], 0.75);
         
-        auto cfdGraph = new TGraph(cfd.cfd.size(), Colib::linspaceFor(cfd.cfd, 0., 4.).data(), cfd.cfd.data());
+        auto cfdGraph = new TGraph(cfd.cfd.size(), Colib::linspaceFor(cfd.cfd, 0., CaenDataReader1725::ticks_to_ns).data(), cfd.cfd.data());
         cfdGraph->SetLineColor(kGray);
         cfdGraph->Draw("same");
 
         if (Colib::key_found(thresholds, detectorType))
         {
-          auto const & zero = cfd.findZero(thresholds[detectorType]) * 4;
+          // auto const & zero = cfd.findZero() * CaenDataReader1725::ticks_to_ns;
+          auto const & zero = cfd.findZero(thresholds[detectorType]) * CaenDataReader1725::ticks_to_ns;
           if (zero != CFD::noSignal)
           {
             TMarker *zero_marker = new TMarker(zero, 0, 20);
@@ -157,6 +257,7 @@ int main(int argc, char** argv)
     print("Parameters : ");
     print("adcMin [int] : sets the minimum adc value to store the trace");
     print("adcMax [int] : sets the maximum adc value to store the trace");
+    return 1;
   }
   istringstream iss(Colib::argv_to_string(argv));
 
@@ -188,4 +289,4 @@ int main(int argc, char** argv)
   writeTraces(file, nb_hits, adcMin, adcMax);
 }
 
-// g++ -o writeTraces writeTraces.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2 -std=c++17
+// g++ -o writeTraces writeTraces.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2
