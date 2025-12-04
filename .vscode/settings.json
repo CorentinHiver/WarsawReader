@@ -112,6 +112,7 @@
     "stdfloat": "cpp",
     "caendatInspect.C": "cpp",
     "caendatIntegrityCheck.C": "cpp",
-    "value": "cpp"
+    "value": "cpp",
+    "rntuple": "cpp"
   }
 }

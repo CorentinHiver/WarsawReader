@@ -16,65 +16,91 @@ namespace CaenDataReader
   using Trace = std::vector<uint16_t>;
 
   /**
-   * @brief 
+   * @brief Interface between the caen binary data and root TTree.
+   * @note  There are different time and timstamps, please read carefully the comments.
    * @attention When not using it in a root environnemnet, one must call RootHit::clean() to correctly delete the pointer to the trace
-   * @todo Check wether when reading from root tree, one needs to delete the trace in the destructor.
+   * @todo Check weither when reading from root tree, one needs to delete the trace in the destructor.
    */
   class RootHit
   {
+  private: // Options :
+    bool handle_traces = true; // Option to skip trace reading - much faster data processing, but no trace analysis available.
+
   public:
-    // Fields :
-    int  label           = 0;
-    int  board_ID        = 0;
-    int  channel_ID      = 0;
-    int  subchannel_ID   = 0;
-    int  adc             = 0;
-    int  qlong           = 0;
-    uint64_t timestamp   = 0; // TRIGGER_TIME_TAG [32 bits]
-    uint64_t extended_ts = 0; // TRIGGER_TIME_TAG + extended timestamp [47 bits]
-    uint64_t precise_ts  = 0; // TRIGGER_TIME_TAG + extended timestamp + fine timestamp[47 bits]
-    uint64_t cfd         = 0;
-    Trace* trace = nullptr  ;
+    // Data fields :
+    int  label           = 0; // Global label (=board_ID*16 + channel_ID*2 + subchannel_ID)
+    int  board_ID        = 0; // Board label [0;max board ID]
+    int  channel_ID      = 0; // Channel label [0;8]
+    int  subchannel_ID   = 0; // Sub channel label [0,1]
+    int  adc             = 0; // PHA : ADC value. PSD : qshort value.
+    int  qlong           = 0; // PHA : unused.    PSD : qlong value.
+    uint64_t timestamp   = 0; // Raw timestamp (ts). Units : tick length (usually 4ns wide). Is equal to precise_ts if fine ts is found in the data, or extended_ts if only extended ts is found, or TRIGGER_TIME_TAG if no extended timestamp found
+    uint64_t extended_ts = 0; // Raw timestamp. Units : tick length (usually 4ns wide). Used only if fine timestamp and extended timestamp are found in the data.
+    uint64_t precise_ts  = 0; // Raw timestamp. Units : tick length (usually 4ns wide). Used only if fine timestamp mode is found in the data.
+    uint64_t time        = 0; // Absolute time in ps. This field must be filled by the user (i.e., the program using this class).
+
+    // Trace-related fields :
+    Trace*         trace = nullptr; // Signal trace.
+    Trace_t<bool>* DP1   = nullptr; // Digital probe. Look at documentation. Use printTrace() to visualise it.
+    uint16_t trigger_bin = 0;       // Trigger position in the trace. Use printTrace() to visualise it.
+
+    // Root io parameters :
     
-    // Options :
-    uint16_t trigger_bin = 0;
-    Trace_t<bool>* DP1 = nullptr;
-    bool handle_traces   = true;
+    bool reading  = false; // Reading  to   a TTree
+    bool writting = false; // Writting from a TTree
+
+    void handleTraces(bool const & _handle_traces)
+    {
+      handle_traces = _handle_traces;
+      if (trace && trace -> size() > 0) delete trace;
+      if (DP1   && DP1   -> size() > 0) delete DP1  ;
+    }
     
-    RootHit() noexcept : trace (new Trace), DP1 (new Trace_t<bool>) {}
+    RootHit(bool handle_traces = true) noexcept
+    {
+      if (handle_traces)
+      {
+        trace = new Trace;
+        DP1   = new Trace_t<bool>;  
+      }
+    }
     
     ~RootHit() {delete trace; delete DP1;}
 
     TTree * writeTo(TTree * outTree)
     {
+      writting = true;
+      outTree->ResetBranchAddresses();
       outTree->Branch("label"         , &label        );
       outTree->Branch("board_ID"      , &board_ID     );
       outTree->Branch("channel_ID"    , &channel_ID   );
       outTree->Branch("subchannel_ID" , &subchannel_ID);
       outTree->Branch("timestamp"     , &timestamp    );
-      outTree->Branch("extended_ts"   , &extended_ts  );
-      outTree->Branch("precise_ts"    , &precise_ts   );
-      outTree->Branch("cfd"           , &cfd          );
+      // outTree->Branch("extended_ts"   , &extended_ts  );
+      // outTree->Branch("precise_ts"    , &precise_ts   );
+      outTree->Branch("time"          , &time          );
       outTree->Branch("adc"           , &adc          );
       outTree->Branch("qlong"         , &qlong        );
-      outTree->Branch("trace"         , &trace        );
+      if (handle_traces) outTree->Branch("trace", &trace);
       
       return outTree;
     }
 
     TTree * readFrom(TTree * inTree)
     {
+      reading = true;
+      inTree->ResetBranchAddresses();
       inTree->SetBranchAddress("label"         , &label        );
       inTree->SetBranchAddress("board_ID"      , &board_ID     );
       inTree->SetBranchAddress("channel_ID"    , &channel_ID   );
       inTree->SetBranchAddress("subchannel_ID" , &subchannel_ID);
       inTree->SetBranchAddress("timestamp"     , &timestamp    );
-      inTree->SetBranchAddress("extended_ts"   , &extended_ts  );
-      inTree->SetBranchAddress("precise_ts"    , &precise_ts   );
-      inTree->SetBranchAddress("cfd"           , &cfd          );
+      // inTree->SetBranchAddress("extended_ts"   , &extended_ts  );
+      // inTree->SetBranchAddress("precise_ts"    , &precise_ts   );
+      inTree->SetBranchAddress("time"          , &time          );
       inTree->SetBranchAddress("adc"           , &adc          );
       inTree->SetBranchAddress("qlong"         , &qlong        );
-      inTree->SetBranchAddress("trace"         , &trace        );
+      if (handle_traces) inTree->SetBranchAddress("trace", &trace);
       
       return inTree;
     }
@@ -103,7 +129,7 @@ namespace CaenDataReader
       subchannel_ID     = int_cast(getBit     (tmp_u32, 31));
       
       // 2. Trace : looping through the NUM_SAMPLES samples of the waveform of each event :
-      if (handle_traces) 
+      if (handle_traces)
       {
         debug("Trace with :", channel.NUM_SAMPLES, "samples");
         trace->resize(channel.NUM_SAMPLES);
@@ -127,8 +153,7 @@ namespace CaenDataReader
 
       // 3. EXTRAS2 field
 
-      if (channel.E2)  // TODO: do we need to skip EXTRAS2 if it is disabled, i.e. if channel.E2=false ?
-        CaenDataReader1725::read_buff(&caenEvent.EXTRAS2, data);
+      if (channel.E2) CaenDataReader1725::read_buff(&caenEvent.EXTRAS2, data);
       debug("EXTRAS2", std::bitset<32>(caenEvent.EXTRAS2));
 
       caenEvent.extra = CaenDataReader1725::Extra2(caenEvent.EXTRAS2, caenEvent.TRIGGER_TIME_TAG, caenEvent.EX);
@@ -170,6 +195,16 @@ namespace CaenDataReader
       board  .read_size += read_size;
       channel.read_size += read_size;
     }
+    
+    std::vector<int> getTraceBaselineRemoved(size_t nb_samples_baseline) const 
+    {
+      std::vector<int> _trace; _trace.reserve(trace->size());
+      int baseline = 0;
+      for (size_t i = 0; i<nb_samples_baseline; ++i) baseline += trace->at(i);
+      baseline /= nb_samples_baseline;
+      for (auto const & sample : *trace) _trace.push_back(sample - baseline);
+      return _trace;
+    }
 
     /// @brief Returns three graphs : ret = {trace, DP1, Trigger}
     std::vector<TGraph*> getTracesGraphs(size_t nb_samples_baseline = 0) const
@@ -177,9 +212,9 @@ namespace CaenDataReader
       std::vector<TGraph*> graphs;
       if (!trace) {return graphs;}
       if (trace->size() == 0) {error("trace has no samples"); return graphs;}
-      
+
       double baseline = 0;
-      if (0 < nb_samples_baseline)
+      if (nb_samples_baseline != 0)
       {
         if (trace->size() < nb_samples_baseline) {error("trace has not enough samples for baseline(",nb_samples_baseline," samples required)"); return graphs;}
         for (size_t sample_i = 0; sample_i<nb_samples_baseline; ++sample_i) baseline += trace->at(sample_i);
@@ -251,16 +286,6 @@ namespace CaenDataReader
 
     auto const & getTrace() const {return *trace;}
 
-    std::vector<int> getTraceBaselineRemoved(size_t nb_samples_baseline) const 
-    {
-      std::vector<int> _trace; _trace.reserve(trace->size());
-      int baseline = 0;
-      for (size_t i = 0; i<nb_samples_baseline; ++i) baseline += trace->at(i);
-      baseline /= nb_samples_baseline;
-      for (auto const & sample : *trace) _trace.push_back(sample - baseline);
-      return _trace;
-    }
-
     friend std::ostream& operator<<(std::ostream& out, RootHit const & hit)
     {
      out << 
@@ -275,7 +300,7 @@ namespace CaenDataReader
       if (hit.timestamp   != 0) out << " timestamp "   <<  std::setprecision(10) << double_cast(hit.timestamp)  ;
       if (hit.extended_ts != 0) out << " extended_ts " <<  std::setprecision(10) << double_cast(hit.extended_ts);
       if (hit.precise_ts  != 0) out << " precise_ts "  <<  std::setprecision(10) << double_cast(hit.precise_ts) ;
-      if (hit.cfd         != 0) out << " cfd "         <<  std::setprecision(10) << double_cast(hit.cfd)        ;
+      if (hit.time        != 0) out << " time "        <<  std::setprecision(10) << double_cast(hit.time)       ;
       if (hit.adc         != 0) out << " adc "         <<                                       hit.adc         ;
       if (hit.qlong       != 0) out << " qlong "       <<                                       hit.qlong       ;
       if (hit.trace       != 0) out << " trace "       <<  hit.trace -> size() << " samples "                   ;
@@ -295,13 +320,13 @@ namespace CaenDataReader
       timestamp     (other.timestamp),
       extended_ts   (other.extended_ts),
       precise_ts    (other.precise_ts),
-      cfd           (other.cfd),
+      time          (other.time),
       trace         (new Trace)
     {
       *trace        = *other.trace;
     }
 
-    RootHit const & copy(RootHit const & other)
+    RootHit const & copy(RootHit const & other, bool copyTrace = true)
     {
       label         = other.label;
       board_ID      = other.board_ID;
@@ -312,8 +337,12 @@ namespace CaenDataReader
       timestamp     = other.timestamp;
       extended_ts   = other.extended_ts;
       precise_ts    = other.precise_ts;
-      cfd           = other.cfd;
-      *trace        = *other.trace;
+      time          = other.time;
+      if (copyTrace && other.trace)
+      {
+        if (!trace) trace = new Trace;
+        *trace = *other.trace;
+      }
       
       return other;
     }
@@ -323,14 +352,12 @@ namespace CaenDataReader
       return this->copy(other);      
     }
     
-  private:
-    // bool m_NewTrace = false;
   };
 
-  // using RootEvent = std::vector<RootHit>;
+  using RootEvent = std::vector<RootHit>;
 };
 
 using RootCaenHit = CaenDataReader1725::RootHit;
-// using RootCaenEvent = CaenDataReader1725::RootEvent;
+using RootCaenEvent = CaenDataReader1725::RootEvent;
 
 #endif //ROOTHIT_HPP

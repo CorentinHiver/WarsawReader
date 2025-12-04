@@ -6,6 +6,7 @@
 #include <vector>
 #include <cstdio>    // snprintf
 #include <utility>   // std::exchange
+#include <iostream>
 
 class Digitizer {
     int handle_ = -1;
@@ -39,6 +40,7 @@ public:
     void connect(int linkNum = 0, int conetNode = 0, uint32_t vmeBase = 0)
     {
         close();  // safety
+        // reset();
 
         // Try USB first (arg must be nullptr; linkNum -> ConetNode parameter)
         CAEN_DGTZ_ErrorCode ret = CAEN_DGTZ_OpenDigitizer2(
@@ -229,6 +231,15 @@ public:
         CAEN_DGTZ_ConnectionType type;  // USB, OpticalLink, etc.
         int linkNum;
         int conetNode;
+        
+      friend std::ostream& operator<<(std::ostream& out, BoardDiscoveryInfo_t const & boardInfo)
+      {
+        std::cout 
+        << "type : " << boardInfo.type << " "
+        << "linkNum : " << boardInfo.linkNum << " "
+        << "conetNode : " << boardInfo.conetNode << " ";
+        return out;
+      }
     };
 
     // Enumerate all available boards (returns vector of discovery info)
@@ -238,8 +249,13 @@ public:
         // Try USB devices (linkNum enumerates USB device number; ConetNode param receives the device number)
         for (int usbIdx = 0; usbIdx < 32; ++usbIdx) {
             int handle = -1;
-            CAEN_DGTZ_ErrorCode ret = CAEN_DGTZ_OpenDigitizer2(CAEN_DGTZ_USB, nullptr, usbIdx, 0, &handle);
+            // CAEN_DGTZ_ErrorCode ret = CAEN_DGTZ_OpenDigitizer2(CAEN_DGTZ_USB, nullptr, usbIdx, 0, &handle);
+            
+            int b;
+            CAEN_DGTZ_ErrorCode ret = CAEN_DGTZ_OpenDigitizer(CAEN_DGTZ_USB, usbIdx, 0, 0, &handle);
+
             if (ret == CAEN_DGTZ_Success && handle >= 0) {
+              std::cout << "found" << std::endl;
                 BoardDiscoveryInfo_t info;
                 CAEN_DGTZ_GetInfo(handle, &info.board);
                 CAEN_DGTZ_CloseDigitizer(handle);
@@ -252,22 +268,27 @@ public:
         }
 
         // Try Optical Link (Conet node scanning)
-        for (int linkNum = 0; linkNum < 32; ++linkNum) {
-            for (int conetNode = 0; conetNode < 8; ++conetNode) {
-                int handle = -1;
-                CAEN_DGTZ_ErrorCode ret = CAEN_DGTZ_OpenDigitizer2(CAEN_DGTZ_OpticalLink, nullptr, conetNode, 0, &handle);
-                if (ret == CAEN_DGTZ_Success && handle >= 0) {
-                    BoardDiscoveryInfo_t info;
-                    CAEN_DGTZ_GetInfo(handle, &info.board);
-                    CAEN_DGTZ_CloseDigitizer(handle);
+        // for (int linkNum = 0; linkNum < 32; ++linkNum) {
+        //     for (int conetNode = 0; conetNode < 8; ++conetNode) {
+        //         int handle = -1;
+        //         // CAEN_DGTZ_ErrorCode ret = CAEN_DGTZ_OpenDigitizer2(CAEN_DGTZ_OpticalLink, nullptr, conetNode, 0, &handle);
+                
+        //         int b;
+        //         CAEN_DGTZ_ErrorCode ret = CAEN_DGTZ_OpenDigitizer(CAEN_DGTZ_USB, b, linkNum, 0, &handle);
+                
+        //         if (ret == CAEN_DGTZ_Success && handle >= 0) {
+        //       std::cout << "found" << std::endl;
+        //             BoardDiscoveryInfo_t info;
+        //             CAEN_DGTZ_GetInfo(handle, &info.board);
+        //             CAEN_DGTZ_CloseDigitizer(handle);
 
-                    info.type = CAEN_DGTZ_OpticalLink;
-                    info.linkNum = linkNum;
-                    info.conetNode = conetNode;
-                    list.emplace_back(std::move(info));
-                }
-            }
-        }
+        //             info.type = CAEN_DGTZ_OpticalLink;
+        //             info.linkNum = linkNum;
+        //             info.conetNode = conetNode;
+        //             list.emplace_back(std::move(info));
+        //         }
+        //     }
+        // }
 
         return list;
     }

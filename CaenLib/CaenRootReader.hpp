@@ -13,9 +13,10 @@ namespace CaenDataReader1725
   class RootReader : public CaenReaderBase
   {
   public:
-    RootReader(std::string const & filename) : 
+    RootReader(std::string const & filename, bool handle_traces = true) : 
       CaenReaderBase(filename)
     {
+      m_rootHit.handleTraces(handle_traces);
     }
 
     /// @brief DEV - Resets the reader. The user needs to handle closing and/or writting the ROOT interface (TTrees, TFiles...)
@@ -26,10 +27,12 @@ namespace CaenDataReader1725
 
     void makePureVirtual(bool const & isVirtual = false) override {print(isVirtual);}; // To make this class real (printed to get rid of the warning)
 
-    RootReader(std::string const & filename, TTree * tree) : 
-      CaenReaderBase(filename)
+    RootReader(std::string const & filename, TTree * tree, bool handle_traces = true) : 
+      CaenReaderBase(filename), m_tree(tree)
     {
-      if (tree) this->writeTo(tree);
+      m_rootHit.handleTraces(handle_traces);
+      if (m_tree) m_rootHit.writeTo(m_tree);
+      else Colib::throw_error("in RootReader::RootReader(std::string filename, TTree * tree) : tree is nullptr");
     }
 
     void writeTo(TTree * tree)
@@ -68,13 +71,24 @@ namespace CaenDataReader1725
       return true;
     }
 
-    void handleTraces(bool const & b) {m_rootHit.handle_traces = b;} 
+    /**
+     * @brief 
+     * 
+     * @param b 
+     * @param resetConnection 
+     */
+    void handleTraces(bool const & b, bool resetConnection = true) 
+    {
+      m_rootHit.handleTraces(b);
+      if (resetConnection && m_rootHit.writting && m_tree) writeTo(m_tree); // If the hit is already connected to a tree, then reset the connection to remove or add the trace 
+    }
 
     auto & getHit() {return m_rootHit;}
 
   private:
 
     RootHit m_rootHit;
+    TTree* m_tree = nullptr;
     
     BoardAggregate    m_board     ;
     ChannelAggregate  m_channel   ;

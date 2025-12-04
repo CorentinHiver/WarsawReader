@@ -1,3 +1,5 @@
+// g++ -o studyCFD studyCFD.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2 -std=c++17
+
 #include "TH1F.h"
 #include "TH2F.h"
 #include "TFile.h"
@@ -9,7 +11,7 @@
 #include "CaenLib/CaenRootEventBuilder.hpp"
 
 constexpr Long64_t time_window          = 2e6 ; // ps
-constexpr size_t   reserved_buffer_size = 5000ul;
+constexpr size_t   reserved_buffer_size = 50000ul;
 auto constexpr static ref_label = 81;
 // auto constexpr static trigg_label = 
 
@@ -117,8 +119,8 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
       {
         CFD cfd(hit.getTrace(), cfd_shifts[hit.board_ID], 0.75, 10);
         
-        auto zero = cfd.findZero(cfd_thresholds[hit.board_ID]);
-        // auto zero = cfd.findZero();
+        // auto zero = cfd.findZero(cfd_thresholds[hit.board_ID]);
+        auto zero = cfd.findZero();
         
         if (zero == CFD::noSignal)
         {
@@ -128,10 +130,10 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
   
           cfd_corrections->Fill(glabel(hit), zero);
   
-          hit.cfd = hit.extended_ts + zero;
+          hit.time = hit.extended_ts + zero;
         }
       }
-      else hit.cfd = hit.precise_ts;
+      else hit.time = hit.precise_ts;
 
       // Filter bad hits :
 
@@ -167,7 +169,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
             auto const & channel_label = hit_0.channel_ID*2+hit_0.subchannel_ID;
             auto const & psd = hit_0.adc/float_cast(hit_0.qlong+hit_0.adc) - 1;
             neda_psd->Fill(channel_label, psd);
-            neda_psds[channel_label]->Fill(hit_0.cfd - first_hit.cfd, psd);
+            neda_psds[channel_label]->Fill(hit_0.time - first_hit.time, psd);
           }
 
           for (size_t hit_j = hit_i+1; hit_j<event.size(); ++hit_j)
@@ -182,11 +184,11 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
             dT_all_vs_all[glabel_0]->Fill(glabel_1, Long64_t(hit_1.timestamp - hit_0.timestamp));
             dT_all_vs_all[glabel_1]->Fill(glabel_0, Long64_t(hit_0.timestamp - hit_1.timestamp));
 
-            dT_all_vs_all_cfd[glabel_0]->Fill(glabel_1, Long64_t(hit_1.cfd - hit_0.cfd));
-            dT_all_vs_all_cfd[glabel_1]->Fill(glabel_0, Long64_t(hit_0.cfd - hit_1.cfd));
+            dT_all_vs_all_cfd[glabel_0]->Fill(glabel_1, Long64_t(hit_1.time - hit_0.time));
+            dT_all_vs_all_cfd[glabel_1]->Fill(glabel_0, Long64_t(hit_0.time - hit_1.time));
 
             dT_all->Fill(Long64_t(hit_1.timestamp - hit_0.timestamp));
-            dT_all_cfd->Fill(Long64_t(hit_1.cfd - hit_0.cfd));
+            dT_all_cfd->Fill(Long64_t(hit_1.time - hit_0.time));
           }
 
           // Time reference histograms :
@@ -199,7 +201,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
             auto const & glabel_1    = glabel(hit_1);
 
             auto const & dT     = Long64_t(hit_1.timestamp - hit_0.timestamp);
-            auto const & dT_cfd = Long64_t(hit_1.cfd - hit_0.cfd);
+            auto const & dT_cfd = Long64_t(hit_1.time - hit_0.time);
             
             dT_Ref_VS_all     -> Fill(glabel_1, dT    );
             dT_Ref_VS_all_cfd -> Fill(glabel_1, dT_cfd);
@@ -316,5 +318,3 @@ int main(int argc, char** argv)
   
   studyCFD(filenames, nb_hits);
 }
-
-// g++ -o studyCFD studyCFD.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2 -std=c++17

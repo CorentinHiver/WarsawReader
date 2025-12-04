@@ -27,8 +27,11 @@ using namespace Colib;
 //                                  //
 //////////////////////////////////////
 
+// TODO
+// utiliser le cfd pour faire l'event building (mettre ca en option)
 
-/*
+
+/* Do not read the following, this trigger logic is stil TBD :
 How to use the trigger : 
 - First, create your own trigger in the folder Triggers by following the instructions
 - Then, include your trigger in the compilation command found at the end of this file : 
@@ -48,38 +51,31 @@ constexpr bool applyCFD = true;
 // that these hard-coded values                              //
 ///////////////////////////////////////////////////////////////
 
-CFD::Shifts cfd_shifts = {
-  {0, 5},
-  {1, 5},
-  {6, 2},
-  {7, 2},
-  {8, 2}
-};
-
-CFD::Thresholds cfd_thresholds = {
-  {0, -50},
-  {1, -50},
-  {6, -500},
-  {7, -500},
-  {8, -500}
-};
-
-CFD::Fractions cfd_fractions = {
-  {0, 0.5},
-  {1, 0.5},
-  {6, 0.5},
-  {7, 0.5},
-  {8, 0.5}
-};
-
 int main(int argc, char** argv)
 {
+  CFD::sShifts = { // BOARD_ID, SAMPLES
+    {0, 7},
+    {1, 7},
+    {6, 2},
+    {7, 2},
+    {8, 2}
+  };
+
+  CFD::sFractions = { // BOARD_ID, fraction
+    {0, 0.75},
+    {1, 0.75},
+    {6, 0.75},
+    {7, 0.75},
+    {8, 0.75}
+  };
+
   Timer timer;
 
   // Parameters :
   std::vector<std::string> filenames;
   std::string outpath = "./";
-  bool handleTraces = true;
+  bool analyseTraces = true;
+  bool storeTraces = false;
   size_t nbHitsMax = -1;
   bool hitsMaxSet = false;
 
@@ -87,13 +83,33 @@ int main(int argc, char** argv)
   std::vector<int> trigger_boards;
 
   auto printHelp = [](){ 
+    print("caen2root usage");
     print("-f --files            [caen file name (include wildcards * and ?)] ");
-    print("-F --files_and_number [caen file name (include wildcards * and ?)] [nb_files (-1 = all, 1.e3 (=1000) format accepted)]");
-    print("-h --help");
+    print("-F --files-nb         [caen file name (include wildcards * and ?)] [nb_files (-1 = all, 1.e3 (=1000) format accepted)]");
+    print("-h --help             print this help");
     print("-n                    [number of hits (-1 = all, 1.e3 (=1000) format accepted)]");
     print("-o --output           [output path]");
-    print("-t --trigger          [--label [global_label(16 x boardID + channelID)]] [--board [boardID]] [--file [filename]]");
-    print("   --no-traces");
+    print("-t --trigger          [--label [global_label(16 x boardID + channelID)]] [--board [boardID]] [--file [filename (containing a list of global_labels)]]");
+    print("   --trace-analysis   [0 or 1] (default 1). Include trace analysis (so far, only cfd is implemented)");
+    print("   --trace-storing    [0 or 1] (default 0). Store trace in the root tree");
+    print();
+    print("example of a command line including all the above options :");
+    print();
+    print("caen2root \\");
+    print("\t -f /data/experiment1/run0/*.caendat \\");
+    print("\t -F /data/experiment1/run1/*.caendat 3 \\");
+    print("\t -n 1e9 \\");
+    print("\t -o /root_data/experiment1/ \\");
+    print("\t -t --label 2 \\");
+    print("\t -t --board 5 -t --board 6 \\");
+    print("\t trace-analysis 1 \\");
+    print("\t trace-storing 1 \\");
+    print();
+    print("This maked the folllowing :");
+    print("Gather all the .caendat files found in /data/experiment1/run0/ and the three first found in the run0/ folder."
+          "The code will stop after processing 1e9 hits. The output root files will be written in the /root_data/experiment1/ folder."
+          "Only event containing at least one detector with label 5, or any detector of board_ID==5 or 6 are kept."
+          "The traces will be kept for analysis and written in the root file");
   };
   if (argc < 3) {printHelp(); return 1;}
   else
@@ -107,7 +123,7 @@ int main(int argc, char** argv)
         iss >> temp;
         for (auto const & file : Colib::findFilesWildcard(temp)) filenames.push_back(file);
       }
-      else if (temp == "-F" || temp == "--files_and_number")
+      else if (temp == "-F" || temp == "--files-nb")
       {
         iss >> temp;
         double nb = -1; iss >> nb;
@@ -130,9 +146,13 @@ int main(int argc, char** argv)
       {
         iss >> outpath;
       }
-      else if (temp == "--no-traces")
+      else if (temp == "--trace-analysis")
       {
-        handleTraces = false;
+        iss >> analyseTraces;
+      }
+      else if (temp == "--trace-storing")
+      {
+        iss >> storeTraces;
       }
       else if (temp == "-t" || temp == "--trigger")
       {
@@ -172,31 +192,38 @@ int main(int argc, char** argv)
       File file(filename);
       if (!file) {error("can't find ", file); continue;}
       
-      CaenRootReader1725 reader(filename);
-      reader.handleTraces(handleTraces);
+      CaenRootReader1725 reader(filename, analyseTraces);
       CaenRootEventBuilder1725 eventBuilder(reserved_buffer_size);
 
       auto rootFilename = outpath + file.shortName()+".root";
       auto rootFile = TFile::Open(rootFilename.c_str(), "recreate");
       auto tree = new TTree("HIL", ("WarsawReader_v"+std::to_string(reader_version)).c_str());
 
-      auto & inHit = reader.getHit();
+      auto & inHit = reader.getHit(); // Aliasing the internal hit of the reader
+
+      RootCaenHit outHit(storeTraces);
+      outHit.writeTo(tree);
 
       int evtNb = 0;
       int evtMult = 0;
       tree -> Branch("evtNb", &evtNb);
       tree -> Branch("evtMult", &evtMult);
 
-      RootCaenHit outHit;
-      outHit.writeTo(tree);
+      double timeRead = 0;
+      double timeCFD = 0;
+      double timeEvtBuild = 0;
+      double timeCopy = 0;
+      double timeFill = 0;
+      double timeWrite = 0;
 
+      // to investigate : might not be optimized
       // Pre-declaration of this piece of code
-      auto fillTree = [&]()
+      auto fillTree = [&]() -> void
       {
         // 3. Perform the event building 
-
+        Timer timerEvtBuild;
         eventBuilder.fast_event_building(time_window);
-
+        timeEvtBuild += timerEvtBuild.Time();
         // 4. Write the events to the ROOT tree
 
         for (auto const & event : eventBuilder)
@@ -221,8 +248,12 @@ int main(int argc, char** argv)
 
           if (trigger) for (auto const & hit_i : event)
           {
-            outHit.copy(eventBuilder[hit_i]);
+            Timer timerCopy;
+            outHit.copy(eventBuilder[hit_i], false);
+            timeCopy += timerCopy.Time();
+            Timer timerFill;
             tree -> Fill();
+            timeFill += timerFill.Time();
           }
         }
 
@@ -231,31 +262,34 @@ int main(int argc, char** argv)
         eventBuilder.clear();
       };
 
-      while(reader.readHit())
+      while(true)
+      // while(reader.readHit())
       {
+        Timer timerRead;
+        if (!reader.readHit())break;
+        timeRead += timerRead.Time();
         if (hitsMaxSet && nbHitsMax < reader.nbHits()) break;
         if (reader.nbHits() > 0 && reader.nbHits() % int(1e5) == 0) print(nicer_double(reader.nbHits(), 1));
 
         // 1. Apply the cfd
-
+        Timer timerCFD;
         if (applyCFD && !inHit.getTrace().empty() && key_found(CFD::sShifts, inHit.board_ID)) 
         {
           CFD cfd(inHit.getTrace(), CFD::sShifts[inHit.board_ID], CFD::sFractions[inHit.board_ID]);
           
           auto zero = cfd.findZero(CFD::sThresholds[inHit.board_ID]); 
-          if (zero == CFD::noSignal) inHit.cfd = inHit.precise_ts;
+          if (zero == CFD::noSignal) inHit.time = inHit.precise_ts;
           else
           {
-            zero = zero * CaenDataReader1725::ticks_to_ns; // Convert from 4 ns ticks to ps, !! might change depending on the daq setup !!  
-            inHit.cfd = inHit.extended_ts + zero;
+            zero *= CaenDataReader1725::ticks_to_ps; // Convert from 4 ns ticks to ps, !! might change depending on the daq setup !!  
+            inHit.time = inHit.extended_ts*CaenDataReader1725::ticks_to_ps + zero;
           }
         }
-        else inHit.cfd = inHit.precise_ts;
+        else inHit.time = inHit.precise_ts;
+        timeCFD += timerCFD.Time();
 
         // 2. Fill the event builder buffer
-
         if (eventBuilder.fill_buffer(inHit)) continue; // Continue the loop as long as the buffer is not filled
-        
         // (this piece of code is reached only when the buffer is full)
 
         fillTree();
@@ -266,14 +300,28 @@ int main(int argc, char** argv)
       rootFile->cd();
 
       print(tree->GetEntries());
+      Timer timerFill;
       tree->Write();
-
+      timeFill += timerFill.Time();
       rootFile->Close();
+      
+      if (false)
+      {
+        print("timeRead", timeRead);
+        print("timeCFD", timeCFD);
+        print("timeEvtBuild", timeEvtBuild);
+        print("timeCopy", timeCopy);
+        print("timeFill", timeFill);
+        print("timeWrite", timeWrite);
+      }
+
       print(rootFile->GetName(), "written");
     }
+    
   }
   print(timer());
   return 0;
 }
+//-f coulexRU_i3147_3005_0000.caendat -n 1e5
 
 // g++ -o caen2root caen2root.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2
