@@ -343,15 +343,13 @@ namespace CaenDataReader
         if (!trace) trace = new Trace;
         *trace = *other.trace;
       }
-      
       return other;
     }
 
     RootHit const & operator=(RootHit const & other)
     {
       return this->copy(other);      
-    }
-    
+    }    
   };
 
   using RootEvent = std::vector<RootHit>;
