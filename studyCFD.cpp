@@ -295,6 +295,20 @@ int main(int argc, char** argv)
 {
   std::istringstream iss(Colib::argv_to_string(argv));
 
+  auto printHelp = [](){
+    print("studyCFD usage : ./studyCFD [[options]]");
+    print();
+    print("Options :");
+    print("-f [/path/to/data/filename*.root]");
+    print("-n [max_hits_number]");
+  };
+
+  if (argc == 1)
+  {
+    printHelp();
+    return 0;
+  }
+
   std::string temp; iss>> temp;
   std::vector<std::string> filenames;
   int nb_hits = 0;
@@ -314,7 +328,12 @@ int main(int argc, char** argv)
     }
   }
 
-  print(filenames, nb_hits);
-  
+  if (filenames.empty())
+  {
+    error("No file !!");
+    printHelp();
+    return 0;
+  }
+
   studyCFD(filenames, nb_hits);
 }

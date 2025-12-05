@@ -113,6 +113,18 @@
     "caendatInspect.C": "cpp",
     "caendatIntegrityCheck.C": "cpp",
     "value": "cpp",
-    "rntuple": "cpp"
+    "priorityq": "cpp",
+    "handle": "cpp",
+    "aida_ntuple": "cpp",
+    "columns": "cpp",
+    "c1d": "cpp",
+    "c2d": "cpp",
+    "c3d": "cpp",
+    "mapmanip": "cpp",
+    "vertices": "cpp",
+    "vmanip": "cpp",
+    "tree": "cpp",
+    "polygon": "cpp",
+    "loader": "cpp"
   }
 }

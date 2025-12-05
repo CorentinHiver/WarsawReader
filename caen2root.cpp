@@ -2,34 +2,27 @@
 #include "AnalysisLib/CFD.hpp"
 #include "CaenLib/CaenRootReader.hpp"
 #include "CaenLib/CaenRootEventBuilder.hpp"
-#include "LibCo/FilesManager.hpp"
 #include "LibCo/Timer.hpp"
 #include "LibCo/libCo.hpp"
 
-constexpr int reader_version = 1;
+constexpr int reader_version = 104;
 
 using namespace Colib;
+
+//////////////////////////////////////
+// Version 1.03                     //
+// Is now included :                //
+//    - Writting events in .root    //
+//  Todo :                          //
+//    - Include traces in events    //
+//////////////////////////////////////
 
 //////////////////////////////////////
 // Version 1.02                     //
 // Is now included :                //
 //    - Label-base trigger logic    //
 //    - Wildcard file gathering     //
-//                                  //
 //////////////////////////////////////
-
-//////////////////////////////////////
-// Version 1.                       //
-// Is now included :                //
-//    - Modularized CFD parameters  //
-// Todo :                           //
-//    - A trigger logic             //
-//                                  //
-//////////////////////////////////////
-
-// TODO
-// utiliser le cfd pour faire l'event building (mettre ca en option)
-
 
 /* Do not read the following, this trigger logic is stil TBD :
 How to use the trigger : 
@@ -78,20 +71,24 @@ int main(int argc, char** argv)
   bool storeTraces = false;
   size_t nbHitsMax = -1;
   bool hitsMaxSet = false;
+  bool ts_evt_build = false;
+  bool group = true;
 
   std::vector<int> trigger_labels;
   std::vector<int> trigger_boards;
 
   auto printHelp = [](){ 
     print("caen2root usage");
+    print("-e --ts-evt-build     [0 or 1] (default 0). Perform event building based on the raw timestamp instead of the absolute time (usually corrected by cfd)");
     print("-f --files            [caen file name (include wildcards * and ?)] ");
     print("-F --files-nb         [caen file name (include wildcards * and ?)] [nb_files (-1 = all, 1.e3 (=1000) format accepted)]");
+    print("-g --group            [0 or 1] (default 1) : Sets the output format. 0 : plain tree with additionnal event number and multiplicity fields. 1 : each leaf is a vector.");
     print("-h --help             print this help");
     print("-n                    [number of hits (-1 = all, 1.e3 (=1000) format accepted)]");
     print("-o --output           [output path]");
-    print("-t --trigger          [--label [global_label(16 x boardID + channelID)]] [--board [boardID]] [--file [filename (containing a list of global_labels)]]");
-    print("   --trace-analysis   [0 or 1] (default 1). Include trace analysis (so far, only cfd is implemented)");
+    print("   --trace-analysis   [0 or 1] (default 1). Perform trace analysis (so far, only cfd is implemented)");
     print("   --trace-storing    [0 or 1] (default 0). Store trace in the root tree");
+    print("-t --trigger          [--label [global_label(16 x boardID + channelID)]] [--board [boardID]] [--file [filename (containing a list of global_labels)]]");
     print();
     print("example of a command line including all the above options :");
     print();
@@ -127,10 +124,10 @@ int main(int argc, char** argv)
       {
         iss >> temp;
         double nb = -1; iss >> nb;
-        size_t nb_i = nb; // cast to size_t ()
+        size_t nb_i = static_cast<size_t>(nb); // cast to size_t (). if nb<0 -> overflow -> nb_i is very very big
         if (nb_i == 0) continue;
         auto const & files = Colib::findFilesWildcard(temp);
-        for (size_t file_i = 0; file_i<files.size() && file_i<nb_i; ++file_i) filenames.push_back(files[file_i]);
+        for (size_t file_i = 0; file_i < (files.size() && file_i<nb_i); ++file_i) filenames.push_back(files[file_i]);
       }
       else if (temp == "-h" || temp == "--help")
       {
@@ -146,6 +143,10 @@ int main(int argc, char** argv)
       {
         iss >> outpath;
       }
+      else if (temp == "-g" || temp == "--group")
+      {
+        iss >> group;
+      }
       else if (temp == "--trace-analysis")
       {
         iss >> analyseTraces;
@@ -153,6 +154,10 @@ int main(int argc, char** argv)
       else if (temp == "--trace-storing")
       {
         iss >> storeTraces;
+      }
+      else if (temp == "--ts-evt-build")
+      {
+        iss >> ts_evt_build;
       }
       else if (temp == "-t" || temp == "--trigger")
       {
@@ -194,20 +199,27 @@ int main(int argc, char** argv)
       
       CaenRootReader1725 reader(filename, analyseTraces);
       CaenRootEventBuilder1725 eventBuilder(reserved_buffer_size);
+      eventBuilder.buildOnTimestamp(ts_evt_build);
 
       auto rootFilename = outpath + file.shortName()+".root";
       auto rootFile = TFile::Open(rootFilename.c_str(), "recreate");
-      auto tree = new TTree("HIL", ("WarsawReader_v"+std::to_string(reader_version)).c_str());
+      TString treeName = "HIL";
+      if (!group) treeName = "HILplain";
+      auto tree = new TTree(treeName, ("WarsawReader_v"+std::to_string(reader_version)).c_str());
 
       auto & inHit = reader.getHit(); // Aliasing the internal hit of the reader
 
+      RootCaenEvent outEvent(storeTraces);
       RootCaenHit outHit(storeTraces);
-      outHit.writeTo(tree);
-
       int evtNb = 0;
       int evtMult = 0;
-      tree -> Branch("evtNb", &evtNb);
-      tree -> Branch("evtMult", &evtMult);
+
+      if (group) {outEvent.writeTo(tree);
+      } else {
+        outHit.writeTo(tree);
+        tree -> Branch("evtNb", &evtNb);
+        tree -> Branch("evtMult", &evtMult);
+      }
 
       double timeRead = 0;
       double timeCFD = 0;
@@ -246,14 +258,33 @@ int main(int argc, char** argv)
             }
           }
 
-          if (trigger) for (auto const & hit_i : event)
+          if (trigger) 
           {
-            Timer timerCopy;
-            outHit.copy(eventBuilder[hit_i], false);
-            timeCopy += timerCopy.Time();
-            Timer timerFill;
-            tree -> Fill();
-            timeFill += timerFill.Time();
+            for (auto const & hit_i : event)
+            {
+              if (group)
+              {
+                Timer timerCopy;
+                outEvent.push_back(eventBuilder[hit_i]);
+                timeCopy += timerCopy.Time();
+              }
+              else
+              {
+                Timer timerCopy;
+                outHit.copy(eventBuilder[hit_i], false);
+                timeCopy += timerCopy.Time();
+                Timer timerFill;
+                tree -> Fill();
+                timeFill += timerFill.Time();
+              }
+            }
+            if (group)
+            {
+              Timer timerFill;
+              tree -> Fill();
+              outEvent.clear();
+              timeFill += timerFill.Time();
+            }
           }
         }
 
@@ -281,7 +312,7 @@ int main(int argc, char** argv)
           if (zero == CFD::noSignal) inHit.time = inHit.precise_ts;
           else
           {
-            zero *= CaenDataReader1725::ticks_to_ps; // Convert from 4 ns ticks to ps, !! might change depending on the daq setup !!  
+            zero *= CaenDataReader1725::ticks_to_ps; // Convert from ticks (usually 4ns) to ps
             inHit.time = inHit.extended_ts*CaenDataReader1725::ticks_to_ps + zero;
           }
         }
