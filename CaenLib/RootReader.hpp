@@ -12,34 +12,55 @@ class RootReader
 {
 public:
   RootReader(int hits_nb = 0) : m_size(hits_nb) {};
-  RootReader(std::string const & filename, int hits_nb = 0) : RootReader(hits_nb)
-  {
-    m_file = TFile::Open(filename.c_str(), "READ");
-    if (!m_file)  {error("RootReader::RootReader(std::string filename) : Can't read m_file" + filename); return;}
-    m_tree = m_hit.readFrom(m_file, "HIL");
-    m_tree->SetBranchAddress("evtNb", &m_evtNb);
-    if (!m_tree) return;
-    if (m_size == 0) m_size = m_tree->GetEntries();
-  }
-
-  RootReader(TFile * m_file, int hits_nb = 0) : RootReader(hits_nb)
-  {
-    if (!m_file) {error("RootReader::RootReader(TFile * m_file) : Can't read the given TFile"); return;}
-    m_tree = m_hit.readFrom(m_file, "HIL");
-    if (!m_tree) return;
-    m_size = m_tree->GetEntries();
-    m_tree->SetBranchAddress("evtNb", &m_evtNb);
-    if (m_size == 0) m_size = m_tree->GetEntries();
-  }
-
+  
   RootReader(TTree * tree, int hits_nb = 0) : RootReader(hits_nb)
   {
     m_tree = tree;
-    if (!m_tree || m_tree->IsZombie()) {error("RootReader::RootReader(TTree * m_tree) : Can't read the given TTree"); return;}
-    m_file = dynamic_cast<TFile*>(m_tree->GetDirectory());
-    m_hit.readFrom(m_tree);
-    m_tree->SetBranchAddress("evtNb", &m_evtNb);
-    if (m_size == 0) m_size = m_tree->GetEntries();
+    connectTree(tree);
+  }
+
+  RootReader(TFile * file, int hits_nb = 0) : RootReader(hits_nb)
+  {
+    connectFile(file);
+  }
+
+  RootReader(std::string const & filename, int hits_nb = 0) : RootReader(hits_nb)
+  {
+    connectFile(filename);
+  }
+
+  TTree* connectTree(TTree* tree)
+  {
+    if (!tree) {error("in connectTree(TTree* tree) : tree is nullptr"); return nullptr;}
+    m_tree = tree;
+    if (m_grouped) m_tree = m_event.readFrom(tree);
+    else
+    {
+      m_hit  = m_event.readFrom(tree);
+      m_tree->SetBranchAddress("evtNb", &m_evtNb);
+      m_tree->SetBranchAddress("mult", &m_evtMult);
+    }
+    m_size = m_tree->GetEntries();
+    print(m_size);
+    return tree;
+  }
+
+  TTree* connectFile(TFile * file)
+  {
+    if (!file) {error("in connectFile(TFile * file) : file is nullptr"); return nullptr;}
+    m_file = file;
+    auto const & listTrees = file_get_map_of<TTree>(m_file);
+         if (Colib::key_found(listTrees, std::string("HIL")     )) {m_grouped = true ; return connectTree(listTrees.at("HIL"     ));}
+    else if (Colib::key_found(listTrees, std::string("HILplain"))) {m_grouped = false; return connectTree(listTrees.at("HILplain"));}
+    else return nullptr;
+  }
+
+  TTree* connectFile(std::string const & filename)
+  {
+    print(filename);
+    m_file = TFile::Open(filename.c_str(), "READ");
+    if (!m_file)  {error("RootReader::RootReader(std::string filename) : Can't read m_file" + filename); return nullptr;}
+    return connectFile(m_file);
   }
 
   bool readNextHit()
@@ -54,13 +75,20 @@ public:
 
   bool readNextEvent()
   {
-    if (m_finished) return false;
-    if (readNextHit()) 
+    if (m_grouped)
     {
-      if (m_oldEvt < m_evtNb) m_oldEvt = m_evtNb;
-      else m_event.push_back(m_hit);
+      return readNextHit(); // Because we're in group mode, a TTree entry is not a single hit but already an event
     }
-    return (m_finished = true);
+    else
+    {
+      if (m_finished) return false;
+      if (readNextHit()) 
+      {
+        if (m_oldEvt < m_evtNb) m_oldEvt = m_evtNb;
+        else m_event.push_back(m_hit);
+      }
+      return (m_finished = true);
+    }
   }
 
   // Setters :
@@ -103,9 +131,11 @@ private:
   TTree *m_tree = nullptr;
   size_t m_cursor = 0;
   size_t m_size = 0;
+  bool m_grouped = true;
 
-  int m_oldEvt = 0;
-  int m_evtNb = 0;
+  size_t m_oldEvt = 0;
+  size_t m_evtNb = 0;
+  int m_evtMult = 0;
   bool m_finished = false;
 };
 

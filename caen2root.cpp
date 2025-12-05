@@ -5,7 +5,7 @@
 #include "LibCo/Timer.hpp"
 #include "LibCo/libCo.hpp"
 
-constexpr int reader_version = 104;
+constexpr int reader_version = 110;
 
 using namespace Colib;
 
@@ -80,8 +80,8 @@ int main(int argc, char** argv)
   auto printHelp = [](){ 
     print("caen2root usage");
     print("-e --ts-evt-build     [0 or 1] (default 0). Perform event building based on the raw timestamp instead of the absolute time (usually corrected by cfd)");
-    print("-f --files            [caen file name (include wildcards * and ?)] ");
-    print("-F --files-nb         [caen file name (include wildcards * and ?)] [nb_files (-1 = all, 1.e3 (=1000) format accepted)]");
+    print("-f --files            [caen file name (include wildcards * and ? ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\"))] ");
+    print("-F --files-nb         [caen file name (include wildcards * and ? ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\"))] [nb_files (-1 = all, 1.e3 (=1000) format accepted)]");
     print("-g --group            [0 or 1] (default 1) : Sets the output format. 0 : plain tree with additionnal event number and multiplicity fields. 1 : each leaf is a vector.");
     print("-h --help             print this help");
     print("-n                    [number of hits (-1 = all, 1.e3 (=1000) format accepted)]");
@@ -118,7 +118,7 @@ int main(int argc, char** argv)
            if (temp == "-f" || temp ==  "--files")
       {
         iss >> temp;
-        for (auto const & file : Colib::findFilesWildcard(temp)) filenames.push_back(file);
+        for (auto const & file : Colib::findFilesWildcard(temp)){ print(file); filenames.push_back(file);}
       }
       else if (temp == "-F" || temp == "--files-nb")
       {
@@ -211,14 +211,16 @@ int main(int argc, char** argv)
 
       RootCaenEvent outEvent(storeTraces);
       RootCaenHit outHit(storeTraces);
-      int evtNb = 0;
+      size_t evtNb = 0;
       int evtMult = 0;
 
-      tree -> Branch("evtNb", &evtNb);
-      tree -> Branch("evtMult", &evtMult);
-
       if (group) outEvent.writeTo(tree);
-      else       outHit  .writeTo(tree);
+      else
+      {
+        tree -> Branch("evtNb", &evtNb  );
+        tree -> Branch("mult" , &evtMult);
+        outHit.writeTo(tree);
+      }
 
       double timeRead = 0;
       double timeCFD = 0;

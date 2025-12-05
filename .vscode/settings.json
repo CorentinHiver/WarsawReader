@@ -125,6 +125,14 @@
     "vmanip": "cpp",
     "tree": "cpp",
     "polygon": "cpp",
-    "loader": "cpp"
+    "loader": "cpp",
+    "file": "cpp",
+    "file_format": "cpp",
+    "file_reader": "cpp",
+    "fileis": "cpp",
+    "gzip": "cpp",
+    "directory": "cpp",
+    "signature": "cpp",
+    "rcsv_ntuple": "cpp"
   }
 }

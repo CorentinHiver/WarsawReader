@@ -2,6 +2,7 @@
 #define ROOTHIT_HPP
 
 #include "utils.hpp"
+#include "RootUtils.hpp"
 #include "BoardAggregate.hpp"
 
 #include "TFile.h"
@@ -201,7 +202,7 @@ namespace CaenDataReader
       int baseline = 0;
       for (size_t i = 0; i<nb_samples_baseline; ++i) baseline += trace->at(i);
       baseline /= nb_samples_baseline;
-      for (auto const & sample : *trace) _trace.push_back(sample - baseline);
+      for (auto const & sample : *trace) _trace . push_back(sample - baseline);
       return _trace;
     }
 
@@ -347,7 +348,7 @@ namespace CaenDataReader
 
     RootHit const & operator=(RootHit const & other)
     {
-      return this->copy(other);      
+      return this -> copy(other);      
     }    
   };
 
@@ -357,40 +358,67 @@ namespace CaenDataReader
     RootEvent(bool handle_traces = false)
     {
       if (handle_traces) Colib::throw_error("CaenDataReader1725::RootEvent can't handle events (TBD)");
+      label          = new std::vector<int>;
+      board_ID       = new std::vector<int>;
+      channel_ID     = new std::vector<int>;
+      subchannel_ID  = new std::vector<int>;
+      adc            = new std::vector<int>;
+      qlong          = new std::vector<int>;
+      timestamp      = new std::vector<uint64_t>;
+      extended_ts    = new std::vector<uint64_t>;
+      precise_ts     = new std::vector<uint64_t>;
+      time           = new std::vector<uint64_t>;
     }
+
+    ~RootEvent()
+    {
+      delete label;
+      delete board_ID;
+      delete channel_ID;
+      delete subchannel_ID;
+      delete adc;
+      delete qlong;
+      delete timestamp;
+      delete extended_ts;
+      delete precise_ts;
+      delete time;
+    }
+
     void push_back(RootHit const & hit)
     {
-      label         .push_back(hit.label);
-      board_ID      .push_back(hit.board_ID);
-      channel_ID    .push_back(hit.channel_ID);
-      subchannel_ID .push_back(hit.subchannel_ID);
-      adc           .push_back(hit.adc);
-      qlong         .push_back(hit.qlong);
-      timestamp     .push_back(hit.timestamp);
-      extended_ts   .push_back(hit.extended_ts);
-      precise_ts    .push_back(hit.precise_ts);
-      time          .push_back(hit.time);
+      label         -> push_back(hit.label);
+      board_ID      -> push_back(hit.board_ID);
+      channel_ID    -> push_back(hit.channel_ID);
+      subchannel_ID -> push_back(hit.subchannel_ID);
+      adc           -> push_back(hit.adc);
+      qlong         -> push_back(hit.qlong);
+      timestamp     -> push_back(hit.timestamp);
+      extended_ts   -> push_back(hit.extended_ts);
+      precise_ts    -> push_back(hit.precise_ts);
+      time          -> push_back(hit.time);
       ++mult;
     }
 
     void clear()
     {
-      label.clear();
-      board_ID.clear();
-      channel_ID.clear();
-      subchannel_ID.clear();
-      adc.clear();
-      qlong.clear();
-      timestamp.clear();
-      extended_ts.clear();
-      precise_ts.clear();
-      time.clear();
+      label         -> clear();
+      board_ID      -> clear();
+      channel_ID    -> clear();
+      subchannel_ID -> clear();
+      adc           -> clear();
+      qlong         -> clear();
+      timestamp     -> clear();
+      extended_ts   -> clear();
+      precise_ts    -> clear();
+      time          -> clear();
       mult = 0;
     }
 
     void writeTo(TTree* tree)
     {
       tree->ResetBranchAddresses();
+      tree->Branch("evtNb", &evtNb);
+      tree->Branch("mult", &mult);
       tree->Branch("label", &label);
       tree->Branch("board_ID", &board_ID);
       tree->Branch("channel_ID", &channel_ID);
@@ -403,9 +431,11 @@ namespace CaenDataReader
       tree->Branch("time", &time);
     }
 
-    void readFrom(TTree* tree)
+    TTree * readFrom(TTree* tree)
     {
       tree->ResetBranchAddresses();
+      tree->SetBranchAddress("evtNb", &evtNb);
+      tree->SetBranchAddress("mult", &mult);
       tree->SetBranchAddress("label", &label);
       tree->SetBranchAddress("board_ID", &board_ID);
       tree->SetBranchAddress("channel_ID", &channel_ID);
@@ -416,6 +446,15 @@ namespace CaenDataReader
       // tree->SetBranchAddress("extended_ts", &extended_ts);
       // tree->SetBranchAddress("precise_ts", &precise_ts);
       tree->SetBranchAddress("time", &time);
+      return tree;
+    }
+
+    TTree * readFrom(TFile * file, std::string const & treename = "HIL")
+    {
+      auto tree = file->Get<TTree>(treename.c_str());
+      if (!tree) error("Can't extract a valid", treename, "in file", file->GetName());
+      else this->readFrom(tree);
+      return tree;
     }
 
     auto const & size () const {return mult;}
@@ -423,30 +462,52 @@ namespace CaenDataReader
     RootHit operator[](size_t const & i) const
     {
       RootHit hit;
-      hit.label         = label         [i];
-      hit.board_ID      = board_ID      [i];
-      hit.channel_ID    = channel_ID    [i];
-      hit.subchannel_ID = subchannel_ID [i];
-      hit.adc           = adc           [i];
-      hit.qlong         = qlong         [i];
-      hit.timestamp     = timestamp     [i];
-      hit.extended_ts   = extended_ts   [i];
-      hit.precise_ts    = precise_ts    [i];
-      hit.time          = time          [i];
+      hit.label         = (*label)         [i];
+      hit.board_ID      = (*board_ID)      [i];
+      hit.channel_ID    = (*channel_ID)    [i];
+      hit.subchannel_ID = (*subchannel_ID) [i];
+      hit.adc           = (*adc)           [i];
+      hit.qlong         = (*qlong)         [i];
+      hit.timestamp     = (*timestamp)     [i];
+      // hit.extended_ts   = (*extended_ts)   [i];
+      // hit.precise_ts    = (*precise_ts)    [i];
+      hit.time          = (*time)          [i];
       return hit;
     }
 
-    size_t mult = 0;
-    std::vector<int>      label;
-    std::vector<int>      board_ID;
-    std::vector<int>      channel_ID;
-    std::vector<int>      subchannel_ID;
-    std::vector<int>      adc;
-    std::vector<int>      qlong;
-    std::vector<uint64_t> timestamp;
-    std::vector<uint64_t> extended_ts;
-    std::vector<uint64_t> precise_ts;
-    std::vector<uint64_t> time;
+    friend std::ostream& operator<<(std::ostream& out, RootEvent const & event)
+    {
+      out << "Event with " << event.mult << " hits :" << std::endl;
+      for (int hit_i = 0; hit_i<event.mult; ++hit_i)
+      {
+        out << "\t";
+        out << " label " << (*event.label)[hit_i];
+        out << " board_ID " << (*event.board_ID)[hit_i];
+        out << " channel_ID " << (*event.channel_ID)[hit_i];
+        out << " subchannel_ID " << (*event.subchannel_ID)[hit_i];
+        out << " adc " << (*event.adc)[hit_i];
+        out << " qlong " << (*event.qlong)[hit_i];
+        out << " timestamp " << (*event.timestamp)[hit_i];
+        // out << "extended_ts " << (*event.extended_ts)[hit_i];
+        // out << "precise_ts " << (*event.precise_ts)[hit_i];
+        out << " time " << (*event.time)[hit_i];
+        out << std::endl;
+      }
+      return out;
+    }
+
+    size_t evtNb = 0;
+    int    mult  = 0;
+    std::vector<int>      * label = nullptr;
+    std::vector<int>      * board_ID = nullptr;
+    std::vector<int>      * channel_ID = nullptr;
+    std::vector<int>      * subchannel_ID = nullptr;
+    std::vector<int>      * adc = nullptr;
+    std::vector<int>      * qlong = nullptr;
+    std::vector<uint64_t> * timestamp = nullptr;
+    std::vector<uint64_t> * extended_ts = nullptr;
+    std::vector<uint64_t> * precise_ts = nullptr;
+    std::vector<uint64_t> * time = nullptr;
   };
   // using RootEvent = std::vector<RootHit>;
 };

@@ -1,6 +1,7 @@
 // g++ -o rootReaderExample rootReaderExample.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -g
 
 #include "CaenLib/RootReader.hpp" // You can simply source CaenLib folder for a global access , no installation required
+#include "LibCo/libCo.hpp"
 
 void rootReaderExample(std::vector<std::string> filenames, int nbHitsMax = -1)
 {
@@ -22,6 +23,7 @@ void rootReaderExample(std::vector<std::string> filenames, int nbHitsMax = -1)
     // ---------------------------------------------- //
     while(reader.readNextEvent()) 
     {
+      print(reader.getEvent());
       // ---------------------------------------- //
       // C. Looping through the hits in the event //
       // ---------------------------------------- //
@@ -34,8 +36,8 @@ void rootReaderExample(std::vector<std::string> filenames, int nbHitsMax = -1)
       {
         auto const & hit = reader.getEvent()[hit_i]; // Alias to the hit to read
         print(hit);                                  // Prints the hit to console
-        auto const & Ecal   = hit.adc  * 1 + 0;       // Calibration example
-        auto const & time_s = hit.time * 1e12 ;       // Converting the hit absolute time in ps
+        auto const & Ecal   = hit.adc  * 1 + 0;      // Calibration example
+        auto const & time_s = hit.time * 1e12 ;      // Converting the absolute time in ps to seconds
       }
     }
   }
@@ -66,5 +68,6 @@ int main(int argc, char** argv)
       nb_hits = static_cast<int>(e);
     }
   }
+  if (filenames.empty()) Colib::throw_error("No file !!");
   rootReaderExample(filenames, nb_hits);
 }
