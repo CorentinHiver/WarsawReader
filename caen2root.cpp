@@ -214,12 +214,11 @@ int main(int argc, char** argv)
       int evtNb = 0;
       int evtMult = 0;
 
-      if (group) {outEvent.writeTo(tree);
-      } else {
-        outHit.writeTo(tree);
-        tree -> Branch("evtNb", &evtNb);
-        tree -> Branch("evtMult", &evtMult);
-      }
+      tree -> Branch("evtNb", &evtNb);
+      tree -> Branch("evtMult", &evtMult);
+
+      if (group) outEvent.writeTo(tree);
+      else       outHit  .writeTo(tree);
 
       double timeRead = 0;
       double timeCFD = 0;
