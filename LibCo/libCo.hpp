@@ -1127,7 +1127,6 @@ namespace Colib
       auto const & residues = y[i] - (y[0] + slope*dx);
       correctionSum += residues/dx;
     }
-  
     double correction = ((N-1) > 0) ? (correctionSum / (N-1)) : 0.0;
     return slope+correction;
   }
@@ -1143,31 +1142,21 @@ namespace Colib
     std::array<char, 128> buffer;
     std::string result;
     std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe) throw std::runtime_error("popen() failed!");
+    if (!pipe) throw std::runtime_error("in Colib::execTerminal : popen() failed!");
     while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) result += buffer.data();
     return result;
-  }
-
-  std::vector<std::string> wildcard(std::string const & name)
-  {
-    std::vector<std::string> ret;
-    std::istringstream iss(execTerminal(("ls "+name).c_str()));
-    print(iss.str());
-    std::string tmp;
-    while(iss >> tmp) ret.push_back(tmp);
-    return ret;
   }
 
   std::vector<std::string> match_regex(std::vector<std::string> list, std::string pattern) 
   {
     // Step 1: Replace * with .*
-    std::string step1 = std::regex_replace(pattern, std::regex("\\*"), ".*");
+    std::string regex_star = std::regex_replace(pattern, std::regex("\\*"), ".*");
     
     // Step 2: Replace ? with .
-    std::string regex_pattern = std::regex_replace(step1, std::regex("\\?"), ".");
+    std::string regex_star_question = std::regex_replace(regex_star, std::regex("\\?"), ".");
 
     // Compile the regex
-    std::regex reg(regex_pattern);
+    std::regex reg(regex_star_question);
     std::vector<std::string> ret;
 
     // Match each string in the list

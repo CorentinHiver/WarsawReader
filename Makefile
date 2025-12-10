@@ -15,6 +15,8 @@ caen2root: caen2root.cpp $(LIBS)
 examples: rootReaderExample.cpp $(LIBS)
 	g++ -o rootReaderExample rootReaderExample.cpp `root-config --cflags` `root-config --glibs` -O2 $(STDLIB)
 
+lib: 
+
 # cpp17:
 # 	@echo "Compiling with C++17 standard"
 # 	$(MAKE) STDLIB="-std=c++17" all

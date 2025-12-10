@@ -133,6 +133,7 @@
     "gzip": "cpp",
     "directory": "cpp",
     "signature": "cpp",
-    "rcsv_ntuple": "cpp"
+    "rcsv_ntuple": "cpp",
+    "graph": "cpp"
   }
 }

@@ -1,16 +1,6 @@
 #!/bin/bash
 
-# cd LibCo
-
-# base_url="https://raw.githubusercontent.com/CorentinHiver/Nuball2/tree/master/lib/"
-# files=(errors.hpp files_functions.hpp libCo.hpp libRoot.hpp print.hpp randomCo.hpp string_functions.hpp vector_functions.hpp)
-
-# for file in "${files[@]}"; do
-#     wget -N $file "$base_url/$file"
-# done
-
-# cd ..
-
+# use it in root folder like $ ./LibCo/updateLibCo.sh
 
 cd LibCo
 
@@ -27,11 +17,13 @@ files=(
     vector_functions.hpp
     Classes/FilesManager.hpp
     Classes/Timer.hpp
+    Classes/Timeshifts.hpp
     MTObjects/MTObject.hpp
 )
 
 for file in "${files[@]}"; do
-    wget -N "$base_url/$file"
+    mkdir -p "$(dirname "$file")"
+    wget -N -O "$file" "$base_url/$file"
 done
 
 cd ..

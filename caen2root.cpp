@@ -2,12 +2,25 @@
 #include "AnalysisLib/CFD.hpp"
 #include "CaenLib/CaenRootReader.hpp"
 #include "CaenLib/CaenRootEventBuilder.hpp"
-#include "LibCo/Timer.hpp"
+#include "LibCo/Classes/Timer.hpp"
+#include "LibCo/Classes/Timeshifts.hpp"
 #include "LibCo/libCo.hpp"
 
 constexpr int reader_version = 110;
 
 using namespace Colib;
+
+/**
+ * Structure of the output tree :
+ * int      label         :  Global label (=board_ID*16 + channel_ID*2 + subchannel_ID)
+ * u_short  board_ID      :  Board label [0;max board ID]
+ * u_short  channel_ID    :  Channel label [0;8]
+ * u_short  subchannel_ID :  Sub channel label [0,1]
+ * int      adc           :  PHA : ADC value. PSD : qshort value.
+ * int      qlong         :  PHA : unused.    PSD : qlong value.
+ * uint64_t timestamp     :  Raw timestamp (ts). Units : ps. Is equal to precise_ts if found in the data, or extended_ts if found in the data, or TRIGGER_TIME_TAG otherwise
+ * uint64_t time          :  Absolute time. Units : ps. This field must be filled by the user (i.e., the program using this class).
+ */
 
 //////////////////////////////////////
 // Version 1.03                     //
@@ -33,7 +46,6 @@ How to use the trigger :
   Attention : do not forget the ' \" ', if you know how to get rid of this requirement contact me
 */
 
-constexpr Long64_t time_window          = 2e6 ; // ps
 constexpr size_t   reserved_buffer_size = 500000ul;
 constexpr bool applyCFD = true;
 
@@ -62,10 +74,14 @@ int main(int argc, char** argv)
     {8, 0.75}
   };
 
+  auto useCFD = LUT<9*16>([&](int boardID)
+  {
+    return key_found(CFD::sShifts, boardID);
+  });
+
   Timer timer;
 
   // Parameters :
-  std::vector<std::string> filenames;
   std::string outpath = "./";
   bool analyseTraces = true;
   bool storeTraces = false;
@@ -73,26 +89,36 @@ int main(int argc, char** argv)
   bool hitsMaxSet = false;
   bool ts_evt_build = false;
   bool group = true;
+  
+  std::vector<std::string> filenames;
+  Timeshifts timeshifts;
+
+  uint64_t time_window = 2e6 ; // ps
 
   std::vector<int> trigger_labels;
   std::vector<int> trigger_boards;
 
   auto printHelp = [](){ 
     print("caen2root usage");
-    print("-e --ts-evt-build     [0 or 1] (default 0). Perform event building based on the raw timestamp instead of the absolute time (usually corrected by cfd)");
+    print("-e --ts-evt-build     [0 or 1] (default 0). Perform event building based on the raw timestamp instead of the absolute time (usually corrected by cfd).");
     print("-f --files            [caen file name (include wildcards * and ? ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\"))] ");
     print("-F --files-nb         [caen file name (include wildcards * and ? ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\"))] [nb_files (-1 = all, 1.e3 (=1000) format accepted)]");
     print("-g --group            [0 or 1] (default 1) : Sets the output format. 0 : plain tree with additionnal event number and multiplicity fields. 1 : each leaf is a vector.");
     print("-h --help             print this help");
     print("-n                    [number of hits (-1 = all, 1.e3 (=1000) format accepted)]");
     print("-o --output           [output path]");
-    print("   --trace-analysis   [0 or 1] (default 1). Perform trace analysis (so far, only cfd is implemented)");
-    print("   --trace-storing    [0 or 1] (default 0). Store trace in the root tree");
-    print("-t --trigger          [--label [global_label(16 x boardID + channelID)]] [--board [boardID]] [--file [filename (containing a list of global_labels)]]");
+    print("   --trace-analysis   [0 or 1] (default 1). Perform trace analysis (so far, only cfd is implemented).");
+    print("   --trace-storing    [0 or 1] (default 0). Store trace in the root tree.");
+    print("-T --timeshifts       [filename] : List of timestamp shifts. Format : in each line : global_label timeshift.");
+    print("-t --trigger :");
+    print("            -l --label [global_label(16 x boardID + channelID)]]");
+    print("            -b --board [boardID]] ");
+    print("            -f --file  [filename (containing a list of global_labels)]]");
+    print("-tw --time-window     [time_window (float, in ns)] (default 2000 ns) ");
     print();
     print("example of a command line including all the above options :");
     print();
-    print("caen2root \\");
+    print("./caen2root \\");
     print("\t -f /data/experiment1/run0/*.caendat \\");
     print("\t -F /data/experiment1/run1/*.caendat 3 \\");
     print("\t -n 1e9 \\");
@@ -102,11 +128,11 @@ int main(int argc, char** argv)
     print("\t trace-analysis 1 \\");
     print("\t trace-storing 1 \\");
     print();
-    print("This maked the folllowing :");
-    print("Gather all the .caendat files found in /data/experiment1/run0/ and the three first found in the run0/ folder."
-          "The code will stop after processing 1e9 hits. The output root files will be written in the /root_data/experiment1/ folder."
-          "Only event containing at least one detector with label 5, or any detector of board_ID==5 or 6 are kept."
-          "The traces will be kept for analysis and written in the root file");
+    print("This made the folllowing :");
+    print("Gather all the .caendat files found in /data/experiment1/run0/ and the three first found in the run0/ folder.");
+    print(" The code will stop after processing 1e9 hits. The output root files will be written in the /root_data/experiment1/ folder.");
+    print(" Only event containing at least one detector with label 5, or any detector of board_ID==5 or 6 are kept.");
+    print(" The traces will be kept for analysis and written in the root file");
   };
   if (argc < 3) {printHelp(); return 1;}
   else
@@ -147,6 +173,11 @@ int main(int argc, char** argv)
       {
         iss >> group;
       }
+      else if (temp == "-T" || temp == "--timeshifts")
+      {
+        iss >> temp;
+        timeshifts.load(temp);
+      }
       else if (temp == "--trace-analysis")
       {
         iss >> analyseTraces;
@@ -162,19 +193,19 @@ int main(int argc, char** argv)
       else if (temp == "-t" || temp == "--trigger")
       {
         iss >> temp;
-        if (temp == "--label")
+        if (temp == "-l" || temp == "--label")
         {
           int label;
           iss >> label;
           trigger_labels.push_back(label);
         }
-        else if (temp == "--board")
+        else if (temp == "-b" || temp == "--board")
         {
           int boardID;
           iss >> boardID;
           for (int label = boardID*16; label < (boardID+1)*16; ++label) trigger_labels.push_back(label);
         }
-        else if (temp == "--file")
+        else if (temp == "-f" || temp == "--file")
         {
           iss >> temp;
           std::ifstream trigger_file(temp);
@@ -186,6 +217,11 @@ int main(int argc, char** argv)
             int label;
             while(iss >> label) trigger_labels.push_back(label);
           }
+        }
+        else if (temp == "-tw" || temp == "time-window")
+        {
+          double e; iss >> e;
+          time_window = e*1000;
         }
       }
     }
@@ -224,6 +260,7 @@ int main(int argc, char** argv)
 
       double timeRead = 0;
       double timeCFD = 0;
+      double timeTShift = 0;
       double timeEvtBuild = 0;
       double timeCopy = 0;
       double timeFill = 0;
@@ -237,8 +274,8 @@ int main(int argc, char** argv)
         Timer timerEvtBuild;
         eventBuilder.fast_event_building(time_window);
         timeEvtBuild += timerEvtBuild.Time();
-        // 4. Write the events to the ROOT tree
 
+        // 4. Write the events to the ROOT tree
         for (auto const & event : eventBuilder)
         {
           evtMult = event.size();
@@ -248,6 +285,7 @@ int main(int argc, char** argv)
           // TODO:
         #endif //TRIGGER
 
+          // 4.1 Apply the trigger
           static thread_local auto trigger_label = !trigger_labels.empty();
           bool trigger = true;
           if (trigger_label) 
@@ -258,7 +296,8 @@ int main(int argc, char** argv)
               if (Colib::found(trigger_labels, eventBuilder[hit_i].label)) trigger = true;
             }
           }
-
+          
+          // 4.2 Apply the trigger
           if (trigger) 
           {
             for (auto const & hit_i : event)
@@ -298,30 +337,38 @@ int main(int argc, char** argv)
       // while(reader.readHit())
       {
         Timer timerRead;
-        if (!reader.readHit())break;
+        if (!reader.readHit()) break;
         timeRead += timerRead.Time();
         if (hitsMaxSet && nbHitsMax < reader.nbHits()) break;
-        if (reader.nbHits() > 0 && reader.nbHits() % int(1e5) == 0) print(nicer_double(reader.nbHits(), 1));
+        if (reader.nbHits() > 0 && reader.nbHits() % int(1e5) == 0) printsln(nicer_double(reader.nbHits(), 1), "    ");
 
         // 1. Apply the cfd
         Timer timerCFD;
-        if (applyCFD && !inHit.getTrace().empty() && key_found(CFD::sShifts, inHit.board_ID)) 
+        if (applyCFD && inHit.getTrace() && !inHit.getTrace() -> empty() && useCFD[inHit.board_ID])
         {
-          CFD cfd(inHit.getTrace(), CFD::sShifts[inHit.board_ID], CFD::sFractions[inHit.board_ID]);
-          
-          auto zero = cfd.findZero(CFD::sThresholds[inHit.board_ID]); 
-          if (zero == CFD::noSignal) inHit.time = inHit.precise_ts;
-          else
-          {
-            zero *= CaenDataReader1725::ticks_to_ps; // Convert from ticks (usually 4ns) to ps
-            inHit.time = inHit.extended_ts*CaenDataReader1725::ticks_to_ps + zero;
-          }
+          CFD cfd(*inHit.getTrace(), CFD::sShifts[inHit.board_ID], CFD::sFractions[inHit.board_ID]);
+          inHit.time = inHit.extended_ts + cfd.findZero(CFD::sThresholds[inHit.board_ID]) * CaenDataReader1725::ticks_to_ps;
         }
         else inHit.time = inHit.precise_ts;
         timeCFD += timerCFD.Time();
 
+        //1.1 Apply the time shifts if registered
+        Timer timerTShift;
+        if (static_cast<size_t>(inHit.label) < timeshifts.size()) 
+        {
+          inHit.timestamp += timeshifts[inHit.label];
+          inHit.time      += timeshifts[inHit.label];
+        }
+        timeTShift += timerTShift.Time();
+
         // 2. Fill the event builder buffer
-        if (eventBuilder.fill_buffer(inHit)) continue; // Continue the loop as long as the buffer is not filled
+        Timer timerCopy;
+
+        if (eventBuilder.fill_buffer(inHit)) 
+        {
+          timeCopy += timerCopy.Time();
+          continue; // Continue the loop as long as the buffer is not filled
+        }
         // (this piece of code is reached only when the buffer is full)
 
         fillTree();
@@ -331,13 +378,15 @@ int main(int argc, char** argv)
 
       rootFile->cd();
 
-      print(tree->GetEntries());
+      print();
+      if (group) print(tree->GetEntries(), "events in the tree");
+      else       print(tree->GetEntries(), "hits in the tree");
       Timer timerFill;
       tree->Write();
       timeFill += timerFill.Time();
       rootFile->Close();
       
-      if (false)
+      if (true)
       {
         print("timeRead", timeRead);
         print("timeCFD", timeCFD);

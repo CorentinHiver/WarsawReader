@@ -6,7 +6,7 @@
 #include "CaenLib/CaenRootReader.hpp"
 #include "AnalysisLib/CFD.hpp"
 #include "AnalysisLib/RawHit.hpp"
-#include "LibCo/Timer.hpp"
+#include "LibCo/Classes/Timer.hpp"
 #include "LibCo/libCo.hpp"
 
 #include "TPad.h"

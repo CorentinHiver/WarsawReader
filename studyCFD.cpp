@@ -4,7 +4,7 @@
 #include "TH2F.h"
 #include "TFile.h"
 #include "AnalysisLib/CFD.hpp"
-#include "LibCo/Timer.hpp"
+#include "LibCo/Classes/Timer.hpp"
 #include "LibCo/libCo.hpp"
 
 #include "CaenLib/CaenRootReader.hpp"
@@ -24,7 +24,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
   if (filenames.empty()) {print("No file !"); return 1;}
   Timer timer;
   bool max_events = (nb_events_max>0);
-  std::unordered_map<int, int> cfd_shifts = {
+  std::unordered_map<u_short, int> cfd_shifts = {
     {0, 5},
     {1, 5},
     {6, 2},
@@ -32,7 +32,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
     {8, 2}
   };
 
-  std::unordered_map<int, double> cfd_thresholds = {
+  std::unordered_map<u_short, double> cfd_thresholds = {
     {0, -50 },
     {1, -50 },
     {6, -500},
@@ -115,9 +115,9 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
       // Correct timestamp with cfd :
 
-      if (!hit.getTrace().empty() && Colib::key_found(cfd_shifts, hit.board_ID))
+      if (hit.getTrace() && !hit.getTrace()->empty() && Colib::key_found(cfd_shifts, hit.board_ID))
       {
-        CFD cfd(hit.getTrace(), cfd_shifts[hit.board_ID], 0.75, 10);
+        CFD cfd(*hit.getTrace(), cfd_shifts[hit.board_ID], 0.75, 10);
         
         // auto zero = cfd.findZero(cfd_thresholds[hit.board_ID]);
         auto zero = cfd.findZero();
