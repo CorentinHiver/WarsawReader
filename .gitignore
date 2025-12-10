@@ -1,6 +1,5 @@
 *.root
 *.caendat
 caen2root
-exec
 studyCFD
 writeTraces

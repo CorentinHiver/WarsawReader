@@ -478,7 +478,6 @@ namespace CaenDataReader
       // precise_ts    -> clear();
       // time          -> clear();
 
-      evtNb = 0;
       mult = 0;
     }
 

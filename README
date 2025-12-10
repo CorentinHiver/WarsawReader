@@ -1,6 +1,5 @@
 Compile lines at the end of the .cpp files
-If none (.C files), call the cops
-No for real, call them with root, they are simply macros
+If none (.C files), call them with root because they are pure ROOT macros
 
 - General purpose tools : 
 
@@ -8,7 +7,7 @@ caen2root                   Converts .caendat raw datafile into time-ordered and
 Tools/caendatInspect        Dumps raw data from .caendat datafile in the terminal
 Tools/caendatIntegrityCheck Checks if the raw .caendat datafile is not corrupted
 
-- Special tools (hard-coded crate names) :
+- Special tools (hard-coded variables) :
 
-writeTraces    Writes the traces
+writeTraces    Writes the traces in TGraphs with CFD
 studyCFD       After event-building, checks the time correlations between detectors

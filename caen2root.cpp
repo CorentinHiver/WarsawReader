@@ -161,7 +161,7 @@ int main(int argc, char** argv)
       }
       else if (temp == "-n")
       {
-        double tmp_d; iss >> tmp_d;
+        double tmp_d = 0; iss >> tmp_d;
         nbHitsMax = tmp_d;
         hitsMaxSet = true;
       }
@@ -195,14 +195,13 @@ int main(int argc, char** argv)
         iss >> temp;
         if (temp == "-l" || temp == "--label")
         {
-          int label;
+          int label = 0;
           iss >> label;
           trigger_labels.push_back(label);
         }
         else if (temp == "-b" || temp == "--board")
         {
-          int boardID;
-          iss >> boardID;
+          int boardID = 0; iss >> boardID;
           for (int label = boardID*16; label < (boardID+1)*16; ++label) trigger_labels.push_back(label);
         }
         else if (temp == "-f" || temp == "--file")
@@ -279,7 +278,6 @@ int main(int argc, char** argv)
         for (auto const & event : eventBuilder)
         {
           evtMult = event.size();
-          ++evtNb;
 
         #ifdef TRIGGER
           // TODO:
@@ -316,6 +314,8 @@ int main(int argc, char** argv)
                 Timer timerFill;
                 tree -> Fill();
                 timeFill += timerFill.Time();
+
+                ++evtNb;
               }
             }
             if (group)
@@ -324,6 +324,8 @@ int main(int argc, char** argv)
               tree -> Fill();
               outEvent.clear();
               timeFill += timerFill.Time();
+              
+              ++outEvent.evtNb;
             }
           }
         }
