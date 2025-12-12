@@ -2,6 +2,7 @@
 #include "TKey.h"
 #include "TTree.h"
 #include <unordered_map>
+#include <typeindex>
 
 /**
  * @brief Creates a unordered_map of all the object of a certain class (TH1F, TH2F...) inside a TFile, indexed by their name
@@ -51,13 +52,13 @@ static const std::unordered_map<std::type_index, std::string> typeRootMap =
   {static_cast<std::type_index>(typeid(          true)), "O"},
 
   // Integers :
-  {static_cast<std::type_index>(typeid(  char_cast(1))), "B"}, {static_cast<std::type_index>(typeid( uchar_cast(1))), "b"},
-  {static_cast<std::type_index>(typeid( short_cast(1))), "S"}, {static_cast<std::type_index>(typeid(ushort_cast(1))), "s"},
-  {static_cast<std::type_index>(typeid(   int_cast(1))), "I"}, {static_cast<std::type_index>(typeid(  uint_cast(1))), "i"},
-  {static_cast<std::type_index>(typeid(  long_cast(1))), "G"}, {static_cast<std::type_index>(typeid( ulong_cast(1))), "g"},
+  {static_cast<std::type_index>(typeid(  static_cast<char>(1))), "B"}, {static_cast<std::type_index>(typeid( static_cast<uchar>(1))), "b"},
+  {static_cast<std::type_index>(typeid( static_cast<short>(1))), "S"}, {static_cast<std::type_index>(typeid(static_cast<ushort>(1))), "s"},
+  {static_cast<std::type_index>(typeid(   static_cast<int>(1))), "I"}, {static_cast<std::type_index>(typeid(  static_cast<uint>(1))), "i"},
+  {static_cast<std::type_index>(typeid(  static_cast<long>(1))), "G"}, {static_cast<std::type_index>(typeid( static_cast<ulong>(1))), "g"},
 
   // Floating point :
-  {static_cast<std::type_index>(typeid(double_cast(1))), "D"}, {static_cast<std::type_index>(typeid( float_cast(1))), "F"},
+  {static_cast<std::type_index>(typeid(static_cast<double>(1))), "D"}, {static_cast<std::type_index>(typeid( static_cast<float>(1))), "F"},
 
   // ROOT types :
   {static_cast<std::type_index>(typeid(static_cast<Long64_t>(1))), "L"}, {static_cast<std::type_index>(typeid(static_cast<ULong64_t>(1))), "l"}

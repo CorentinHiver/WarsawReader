@@ -1,5 +1,5 @@
 #pragma once
-
+#ifdef __CAENDIGITIZER_H
 #include "CAENDigitizer.h"
 #include <string>
 #include <stdexcept>
@@ -293,3 +293,4 @@ public:
         return list;
     }
 };
+#endif //__CAENDIGITIZER_H

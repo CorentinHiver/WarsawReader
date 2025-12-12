@@ -1,4 +1,4 @@
-// g++ -o caen2root caen2root.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2
+// g++ -o caen2root caen2root.cpp -Wall -Wextra $(root-config --cflags) $(root-config --glibs) -O2 -std=c++17
 
 #include "AnalysisLib/CFD.hpp"
 #include "CaenLib/utils.hpp"
@@ -109,8 +109,8 @@ int main(int argc, char** argv)
   auto printHelp = [](){ 
     print("caen2root usage");
     print("-e --ts-evt-build      [0 or 1] (default 0). Perform event building based on the raw timestamp instead of the absolute time (usually corrected by cfd).");
-    print("-f --files             [caen file name (include wildcards * and ? ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\"))] ");
-    print("-F --files-nb          [caen file name (include wildcards * and ? ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\"))] [nb_files (-1 = all, 1.e3 (=1000) format accepted)]");
+    print("-f --files             [caen file name] : File to convert. Include wildcards * and ?, but ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\") ");
+    print("-F --files-nb          [caen file name] [nb_files] : Files to convert. Include wildcards * and ?, but ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\"). For nb_files, -1 = all, scientific format accepted (e.g. 1.e3 (=1000))]");
     print("-g --group             [0 or 1] (default 1) : Sets the output format. 0 : plain tree with additionnal event number and multiplicity fields. 1 : each leaf is a vector.");
     print("-h --help              print this help");
     print("-n                     [number of hits (-1 = all, 1.e3 (=1000) format accepted)]");
@@ -368,7 +368,6 @@ int main(int argc, char** argv)
           Timer timerTShift;
         if (static_cast<size_t>(inHit.label) < timeshifts.size()) 
         {
-          print(timeshifts[inHit.label]);
           inHit.timestamp += timeshifts[inHit.label];
           inHit.time      += timeshifts[inHit.label];
         }
