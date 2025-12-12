@@ -47,7 +47,8 @@ namespace CaenDataReader1725
       Colib::linspace(m_ordered_index, m_hit_buffer.size());
       std::sort(m_ordered_index.begin(), m_ordered_index.end(), [this](size_t const & i, size_t const & j)
       {
-        return m_hit_buffer[j] > m_hit_buffer[i];
+        if (m_buildOnTimestamp) return m_hit_buffer[j].timestamp > m_hit_buffer[i].timestamp;
+        else                    return m_hit_buffer[j].time      > m_hit_buffer[i].time     ;
       });
       m_aligned = true;
     }

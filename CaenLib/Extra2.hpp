@@ -1,5 +1,4 @@
-#ifndef EXTRA2_HPP
-#define EXTRA2_HPP
+#pragma once
 
 #include "utils.hpp"
 
@@ -15,7 +14,7 @@ namespace CaenDataReader1725
     
     Extra2() = default;
     
-    constexpr bool hasExtendedTimestamp() const {return bool((flag & 0b100) >> 2);}
+    constexpr bool hasExtendedTimestamp() const {return static_cast<bool>((flag & 0b100) >> 2);}
 
     Extra2(uint32_t const & word, uint32_t const & timestamp, uint8_t const & _flag) : 
       flag(_flag)
@@ -25,7 +24,7 @@ namespace CaenDataReader1725
         case FineTimestamp_flag:
           // First step : extract the extended and fine timestamp from the EXTRAS2 bit field
           extended_timestamp  = getBitField(word, 31, 16);
-          fine_timestamp      = getBitField(word, 9, 0) * ticks_to_ns / 1.024;
+          fine_timestamp      = getBitField(word, 9, 0) * ticks_to_ps / 1024;
           
           // Convert to ps :
           extended_timestamp  = ((extended_timestamp << 32) | timestamp) * ticks_to_ps;
@@ -93,76 +92,4 @@ namespace CaenDataReader1725
     }
   };
   
-  // struct FineTimestamp : public Extra2
-  // {
-    
-  
-  //   FineTimestamp(uint32_t const & word, uint32_t const & timestamp) : 
-  //   Extra2(),
-  //   extended_timestamp (getBitField(word, 31, 16)), 
-  //   fine_timestamp     (getBitField(word, 9 ,  0) * ticks_to_ns / 1.024)
-  //   {                  
-  //     extended_timestamp  = ((extended_timestamp << 32) | timestamp) * ticks_to_ps; // TODO : check if the shift is correct
-  //     precise_timestamp   = extended_timestamp + fine_timestamp;
-  //   }
-
-  //   FineTimestamp* clone() const override {return new FineTimestamp(*this);}
-  
-  //   uint64_t extended_timestamp   = 0; // in ps
-  //   uint16_t const fine_timestamp = 0; // in ps
-  //   uint64_t precise_timestamp    = 0; // in ps
-  // };
-  
-  // struct ExtendedTimestamp : public Extra2
-  // {
-  //   constexpr static uint8_t flag = 0b000;
-
-  //   ExtendedTimestamp(uint32_t const & word, uint32_t const & timestamp) : 
-  //     Extra2(),
-  //     extended_timestamp (getBitField(word, 31, 16)),
-  //     trapezoid_baseline (getBitField(word, 15,  0) / 4)
-  //   {
-  //     extended_timestamp  = ((extended_timestamp << 32) | timestamp) * ticks_to_ps; // TODO : check if the shift is correct
-  //   }
-
-  //   ExtendedTimestamp* clone() const override {return new ExtendedTimestamp(*this);}
-
-  //   uint64_t extended_timestamp = 0;
-  //   uint16_t const trapezoid_baseline  = 0;
-  // };
-  
-  // struct TriggerCount : public Extra2
-  // {
-  //   constexpr static uint8_t flag = 0b100;
-
-  //   TriggerCount(uint32_t const & word) : Extra2(),
-  //     lost_trigger_counter  (getBitField(word, 31, 16)),
-  //     total_trigger_counter (getBitField(word, 15,  0))
-  //   {}
-
-  //   TriggerCount* clone() const override {return new TriggerCount(*this);}
-
-  //   uint16_t const lost_trigger_counter  = 0;
-  //   uint16_t const total_trigger_counter = 0;
-  // };
-  
-  // struct ZeroCrossing : public Extra2
-  // {
-  //   constexpr static uint8_t flag = 0b101;
-
-  //   ZeroCrossing(uint32_t const & word) : Extra2(),
-  //     event_before_zero_crossing  (getBitField(word, 31, 16)),
-  //     event_after_zero_crossing   (getBitField(word, 15,  0))
-  //   {}
-
-  //   ZeroCrossing* clone() const override {return new ZeroCrossing(*this);};
-
-  //   uint16_t const event_before_zero_crossing = 0;
-  //   uint16_t const event_after_zero_crossing  = 0;
-  // };
-
-
 };
-
-
-#endif //EXTRA2_HPP

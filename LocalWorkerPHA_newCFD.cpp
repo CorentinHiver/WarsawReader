@@ -423,7 +423,6 @@ protected:
 };
 #endif //CFD_HPP
 
-
 const int   specCal     =  4096;    // adc range
 const int   specRaw     = 16384;    // adc range
 const int   matPackChan =    10;

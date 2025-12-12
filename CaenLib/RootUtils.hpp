@@ -1,5 +1,6 @@
 #include "TFile.h"
 #include "TKey.h"
+#include "TTree.h"
 #include <unordered_map>
 
 /**
@@ -79,4 +80,13 @@ std::string typeRoot()
   auto it = typeRootMap.find(typeIndex);
   if (it != typeRootMap.end()) return it->second;
   else                         return "Unknown";
+}
+
+/// @brief Create a branch for a given array and name
+/// @param name_size: The name of the leaf that holds the size of the array
+template<class T>
+auto createBranchArray(TTree* tree, std::string const & name, T * array, std::string const & name_size, int buffsize = 64000)
+{
+  auto const & type_root_format = name+"["+name_size+"]/"+typeRoot(**array);
+  return (tree -> Branch(name.c_str(), array, type_root_format.c_str(), buffsize));
 }

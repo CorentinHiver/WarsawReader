@@ -1,6 +1,7 @@
 #ifndef CFD_HPP
 #define CFD_HPP
 
+#include <algorithm>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -152,8 +153,8 @@ public:
   /////////////////////////
 
   // Static variables :
-  constexpr static double noZero = 0.;
-  constexpr static double noSignal = -1.;
+  constexpr static double noZero = 1e-100;
+  constexpr static double noSignal = 1e-101;
 
   // TODO Static methods to fill the parameters vectors
 

@@ -1,13 +1,10 @@
 #ifndef TIMESHIFTS_HPP
 #define TIMESHIFTS_HPP
 
-// #include "../Classes/Hit.hpp"
 #include "../libCo.hpp"
 
 class Timeshifts
 {
-  using Label = int;
-  
 public:
 
   using Timeshift_t = int64_t;
@@ -28,7 +25,9 @@ public:
   bool load(std::string const & filename);
 
   auto const & operator[] (int const & i) const {return m_timeshifts[i];}
-#ifdef HIT_HPP // If Hit.hpp is included
+  Timeshifts & operator*= (double const & f) {for (auto & dT : m_timeshifts) dT*=f; return *this;}
+
+#ifdef HIT_HPP // If Hit.hpp is included (Nuball2)
   void operator() (Hit & hit) const {hit.stamp += m_timeshifts[hit.label];}
 #endif //HIT_HPP
 
@@ -66,34 +65,14 @@ bool Timeshifts::load(std::string const & filename)
   if (!inputFile.good()) {throw NotFoundError(filename);}
   else if (Colib::fileIsEmpty(inputFile)) {print("TIMESHIFT FILE", filename, "EMPTY !");return false;}
   std::string line = ""; // Reading buffer
-  Label label = 0; // Reading buffer
-
-  // ----------------------------------------------------- //
-  // First extract the maximum label
-  Label size = 0;
-  // Infer the number of detectors from the higher label in calbration file
+  size_t label = 0; // Reading buffer
   while (getline(inputFile, line))
   { 
     std::istringstream iss(line);
     iss >> label;
-    if (size<label) size = label;
-  }
-  size++; // The size of the vector must be label_max+1
-  // if (detectors && size<detectors.size()) size = detectors.size(); // Ensure there is no mismatch with the detectors module
-  inputFile.clear(); 
-  inputFile.seekg(0, inputFile.beg);
-
-  // ----------------------------------------------------- //
-  // Now fill the vector
-  m_timeshifts.resize(size, 0);
-  Timeshift_t shift = 0;
-  while (getline(inputFile, line))
-  { // Then fill the array
-    m_nb_detectors++;
-    std::istringstream iss(line);
-    iss >> label >> shift;
-    m_timeshifts[label] = shift;
-    shift = 0;
+    if (m_timeshifts.size() <= label) m_timeshifts.resize(label+1);
+    iss >> m_timeshifts[label];
+    ++m_nb_detectors;
   }
   inputFile.close();
   print("Timeshifts extracted from", filename);

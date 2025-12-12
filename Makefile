@@ -1,5 +1,5 @@
 STDLIB=-std=c++17
-LIBS=$(wildcard AnalysisLib/*.cpp Caenlib/*.cpp LibCo/*.cpp Triggers/*.cpp)
+LIBS=$(wildcard AnalysisLib/*.h* Caenlib/*.h* LibCo/*.h* Triggers/*.h*)
 # INCLUDES=-IAnalysisLib -ICaenlib -ILibCo -ITriggers
 
 all: writeTraces studyCFD caen2root examples

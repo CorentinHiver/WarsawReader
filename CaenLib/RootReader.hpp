@@ -1,7 +1,7 @@
 #ifndef ROOTREADER_HPP
 #define ROOTREADER_HPP
 
-#include "RootHit.hpp"
+#include "RootEvent.hpp"
 #include "TFile.h"
 
 /**

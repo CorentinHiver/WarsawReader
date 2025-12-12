@@ -1,7 +1,11 @@
-#include "CaenLib/utils.hpp"
+// g++ -o caen2root caen2root.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2
+
 #include "AnalysisLib/CFD.hpp"
+#include "CaenLib/utils.hpp"
+#include "CaenLib/RootEvent.hpp"
 #include "CaenLib/CaenRootReader.hpp"
 #include "CaenLib/CaenRootEventBuilder.hpp"
+#include "CaenLib/RootHit.hpp"
 #include "LibCo/Classes/Timer.hpp"
 #include "LibCo/Classes/Timeshifts.hpp"
 #include "LibCo/libCo.hpp"
@@ -12,14 +16,18 @@ using namespace Colib;
 
 /**
  * Structure of the output tree :
- * int      label         :  Global label (=board_ID*16 + channel_ID*2 + subchannel_ID)
- * u_short  board_ID      :  Board label [0;max board ID]
- * u_short  channel_ID    :  Channel label [0;8]
- * u_short  subchannel_ID :  Sub channel label [0,1]
- * int      adc           :  PHA : ADC value. PSD : qshort value.
- * int      qlong         :  PHA : unused.    PSD : qlong value.
- * uint64_t timestamp     :  Raw timestamp (ts). Units : ps. Is equal to precise_ts if found in the data, or extended_ts if found in the data, or TRIGGER_TIME_TAG otherwise
- * uint64_t time          :  Absolute time. Units : ps. This field must be filled by the user (i.e., the program using this class).
+ * 
+    UInt_t    label         : Global label (=board_ID*16 + channel_ID*2 + subchannel_ID)
+    UShort_t  board_ID      : Board label [0;max board ID]
+    UShort_t  channel_ID    : Channel label [0;8]
+    UShort_t  subchannel_ID : Sub channel label [0,1]
+    Int_t     adc           : PHA : ADC value. PSD : qshort value.
+    Int_t     qlong         : PHA : unused.    PSD : qlong value.
+    ULong64_t timestamp     : Raw timestamp (ts). Units : ps. Is equal to precise_ts if fine ts is found in the data, or extended_ts if only extended ts is found, or TRIGGER_TIME_TAG if no extended timestamp found
+    ULong64_t extended_ts   : Raw timestamp. Units : ps. Used only if fine timestamp and extended timestamp are found in the data.
+    ULong64_t precise_ts    : Raw timestamp. Units : ps. Used only if fine timestamp mode is found in the data.
+    ULong64_t time          : Absolute time. Units : ps. This field must be filled by the user (i.e., the program using this class).
+    Int_t     rel_time      : Relative time in the event. Units : ps. This field must be filled by the user (i.e., the program using this class).
  */
 
 //////////////////////////////////////
@@ -95,26 +103,26 @@ int main(int argc, char** argv)
 
   uint64_t time_window = 2e6 ; // ps
 
-  std::vector<int> trigger_labels;
-  std::vector<int> trigger_boards;
+  std::vector<u_int> trigger_labels;
+  std::vector<u_int> trigger_boards;
 
   auto printHelp = [](){ 
     print("caen2root usage");
-    print("-e --ts-evt-build     [0 or 1] (default 0). Perform event building based on the raw timestamp instead of the absolute time (usually corrected by cfd).");
-    print("-f --files            [caen file name (include wildcards * and ? ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\"))] ");
-    print("-F --files-nb         [caen file name (include wildcards * and ? ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\"))] [nb_files (-1 = all, 1.e3 (=1000) format accepted)]");
-    print("-g --group            [0 or 1] (default 1) : Sets the output format. 0 : plain tree with additionnal event number and multiplicity fields. 1 : each leaf is a vector.");
-    print("-h --help             print this help");
-    print("-n                    [number of hits (-1 = all, 1.e3 (=1000) format accepted)]");
-    print("-o --output           [output path]");
-    print("   --trace-analysis   [0 or 1] (default 1). Perform trace analysis (so far, only cfd is implemented).");
-    print("   --trace-storing    [0 or 1] (default 0). Store trace in the root tree.");
-    print("-T --timeshifts       [filename] : List of timestamp shifts. Format : in each line : global_label timeshift.");
+    print("-e --ts-evt-build      [0 or 1] (default 0). Perform event building based on the raw timestamp instead of the absolute time (usually corrected by cfd).");
+    print("-f --files             [caen file name (include wildcards * and ? ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\"))] ");
+    print("-F --files-nb          [caen file name (include wildcards * and ? ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\"))] [nb_files (-1 = all, 1.e3 (=1000) format accepted)]");
+    print("-g --group             [0 or 1] (default 1) : Sets the output format. 0 : plain tree with additionnal event number and multiplicity fields. 1 : each leaf is a vector.");
+    print("-h --help              print this help");
+    print("-n                     [number of hits (-1 = all, 1.e3 (=1000) format accepted)]");
+    print("-o --output            [output path]");
+    print("   --trace-analysis    [0 or 1] (default 1). Perform trace analysis (so far, only cfd is implemented).");
+    print("   --trace-storing     [0 or 1] (default 0). Store trace in the root tree.");
+    print("-T --timeshifts        [filename] : List of timestamp shifts. Format : in each line : global_label timeshift[ns].");
     print("-t --trigger :");
     print("            -l --label [global_label(16 x boardID + channelID)]]");
     print("            -b --board [boardID]] ");
     print("            -f --file  [filename (containing a list of global_labels)]]");
-    print("-tw --time-window     [time_window (float, in ns)] (default 2000 ns) ");
+    print("-tw --time-window      [time_window (float, in ns)] (default 2000 ns) ");
     print();
     print("example of a command line including all the above options :");
     print();
@@ -177,6 +185,7 @@ int main(int argc, char** argv)
       {
         iss >> temp;
         timeshifts.load(temp);
+        // timeshifts*=1000;
       }
       else if (temp == "--trace-analysis")
       {
@@ -245,9 +254,9 @@ int main(int argc, char** argv)
       auto & inHit = reader.getHit(); // Aliasing the internal hit of the reader
 
       RootCaenEvent outEvent(storeTraces);
-      RootCaenHit outHit(storeTraces);
-      size_t evtNb = 0;
-      int evtMult = 0;
+      RootCaenHit   outHit  (storeTraces);
+      size_t  evtNb   = 0;
+      int     evtMult = 0;
 
       if (group) outEvent.writeTo(tree);
       else
@@ -265,17 +274,17 @@ int main(int argc, char** argv)
       double timeFill = 0;
       double timeWrite = 0;
 
-      // to investigate : might not be optimized
+      // To investigate : might not be optimized
       // Pre-declaration of this piece of code
       auto fillTree = [&]() -> void
       {
         // 3. Perform the event building 
-        Timer timerEvtBuild;
+          Timer timerEvtBuild;
         eventBuilder.fast_event_building(time_window);
-        timeEvtBuild += timerEvtBuild.Time();
+          timeEvtBuild += timerEvtBuild.Time();
 
         // 4. Write the events to the ROOT tree
-        for (auto const & event : eventBuilder)
+        for (auto const & event : eventBuilder)// Loop over all the event in buffer :
         {
           evtMult = event.size();
 
@@ -284,47 +293,45 @@ int main(int argc, char** argv)
         #endif //TRIGGER
 
           // 4.1 Apply the trigger
-          static thread_local auto trigger_label = !trigger_labels.empty();
-          bool trigger = true;
+          static thread_local bool trigger; trigger = true;
+          static thread_local bool trigger_label = !trigger_labels.empty();
           if (trigger_label) 
           {
             trigger = false;
-            for (auto const & hit_i : event) 
-            {
-              if (Colib::found(trigger_labels, eventBuilder[hit_i].label)) trigger = true;
-            }
+            for (auto const & hit_i : event) if (Colib::found(trigger_labels, eventBuilder[hit_i].label)) trigger = true;
           }
           
-          // 4.2 Apply the trigger
           if (trigger) 
           {
+            // 4.2 Write the event
             for (auto const & hit_i : event)
             {
+              // Calculate the relative time
               if (group)
               {
-                Timer timerCopy;
+                  Timer timerCopy;
                 outEvent.push_back(eventBuilder[hit_i]);
-                timeCopy += timerCopy.Time();
+                  timeCopy += timerCopy.Time();
               }
               else
               {
-                Timer timerCopy;
+                eventBuilder[hit_i].rel_time = eventBuilder[hit_i].time - eventBuilder[0].time;
+                  Timer timerCopy;
                 outHit.copy(eventBuilder[hit_i], false);
-                timeCopy += timerCopy.Time();
-                Timer timerFill;
+                  timeCopy += timerCopy.Time();
+                  Timer timerFill;
                 tree -> Fill();
-                timeFill += timerFill.Time();
-
+                  timeFill += timerFill.Time();
                 ++evtNb;
               }
             }
             if (group)
             {
-              Timer timerFill;
+              // Colib::printPause(outEvent);
+                Timer timerFill;
               tree -> Fill();
+                timeFill += timerFill.Time();
               outEvent.clear();
-              timeFill += timerFill.Time();
-              
               ++outEvent.evtNb;
             }
           }
@@ -338,37 +345,41 @@ int main(int argc, char** argv)
       while(true)
       // while(reader.readHit())
       {
-        Timer timerRead;
+          Timer timerRead;
         if (!reader.readHit()) break;
-        timeRead += timerRead.Time();
+          timeRead += timerRead.Time();
         if (hitsMaxSet && nbHitsMax < reader.nbHits()) break;
         if (reader.nbHits() > 0 && reader.nbHits() % int(1e5) == 0) printsln(nicer_double(reader.nbHits(), 1), "    ");
 
         // 1. Apply the cfd
-        Timer timerCFD;
+          Timer timerCFD;
         if (applyCFD && inHit.getTrace() && !inHit.getTrace() -> empty() && useCFD[inHit.board_ID])
         {
           CFD cfd(*inHit.getTrace(), CFD::sShifts[inHit.board_ID], CFD::sFractions[inHit.board_ID]);
-          inHit.time = inHit.extended_ts + cfd.findZero(CFD::sThresholds[inHit.board_ID]) * CaenDataReader1725::ticks_to_ps;
+          auto zero = cfd.findZero(CFD::sThresholds[inHit.board_ID]);
+               if (zero==CFD::noSignal) {inHit.time = inHit.precise_ts; debug("noSignal");}
+          else if (zero==CFD::noZero  ) {inHit.time = inHit.precise_ts; debug("noZero");}
+          else                          inHit.time = inHit.extended_ts + zero * CaenDataReader1725::ticks_to_ps;
         }
         else inHit.time = inHit.precise_ts;
-        timeCFD += timerCFD.Time();
+          timeCFD += timerCFD.Time();
 
         //1.1 Apply the time shifts if registered
-        Timer timerTShift;
+          Timer timerTShift;
         if (static_cast<size_t>(inHit.label) < timeshifts.size()) 
         {
+          print(timeshifts[inHit.label]);
           inHit.timestamp += timeshifts[inHit.label];
           inHit.time      += timeshifts[inHit.label];
         }
-        timeTShift += timerTShift.Time();
+          timeTShift += timerTShift.Time();
 
         // 2. Fill the event builder buffer
-        Timer timerCopy;
-
+        
+          Timer timerCopy;
         if (eventBuilder.fill_buffer(inHit)) 
         {
-          timeCopy += timerCopy.Time();
+            timeCopy += timerCopy.Time();
           continue; // Continue the loop as long as the buffer is not filled
         }
         // (this piece of code is reached only when the buffer is full)
@@ -383,19 +394,19 @@ int main(int argc, char** argv)
       print();
       if (group) print(tree->GetEntries(), "events in the tree");
       else       print(tree->GetEntries(), "hits in the tree");
-      Timer timerFill;
+        Timer timerFill;
       tree->Write();
-      timeFill += timerFill.Time();
+        timeFill += timerFill.Time();
       rootFile->Close();
       
-      if (true)
+      if (false)
       {
-        print("timeRead", timeRead);
-        print("timeCFD", timeCFD);
-        print("timeEvtBuild", timeEvtBuild);
-        print("timeCopy", timeCopy);
-        print("timeFill", timeFill);
-        print("timeWrite", timeWrite);
+        print("timeRead", timeRead/1000, "ms");
+        print("timeCFD", timeCFD/1000, "ms");
+        print("timeEvtBuild", timeEvtBuild/1000, "ms");
+        print("timeCopy", timeCopy/1000, "ms");
+        print("timeFill", timeFill/1000, "ms");
+        print("timeWrite", timeWrite/1000, "ms");
       }
 
       print(rootFile->GetName(), "written");
@@ -405,6 +416,3 @@ int main(int argc, char** argv)
   print(timer());
   return 0;
 }
-//-f coulexRU_i3147_3005_0000.caendat -n 1e5
-
-// g++ -o caen2root caen2root.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2
