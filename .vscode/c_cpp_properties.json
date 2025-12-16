@@ -5,7 +5,8 @@
             "includePath": [
                 "${default}",
                 "~/miniconda3/envs/work-env/include/",
-                "/home/corentin/Installation/CaenLibs/**"
+                "/home/corentin/Installation/CaenLibs/**",
+                "/mnt/c/Users/coren/OneDrive/CNRS/WarsawReader/**"
             ],
             "defines": [],
             "cStandard": "c17",

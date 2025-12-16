@@ -3,7 +3,9 @@
 #include "CaenLib/RootReader.hpp" // You can simply source CaenLib folder for a global access , no installation required
 #include "LibCo/libCo.hpp"
 
-void rootReaderExample(std::vector<std::string> filenames, int nbHitsMax = -1)
+// using namespace Colib // This is recommended if you want to keep a code easier to read, although use it only in .cpp or .C files
+
+void rootReaderExample(std::vector<std::string> filenames, std::string program_str = "print", int nbHitsMax = -1)
 {
   for (auto const & filename : filenames)
   {
@@ -23,7 +25,7 @@ void rootReaderExample(std::vector<std::string> filenames, int nbHitsMax = -1)
     // ---------------------------------------------- //
     while(reader.readNextEvent()) 
     {
-      print(reader.getEvent());
+      print(reader.getEvent()); // Printing the whole event
       // ---------------------------------------- //
       // C. Looping through the hits in the event //
       // ---------------------------------------- //
@@ -32,13 +34,14 @@ void rootReaderExample(std::vector<std::string> filenames, int nbHitsMax = -1)
       // 1. range-based loop (prettier)
       // for (auto const & hit : reader.getEvent())
       // 2. Classic loop, get access to the hit index in the event hit_i :
-      for (size_t hit_i = 0; hit_i<reader.getEvent().size(); ++hit_i)
-      {
-        auto const & hit = reader.getEvent()[hit_i]; // Alias to the hit to read
+      for (size_t hit_i = 0; hit_i<reader.getEvent().size(); ++hit_i) 
+      { // Printing hit by hit
+        auto const & hit = reader.getEvent()[hit_i]; // Alias to the hit to read (not efficient because creating a hit)
         print(hit);                                  // Prints the hit to console
-        auto const & Ecal   = hit.adc  * 1 + 0;      // Calibration example
-        auto const & time_s = hit.time * 1e12 ;      // Converting the absolute time in ps to seconds
+        // auto const & Ecal   = hit.adc  * 1 + 0;      // Calibration example
+        // auto const & time_s = hit.time * 1e12 ;      // Converting the absolute time in ps to seconds
       }
+      Colib::pause();
     }
   }
 }
@@ -51,8 +54,10 @@ int main(int argc, char** argv)
     print("rootReaderExample usage : ./rootReaderExample [[parameters]]");
     print("-f [filename.root or filenames*.root]");
     print("-n [number of hits]");
+    print("-p [name]: What program to run. Possibilities : print dt. Default : print");
   }
   std::string command;
+  std::string program;
   std::vector<std::string> filenames;
   int nb_hits = -1;
   while(iss >> command)
@@ -69,5 +74,5 @@ int main(int argc, char** argv)
     }
   }
   if (filenames.empty()) Colib::throw_error("No file !!");
-  rootReaderExample(filenames, nb_hits);
+  rootReaderExample(filenames, program, nb_hits);
 }

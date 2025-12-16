@@ -272,6 +272,7 @@ int main(int argc, char** argv)
       double timeEvtBuild = 0;
       double timeCopy = 0;
       double timeFill = 0;
+      double timeClear = 0;
       double timeWrite = 0;
 
       // To investigate : might not be optimized
@@ -331,7 +332,9 @@ int main(int argc, char** argv)
                 Timer timerFill;
               tree -> Fill();
                 timeFill += timerFill.Time();
+                Timer timerClear;
               outEvent.clear();
+                timeClear += timerClear.Time();
               ++outEvent.evtNb;
             }
           }
@@ -341,6 +344,9 @@ int main(int argc, char** argv)
 
         eventBuilder.clear();
       };
+
+      int nbNoSignal = 0;
+      int nbNoZero = 0;
 
       while(true)
       // while(reader.readHit())
@@ -356,10 +362,11 @@ int main(int argc, char** argv)
         if (applyCFD && inHit.getTrace() && !inHit.getTrace() -> empty() && useCFD[inHit.board_ID])
         {
           CFD cfd(*inHit.getTrace(), CFD::sShifts[inHit.board_ID], CFD::sFractions[inHit.board_ID]);
-          auto zero = cfd.findZero(CFD::sThresholds[inHit.board_ID]);
-               if (zero==CFD::noSignal) {inHit.time = inHit.precise_ts; debug("noSignal");}
-          else if (zero==CFD::noZero  ) {inHit.time = inHit.precise_ts; debug("noZero");}
-          else                          inHit.time = inHit.extended_ts + zero * CaenDataReader1725::ticks_to_ps;
+          auto zero = cfd.findZero();
+          // auto zero = cfd.findZero(CFD::sThresholds[inHit.board_ID]);
+               if (zero==CFD::noSignal) {inHit.time = inHit.precise_ts; ++nbNoSignal; printsln("noSignal", nbNoSignal, "    ");}
+          else if (zero==CFD::noZero  ) {inHit.time = inHit.precise_ts; ++nbNoZero  ; printsln("noZero"  , nbNoZero  , "    ");}
+          else                           inHit.time = inHit.extended_ts + zero * CaenDataReader1725::ticks_to_ps;
         }
         else inHit.time = inHit.precise_ts;
           timeCFD += timerCFD.Time();
@@ -392,19 +399,20 @@ int main(int argc, char** argv)
 
       print();
       if (group) print(tree->GetEntries(), "events in the tree");
-      else       print(tree->GetEntries(), "hits in the tree");
-        Timer timerFill;
+      else       print(tree->GetEntries(), "hits in the tree"  );
+        Timer timerWrite;
       tree->Write();
-        timeFill += timerFill.Time();
+        timeWrite += timerWrite.Time();
       rootFile->Close();
       
-      if (false)
+      if (true)
       {
         print("timeRead", timeRead/1000, "ms");
         print("timeCFD", timeCFD/1000, "ms");
         print("timeEvtBuild", timeEvtBuild/1000, "ms");
         print("timeCopy", timeCopy/1000, "ms");
         print("timeFill", timeFill/1000, "ms");
+        print("timeClear", timeClear/1000, "ms");
         print("timeWrite", timeWrite/1000, "ms");
       }
 

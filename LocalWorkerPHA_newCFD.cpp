@@ -292,134 +292,112 @@ protected:
   size_t m_size = 0;
 
   
-  public:
-    
-    enum Type {BOARD, LABEL, UNDEFINED};
-    int sType = UNDEFINED;
-    constexpr void setType(int type) noexcept {sType = type;}
+public:
+  
+  enum Type {BOARD, LABEL, UNDEFINED};
+  int sType = UNDEFINED;
+  constexpr void setType(int type) noexcept {sType = type;}
 
-    using Shifts     = std::unordered_map<int, int   >;
-    //using Thresholds = std::unordered_map<int, double>;
-    using Fractions  = std::unordered_map<int, double>;
+  using Shifts     = std::unordered_map<int, int   >;
+  //using Thresholds = std::unordered_map<int, double>;
+  using Fractions  = std::unordered_map<int, double>;
 
-    Shifts     sShifts     = {};
-    //static inline Thresholds sThresholds = {};
-    Fractions  sFractions  = {};
-    
-    template<typename K, typename V> 
-    static inline bool key_found(std::unordered_map<K,V> const & map, K const & key)
+  Shifts     sShifts     = {};
+  //static inline Thresholds sThresholds = {};
+  Fractions  sFractions  = {};
+  
+  template<typename K, typename V> 
+  static inline bool key_found(std::unordered_map<K,V> const & map, K const & key)
+  {
+    typename std::unordered_map<K, V>::const_iterator it = map.find(key);
+    return it != map.end();
+  }
+
+
+  void loadParameters(std::string filename)
+  {
+    std::ifstream paramFile(filename);
+    std::string line;
+    std::getline(paramFile, line);
+
+    // Get the header. Anything can be written in it, but at least BOARD or LABELS
+    // in order to know if the parameters are board wide and the label the BOARD_ID,
+    // or detector per detector with the label the global label (BOARD_ID*16 + Channel_ID*2 + subchannel_ID) 
+        if (line.find("BOARDS") != std::string::npos) sType = BOARD;
+    else if (line.find("LABELS") != std::string::npos) sType =LABEL;
+    else std::cout << CFD::RED << "CFD::loadParameters " << filename << " : format issue. Should begin with LABELS or BOARDS" << RESET << std::endl; 
+    //=  should we replace the data?
+    bool replace=false;
+    while(std::getline(paramFile, line))
     {
-      typename std::unordered_map<K, V>::const_iterator it = map.find(key);
-      return it != map.end();
-    }
-
-
-    void loadParameters(std::string filename)
-    {
-      std::ifstream paramFile(filename);
-      std::string line;
-      std::getline(paramFile, line);
-
-      // Get the header. Anything can be written in it, but at least BOARD or LABELS
-      // in order to know if the parameters are board wide and the label the BOARD_ID,
-      // or detector per detector with the label the global label (BOARD_ID*16 + Channel_ID*2 + subchannel_ID) 
-          if (line.find("BOARDS") != std::string::npos) sType = BOARD;
-      else if (line.find("LABELS") != std::string::npos) sType =LABEL;
-      else std::cout << CFD::RED << "CFD::loadParameters " << filename << " : format issue. Should begin with LABELS or BOARDS" << RESET << std::endl; 
-      //=  should we replace the data?
-      bool replace=false;
-      while(std::getline(paramFile, line))
+      // Get the parameter of each board or each detector
+      std::istringstream iss(line);
+      int label; iss >> label;
+    
+      if( key_found(sShifts,label))
       {
-        // Get the parameter of each board or each detector
-        std::istringstream iss(line);
-        int label; iss >> label;
-      
-        if( key_found(sShifts,label))
-    {
-    double tmp_d;
-        iss >> tmp_d; sShifts    [label]= tmp_d;
-        //iss >> tmp_d; sThresholds  [label]= tmp_d;
-        iss >> tmp_d; sFractions   [label]= tmp_d;
-    }
-    else
-    {
-    double tmp_d;
-        iss >> tmp_d; sShifts    .emplace(label, tmp_d);
-        //iss >> tmp_d; sThresholds.emplace(label, tmp_d);
-        iss >> tmp_d; sFractions .emplace(label, tmp_d);
-    }
-        
+      double tmp_d;
+          iss >> tmp_d; sShifts    [label]= tmp_d;
+          //iss >> tmp_d; sThresholds  [label]= tmp_d;
+          iss >> tmp_d; sFractions   [label]= tmp_d;
+      }
+      else
+      {
+      double tmp_d;
+          iss >> tmp_d; sShifts    .emplace(label, tmp_d);
+          //iss >> tmp_d; sThresholds.emplace(label, tmp_d);
+          iss >> tmp_d; sFractions .emplace(label, tmp_d);
       }
     }
+  }
 
   //= added
   //= note:this will (obviously) overwrite whatever's already there so it's recommended to read the file first
-    void saveParameters(std::string filename)
-    {
-      
+  void saveParameters(std::string filename)
+  {
     std::ofstream paramFile(filename);
-      if(sType==BOARD){
-      paramFile<< "BOARDS \n";
-      }
+    if(sType==BOARD){
+    paramFile<< "BOARDS \n";
+    }
       
     if(sType ==LABEL)
-      {
-      paramFile<< "LABELS";
-      }   
+    {
+    paramFile<< "LABELS";
+    }   
     
     for (auto pair: sShifts)
-      {
+    {
       int key=pair.first;
-    paramFile<< key <<"\t"<<sShifts[key] << "\t"<<sFractions[key]<<"\n";
-    //paramFile<< key <<"\t"<<sShifts[key] <<"\t" << sThresholds[key]<<"\t"<<sFractions[key]<<"\n";
-    
-    //keys.push_back(kv.first);
+      paramFile<< key <<"\t"<<sShifts[key] << "\t"<<sFractions[key]<<"\n";
+      //paramFile<< key <<"\t"<<sShifts[key] <<"\t" << sThresholds[key]<<"\t"<<sFractions[key]<<"\n";
+      
+      //keys.push_back(kv.first);
     }
     paramFile.close();
-    
-  
-
-    }
+  }
   //= added
-    void para_print_test()
+  void para_print_test()
+  {
+    if(sType=BOARD)
     {
-      if(sType=BOARD)
-      {
       printf("Per board params \n");
-      }
-      if(sType == LABEL)
-      {
+    }
+    if(sType == LABEL)
+    {
       printf("Per Glabel params \n");
-      }
-      //std::vector<int> keys; keys.reserve(sShifts.size());
-      for (auto pair: sShifts)
-      {
+    }
+    //std::vector<int> keys; keys.reserve(sShifts.size());
+    for (auto pair: sShifts)
+    {
       int key=pair.first;
       
       std::cout<<"label:" << key <<"\t shift:"<<sShifts[key] <<"\t fraction:"<<sFractions[key]<<"\n";
       //std::cout<<"label:" << key <<"\t shift:"<<sShifts[key] <<"\t threshold:" << sThresholds[key]<<"\t fraction:"<<sFractions[key]<<"\n";
       
       //keys.push_back(kv.first);
-      }
-      std::cout<<"End";
     }
-    
-    // TODO Parameters :
-    
-
-
-  /*
-    class Param
-    {
-    public:
-      
-      
-    };*/
-
-  
-  
-    
-    
+    std::cout<<"End";
+  }
 };
 #endif //CFD_HPP
 

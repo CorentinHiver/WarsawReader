@@ -16,15 +16,13 @@ protected:
   // Some helper functions (from libCo): //
   /////////////////////////////////////////
 
-  // Vector functions
   template <typename T>
-  T minimum_index(std::vector<T> const & vector)
+  std::tuple<T, size_t> minimum_and_index(std::vector<T> const & vector)
   {
-    return std::distance(std::begin(vector), std::min_element(std::begin(vector), std::end(vector)));
+    auto const & min_it = std::min_element(std::begin(vector), std::end(vector));
+    auto const & min_index = static_cast<size_t>(std::distance(std::begin(vector), std::min_element(std::begin(vector), std::end(vector))));
+    return std::make_tuple(*min_it, min_index);
   }
-
-  template <typename T>
-  T minimum(std::vector<T> const & vector) {return *std::min_element(std::begin(vector), std::end(vector));}
 
   // Type name
   using size_t = std::size_t;
@@ -137,11 +135,16 @@ public:
   /// @brief Finds the last zero crossing before the cfd trace reaches its minimum
   double findZero()
   {
-    if (0 < minimum(cfd)) return noSignal;                // If never crosses zero, returns noSignal
-    auto const & min_bin = minimum_index(cfd);        // Get the minimum bin number
-    for (size_t bin_j = min_bin; bin_j>0; --bin_j){   // Looping back to look for the zero crossing
+    auto minimum_it = std::min_element(std::begin(cfd), std::end(cfd));
+    auto const & minimum = *minimum_it;
+    if (0 < minimum) return noSignal;            // If never crosses zero, returns noSignal
+    auto const & min_bin = std::distance(std::begin(cfd), minimum_it); // Get the minimum bin number
+
+    // if (0 < minimum(cfd)) return noSignal;            // If never crosses zero, returns noSignal
+    // auto const & min_bin = minimum_index(cfd);        // Get the minimum bin number
+
+    for (size_t bin_j = min_bin; bin_j>0; --bin_j)    // Looping back to look for the zero crossing
       if (cfd[bin_j] > 0) return interpolate0(bin_j); // Zero crossing found, return the interpolated zero crossing between samples before and after
-    }
     return noZero; // The 0 crossing happened before the first sample, so impossible to determine it
   }
   

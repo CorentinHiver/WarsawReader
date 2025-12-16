@@ -70,7 +70,7 @@ public:
       m_tree->GetEntry(m_cursor++);
       return true;
     }
-    return false;
+    return false; 
   }
 
   bool readNextEvent()
@@ -110,7 +110,17 @@ public:
   void Scan(bool stop = 0)
   {
     std::string user_input;
-    while(this -> readNextHit())
+    if (m_grouped) while(this -> readNextEvent())
+    {
+      auto const & nbLines = Colib::getTerminalRows()-2;
+      if (!stop && (m_cursor) % nbLines == 0) {
+        println("Press enter for continuing, enter q for stopping (or Ctrl+C of course) ");
+        std::getline(std::cin, user_input);
+        if (user_input == "q") break;
+      }
+      print(m_event);
+    }
+    else while(this -> readNextHit())
     {
       auto const & nbLines = Colib::getTerminalRows()-2;
       if (!stop && (m_cursor) % nbLines == 0) {

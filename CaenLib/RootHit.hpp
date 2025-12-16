@@ -360,8 +360,46 @@ namespace CaenDataReader
       if (other.trace)
       {
         trace         = new Trace;
-        *trace        = *other.trace;
+        traceEfficientCopy(other.trace);
       }
+    }
+
+    RootHit (
+      UInt_t    _label,
+      UShort_t  _board_ID,
+      UShort_t  _channel_ID,
+      UShort_t  _subchannel_ID,
+      Int_t     _adc,
+      Int_t     _qlong,
+      ULong64_t _timestamp,
+      ULong64_t _time,
+      Int_t     _rel_time,
+      Trace*    _trace = nullptr
+    ) noexcept : 
+      label         (_label        ),
+      board_ID      (_board_ID     ),
+      channel_ID    (_channel_ID   ),
+      subchannel_ID (_subchannel_ID),
+      adc           (_adc          ),
+      qlong         (_qlong        ),
+      timestamp     (_timestamp    ),
+      time          (_time         ),
+      rel_time      (_rel_time     )
+    {
+      if (_trace)
+      {
+        handle_traces = true;
+        trace         = new Trace;
+        traceEfficientCopy(_trace);
+      }
+    }
+
+    void traceEfficientCopy(Trace* _trace)
+    {
+      trace->reserve(_trace->size());
+      trace->clear();
+      trace->resize(_trace->size());
+      std::copy(_trace->begin(), _trace->end(), trace->begin());
     }
 
     RootHit const & copy(RootHit const & other, bool copyTrace = true)
@@ -380,15 +418,12 @@ namespace CaenDataReader
       if (copyTrace && handle_traces && other.trace)
       {
         if (!trace) trace = new Trace;
-        *trace = *other.trace;
+        traceEfficientCopy(other.trace);
       }
       return other;
     }
 
-    RootHit const & operator=(RootHit const & other)
-    {
-      return this -> copy(other);      
-    }    
+    RootHit const & operator=(RootHit const & other) {return this -> copy(other);}    
   };
 };
 

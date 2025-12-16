@@ -118,30 +118,24 @@ namespace Colib
     else return false;
   }
   
-  template <typename T>
-  int firstIndexIn(std::vector<T> & vec, T & t)
+template <typename T>
+int firstIndexIn(const std::vector<T>& vec, const T& t) 
   {
-    return (std::distance(vec.begin(), std::find(vec.begin(), vec.end(), t) != vec.end()));
+    auto it = std::find(vec.begin(), vec.end(), t);
+    if (it != vec.end()) return static_cast<int>(std::distance(vec.begin(), it));
+    return -1;
   }
+  // template <typename T>
+  // int firstIndexIn(std::vector<T> & vec, T const & t)
+  // {
+  //   return (std::distance(vec.begin(), std::find(vec.begin(), vec.end(), t) != vec.end()));
+  // }
   
-  template <typename T>
-  int firstIndexIn(std::vector<T> & vec, T const & t)
-  {
-    return (std::distance(vec.begin(), std::find(vec.begin(), vec.end(), t) != vec.end()));
-  }
-  
-  template <typename T>
-  int firstIndexIn(std::vector<T> const & vec, T & t)
-  {
-    return (std::distance(vec.begin(), std::find(vec.begin(), vec.end(), t) != vec.end()));
-  }
-  
-  template <typename T>
-  int firstIndexIn(std::vector<T> const & vec, T const & t)
-  {
-    return (std::distance(vec.begin(), std::find(vec.begin(), vec.end(), t) != vec.end()));
-  }
-
+  // template <typename T>
+  // int firstIndexIn(std::vector<T> const & vec, T & t)
+  // {
+  //   return (std::distance(vec.begin(), std::find(vec.begin(), vec.end(), t) != vec.end()));
+  // }
 }    
 
 

@@ -53,8 +53,10 @@ namespace CaenDataReader
     void writeTo(TTree* tree)
     {
       tree->ResetBranchAddresses();
-      tree->Branch     (      "evtNb"        , &evtNb                );
-      tree->Branch     (      "mult"         , &mult                 );
+      tree->Branch("evtNb"        , &evtNb        );
+      tree->Branch("mult"         , &mult         );
+      
+
       createBranchArray(tree, "label"        , &label        , "mult");
       createBranchArray(tree, "board_ID"     , &board_ID     , "mult");
       createBranchArray(tree, "channel_ID"   , &channel_ID   , "mult");
@@ -64,6 +66,8 @@ namespace CaenDataReader
       createBranchArray(tree, "timestamp"    , &timestamp    , "mult");
       createBranchArray(tree, "time"         , &time         , "mult");
       createBranchArray(tree, "rel_time"     , &rel_time     , "mult");
+
+      tree->Print();
     }
 
     TTree * readFrom(TTree* tree)
@@ -132,10 +136,9 @@ namespace CaenDataReader
       return out;
     }
 
-    constexpr static inline size_t maxEvt = 1000;
-
     size_t evtNb = 0;
     int    mult  = 0;
+    constexpr static inline size_t maxEvt = 1000;
     Int_t     label         [maxEvt];
     Int_t     board_ID      [maxEvt];
     Int_t     channel_ID    [maxEvt];
@@ -150,6 +153,15 @@ namespace CaenDataReader
   class RootEventVec 
   {
     // Helper functions :
+
+    /// @brief Create a branch for a given array and name
+    /// @param name_size: The name of the leaf that holds the size of the array
+    template<class T>
+    auto createBranchArray(TTree* tree, std::string const & name, T * array, std::string const & name_size, int buffsize = 64000)
+    {
+      auto const & type_root_format = name+"["+name_size+"]/"+typeRoot(**array);
+      return (tree -> Branch(name.c_str(), array, type_root_format.c_str(), buffsize));
+    }
 
   public:
     RootEventVec(bool handle_traces = false)
