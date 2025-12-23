@@ -24,7 +24,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
   if (filenames.empty()) {print("No file !"); return 1;}
   Timer timer;
   bool max_events = (nb_events_max>0);
-  std::unordered_map<u_short, int> cfd_shifts = {
+  std::unordered_map<UChar_t, int> cfd_shifts = {
     {0, 5},
     {1, 5},
     {6, 2},
@@ -32,7 +32,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
     {8, 2}
   };
 
-  std::unordered_map<u_short, double> cfd_thresholds = {
+  std::unordered_map<UChar_t, double> cfd_thresholds = {
     {0, -50 },
     {1, -50 },
     {6, -500},
@@ -40,7 +40,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
     {8, -500}
   };
 
-  auto constexpr static glabel = [](RootCaenHit const & hit){
+  auto constexpr static glabel = [](Caen1725RootHit const & hit){
     return hit.board_ID * 16 + hit.channel_ID * 2 + hit.subchannel_ID;
   };
 
@@ -140,7 +140,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
       if (hit.adc < 10) continue;
 
       if (  ((max_events) ? (reader.nbHits() < size_cast(nb_events_max)) : (true)) 
-         && event_builder.fill_buffer(hit)) continue;
+         && event_builder.fill_buffer(std::forward<Caen1725RootHit>(hit))) continue;
 
       ////////////////////
       // Event Building //

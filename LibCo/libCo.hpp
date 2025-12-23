@@ -708,11 +708,17 @@ namespace Colib
 
   using Point = std::pair<double, double>;
 
-  constexpr static Point rotate(double const & x, double const & y, double const & angle) 
+#ifdef Cpp17
+  constexpr 
+#endif //Cpp17
+  static Point rotate(double const & x, double const & y, double const & angle) 
   {
     return Point(x * cos(angle) - y * sin(angle), x * sin(angle) + y * cos(angle));
   }
-  constexpr static Point rotate(Point const & point, double const & angle) 
+#ifdef Cpp17
+  constexpr 
+#endif //Cpp17
+  static Point rotate(Point const & point, double const & angle) 
   {
     return Point(point.first * cos(angle) - point.second * sin(angle), point.first * sin(angle) + point.second * cos(angle));
   }

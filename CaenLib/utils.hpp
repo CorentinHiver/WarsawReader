@@ -92,14 +92,18 @@ namespace CaenDataReader1725
   template<class Type>
   inline std::istream& read_data(std::istream& data, Type * buff) 
   {
+  #ifdef Cpp17
     static_assert(std::is_trivially_copyable_v<Type>);
+  #endif //Cpp17
     return data.read(reinterpret_cast<char*>(buff), sizeof(Type));
   }
 
   template<class Type>
   inline std::istream& read_data(std::istream& data, Type * buff, size_t & size_read) 
   {
+  #ifdef Cpp17
     static_assert(std::is_trivially_copyable_v<Type>);
+  #endif //Cpp17
     auto & ret = read_data(data, buff);
     if (ret) size_read += sizeof(Type);
     return ret;

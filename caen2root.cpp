@@ -178,14 +178,14 @@ int main(int argc, char** argv)
         double tmp_d = 0; iss >> tmp_d;
         nbHitsMax = static_cast<size_t>(tmp_d);
         hitsMaxSet = true;
-        print("Maximum hits per file =", nbHitsMax);
+        print("Maximum hits per file =", nicer_double(nbHitsMax));
       }
       else if (temp == "-N")
       {
         double tmp_d = 0; iss >> tmp_d;
         nbHitsMaxTot = static_cast<size_t>(tmp_d);
         hitsMaxTotSet = true;
-        print("Maximum hits total", nbHitsMaxTot);
+        print("Maximum hits total", nicer_double(nbHitsMaxTot));
       }
       else if (temp == "-o")
       {
