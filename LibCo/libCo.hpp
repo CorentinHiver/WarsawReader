@@ -65,6 +65,10 @@
 #define Cpp17 (__cplusplus >= 201702L)
 #define Cpp14 (__cplusplus >= 201402L)
 
+#define ROOTCpp20 defined(__CLING__) && defined(__CLING__CXX20__)
+#define ROOTCpp17 defined(__CLING__) && defined(__CLING__CXX17__)
+#define ROOTCpp14 defined(__CLING__) && defined(__CLING__CXX14__)
+
 // Useful overload of operator<< into a std::cout stream :
 
 template <class F, class S> 
@@ -708,17 +712,19 @@ namespace Colib
 
   using Point = std::pair<double, double>;
 
-#ifdef Cpp20
-  constexpr 
-#endif //Cpp20
+#ifdef ROOTCpp17
+  constexpr static Point rotate(double const & x, double const & y, double const & angle) 
+#else
   static Point rotate(double const & x, double const & y, double const & angle) 
+#endif //ROOTCpp17
   {
     return Point(x * cos(angle) - y * sin(angle), x * sin(angle) + y * cos(angle));
   }
-#ifdef Cpp20
-  constexpr 
-#endif //Cpp20
-  static Point rotate(Point const & point, double const & angle) 
+#ifdef ROOTCpp17
+  constexpr static Point rotate(Point const & point, double const & angle) 
+#else
+   static Point rotate(Point const & point, double const & angle) 
+#endif //ROOTCpp17
   {
     return Point(point.first * cos(angle) - point.second * sin(angle), point.first * sin(angle) + point.second * cos(angle));
   }
