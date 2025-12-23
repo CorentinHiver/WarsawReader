@@ -26,7 +26,7 @@ void caendatInspect(std::string filename = "")
   File file(filename);
        if (file.extension() == "caendat")
   {
-    CaenRootReader1725 reader(filename);
+    Caen1725RootInterface reader(filename);
     while(reader.readHit())
     {
       auto const & nbLines = Colib::getTerminalRows();

@@ -56,7 +56,7 @@ namespace CaenDataReader1725
     size_t readHeader(std::istream& data)
     {
       // 1. Size and FI
-      read_buff(&tmp_u32, data, read_size);
+      read_data(data, &tmp_u32, read_size);
       debug("size, FI:", std::bitset<32>(tmp_u32));
       size = getBitField(tmp_u32, 30) * sizeof(uint32_t);
       FI   = getBit     (tmp_u32, 31);
@@ -64,7 +64,7 @@ namespace CaenDataReader1725
       if (FI)
       {
         // 2. Format
-        read_buff(&tmp_u32, data, read_size);
+        read_data(data, &tmp_u32, read_size);
         debug("Format:", std::bitset<32>(tmp_u32));
         NUM_SAMPLES = getBitField (tmp_u32, 15) * 8; // The data stored is NUM_SAMPLES/8 (see doc)
         DP          = getBitField (tmp_u32, 19, 16);

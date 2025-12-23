@@ -12,17 +12,14 @@ namespace CaenDataReader1725
   public:
     CaenReaderBase(std::string const & filename)
     {
-      this->open(filename);
+      open(filename);
     }
-
-    virtual void makePureVirtual(bool const & isVirtual = true) = 0; // To make this class pure virtual
 
     virtual ~CaenReaderBase() {if (p_datafile.is_open()) p_datafile.close();}
 
     virtual void open(std::string const & filename)
     {
-      m_filename = filename  ;
-      caenFile   = m_filename;
+      caenFile = CaenDat(m_filename = filename);
       p_datafile.open(m_filename, std::ios::binary | std::ios::in);
       if (!p_datafile.is_open())
       {
@@ -46,10 +43,12 @@ namespace CaenDataReader1725
     auto const & nbHits() const {return m_nb_hits;}
 
   protected:    
-    size_t m_nb_hits = 0;
+    virtual void makePureVirtual(bool isVirtual = true) = 0; // To make this class pure virtual
+    
+    size_t        m_nb_hits = 0;
     std::ifstream p_datafile;
     std::string   m_filename;
-    CaenDat caenFile;
+    CaenDat       caenFile;
   };
 };
 #endif //CAENREADER_HPP

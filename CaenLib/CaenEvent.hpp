@@ -25,16 +25,16 @@ namespace CaenDataReader1725
 
     CaenEvent (uint8_t const & _EX) : EX(_EX) {}
 
-    void static skip(std::istream& data, int const & nb_samples)
+    void static skip(std::istream& data, int nb_samples)
     {
       CaenDataReader1725::skip(data, sizeof(tmp_u32));
       CaenDataReader1725::skip(data, nb_samples * sizeof(nb_samples));
       CaenDataReader1725::skip(data, 2*sizeof(tmp_u32));
     }
 
-    void read(std::istream& data, int const & nb_samples, bool const & handle_traces)
+    void read(std::istream& data, int nb_samples, bool handle_traces)
     {
-      read_buff(&tmp_u32, data);
+      read_data(data, &tmp_u32);
       debug("TRIGGER_TIME_TAG, CH:", std::bitset<32>(tmp_u32));
       
       TRIGGER_TIME_TAG = getBitField(tmp_u32, 30);
@@ -46,7 +46,7 @@ namespace CaenDataReader1725
         samples.resize(nb_samples);
         for (auto & sample : samples)
         {
-          read_buff(&tmp_u16, data);
+          read_data(data, &tmp_u16);
           sample.sample  = getBitField(tmp_u16, 13);
           sample.DP1     = getBit     (tmp_u16, 14);
           sample.T       = getBit     (tmp_u16, 15);
@@ -58,12 +58,12 @@ namespace CaenDataReader1725
       }
   
       // if (channel.E2)  // TODO: do we need to read EXTRAS2 if it is disabled, i.e. if channel.E2=false ?
-        read_buff(&EXTRAS2, data);
+        read_data(data, &EXTRAS2);
       debug("EXTRAS2", std::bitset<32>(EXTRAS2));
   
       extra = Extra2(EXTRAS2, TRIGGER_TIME_TAG, EX);
       
-      read_buff(&tmp_u32, data);
+      read_data(data, &tmp_u32);
   
       debug("ENERGY, PU, EXTRAS:", std::bitset<32>(tmp_u32));
   
@@ -72,7 +72,7 @@ namespace CaenDataReader1725
       EXTRAS = getBitField (tmp_u32, 25, 16);
     }
   
-    void read(std::istream& data, uint8_t const & _EX, int const & nb_samples, bool const & handle_traces)
+    void read(std::istream& data, uint8_t _EX, int nb_samples, bool handle_traces)
     {
       EX = _EX;
       return read(data, nb_samples, handle_traces);

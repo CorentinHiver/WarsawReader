@@ -101,8 +101,8 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
   for (auto const & filename : filenames)
   {
-    CaenRootReader1725 reader(filename);
-    CaenRootEventBuilder1725 event_builder(reserved_buffer_size);
+    Caen1725RootInterface reader(filename);
+    Caen1725EventBuilder event_builder(reserved_buffer_size);
     while(((max_events) ? (reader.nbHits() < size_cast(nb_events_max)) : (true)) && reader.readHit())
     {
       ////////////////////

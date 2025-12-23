@@ -8,7 +8,7 @@ namespace CaenDataReader1725
   class CaenDat
   {
   public:
-    CaenDat(){}
+    CaenDat() {}
     CaenDat(std::string const & filename) : m_file(filename)
     {
       setup();

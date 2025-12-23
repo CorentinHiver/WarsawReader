@@ -32,11 +32,9 @@ public:
   TTree* connectTree(TTree* tree)
   {
     if (!tree) {error("in connectTree(TTree* tree) : tree is nullptr"); return nullptr;}
-    m_tree = tree;
-    if (m_grouped) m_tree = m_event.readFrom(tree);
-    else
+    m_tree = m_event.readFrom(tree);
+    if (!m_grouped)
     {
-      m_hit  = m_event.readFrom(tree);
       m_tree->SetBranchAddress("evtNb", &m_evtNb);
       m_tree->SetBranchAddress("mult", &m_evtMult);
     }
@@ -134,8 +132,8 @@ public:
 
 private:
 
-  RootCaenHit m_hit;
-  RootCaenEvent m_event;
+  Caen1725RootHit m_hit;
+  Caen1725RootEvent m_event;
 
   TFile *m_file = nullptr;
   TTree *m_tree = nullptr;

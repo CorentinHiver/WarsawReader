@@ -3,7 +3,7 @@
 
 #include "../LibCo/libCo.hpp"
 
-namespace CaenDataReader
+namespace CaenDataReader1725
 {
   //////////////////////
   // Helper Functions //
@@ -68,7 +68,7 @@ namespace CaenDataReader
         }
         else ++m_cursor;
       }
-      error("pas normal");
+      error("ChannelMaskHelper::getID() : pas normal !!");
       return __size__; // We are at the end of the bitset, normally never reaching this part
     }
 
@@ -90,29 +90,33 @@ namespace CaenDataReader
   thread_local uint32_t tmp_u32 = 0 ;
 
   template<class Type>
-  inline std::istream& read_buff(Type * buff, std::istream& data) {return data.read(reinterpret_cast<char*>(buff), sizeof(Type));}
+  inline std::istream& read_data(std::istream& data, Type * buff) 
+  {
+    static_assert(std::is_trivially_copyable_v<Type>);
+    return data.read(reinterpret_cast<char*>(buff), sizeof(Type));
+  }
 
   template<class Type>
-  inline std::istream& read_buff(Type * buff, std::istream& data, size_t & size_read) 
+  inline std::istream& read_data(std::istream& data, Type * buff, size_t & size_read) 
   {
-    auto & ret = read_buff(buff, data);
+    static_assert(std::is_trivially_copyable_v<Type>);
+    auto & ret = read_data(data, buff);
     if (ret) size_read += sizeof(Type);
     return ret;
   }
 
-  inline void skip(std::istream& data, size_t const & size_to_skip) {data.seekg(data.tellg()+static_cast<std::streampos>(size_to_skip));}
-  inline void skip(std::istream& data, size_t const & size_to_skip, size_t & size_read) {
+  inline void skip(std::istream& data, size_t size_to_skip)
+  {
+    data.seekg(static_cast<std::streamoff>(size_to_skip), std::ios::cur);
+  }
+  inline void skip(std::istream& data, size_t size_to_skip, size_t & size_read) {
     skip(data, size_to_skip);
     size_read += size_to_skip;
   }
-}
 
-namespace CaenDataReader1725
-{  
-  // Some constants. Should think of a better way to save this information
   inline constexpr double ticks_to_ns = 4; // ns
   inline constexpr double ticks_to_ps = ticks_to_ns * 1000.; // ps
-  using namespace CaenDataReader;
 }
+
 
 #endif //CaenDataReader1725_UTILS_HPP

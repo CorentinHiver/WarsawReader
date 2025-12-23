@@ -5,36 +5,31 @@
 
 namespace CaenDataReader1725
 {
-  class RootEventBuilder
+  class EventBuilder
   {
     /// @brief Holds the indices of coincident hits in the hit buffer
     using Event = std::vector<size_t>;
 
   public:
-    RootEventBuilder()
+
+    EventBuilder(size_t reserved_buffer_size = (50000ul)) noexcept
     {
-      m_hit_buffer.reserve(m_reserved_buffer_size);
+      m_hit_buffer.reserve(reserved_buffer_size);
     }
 
-    RootEventBuilder(size_t const & reserved_buffer_size) : 
-      m_reserved_buffer_size(reserved_buffer_size)
-    {
-      m_hit_buffer.reserve(m_reserved_buffer_size);
-    }
+    // bool fill_buffer(RootHit const & hit) noexcept
+    // {
+    //   if (m_hit_buffer.size() < m_hit_buffer.capacity())
+    //   {
+    //     m_hit_buffer.emplace_back(hit);
+    //     return true;
+    //   }
+    //   else return false;
+    // }
 
-    bool fill_buffer(RootHit const & hit)
+    bool fill_buffer(RootHit && hit) noexcept
     {
-      if (m_hit_buffer.size() < m_reserved_buffer_size)
-      {
-        m_hit_buffer.emplace_back(hit);
-        return true;
-      }
-      else return false;
-    }
-
-    bool fill_buffer(RootHit && hit)
-    {
-      if (m_hit_buffer.size() < m_reserved_buffer_size)
+      if (m_hit_buffer.size() < m_hit_buffer.capacity())
       {
         m_hit_buffer.emplace_back(std::move(hit));
         return true;
@@ -45,7 +40,7 @@ namespace CaenDataReader1725
     void align()
     {
       Colib::linspace(m_ordered_index, m_hit_buffer.size());
-      std::sort(m_ordered_index.begin(), m_ordered_index.end(), [this](size_t const & i, size_t const & j)
+      std::sort(m_ordered_index.begin(), m_ordered_index.end(), [this](size_t i, size_t j)
       {
         if (m_buildOnTimestamp) return m_hit_buffer[j].timestamp > m_hit_buffer[i].timestamp;
         else                    return m_hit_buffer[j].time      > m_hit_buffer[i].time     ;
@@ -53,7 +48,7 @@ namespace CaenDataReader1725
       m_aligned = true;
     }
 
-    void fast_event_building(Long64_t const & time_window) noexcept
+    void fast_event_building(Long64_t time_window) noexcept
     {
       // 1. Initialize the event buffer
           
@@ -99,8 +94,8 @@ namespace CaenDataReader1725
       m_aligned = false;
     }
 
-    auto const & operator[](size_t const & i) const {return m_hit_buffer[i];}
-    auto & operator[](size_t const & i) {return m_hit_buffer[i];}
+    auto const & operator[](size_t i) const {return m_hit_buffer[i];}
+    auto & operator[](size_t i) {return m_hit_buffer[i];}
 
     auto const & getHitBuffer() const {return m_hit_buffer;}
 
@@ -109,11 +104,10 @@ namespace CaenDataReader1725
     auto begin() const {return m_event_buffer.begin();}
     auto end  () const {return m_event_buffer.end  ();}
 
-    void buildOnTimestamp(bool const & b) {m_buildOnTimestamp = b;}
+    void buildOnTimestamp(bool b) {m_buildOnTimestamp = b;}
 
   private:
 
-    size_t m_reserved_buffer_size = 5000ul;
 
     std::vector<size_t> m_ordered_index;
     std::vector<RootHit> m_hit_buffer;
@@ -125,6 +119,6 @@ namespace CaenDataReader1725
   };
 };
 
-using CaenRootEventBuilder1725 = CaenDataReader1725::RootEventBuilder;
+using Caen1725EventBuilder = CaenDataReader1725::EventBuilder;
 
 #endif //CAENROOTEVENTBUILDER_HPP

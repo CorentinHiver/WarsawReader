@@ -3,20 +3,21 @@
 
 #include "RootHit.hpp"
 #include "CaenReaderBase.hpp"
-
+#include "TROOT.h"
 
 namespace CaenDataReader1725
 {
   /**
- * @brief Reads a .caendat file written by a 1725 board and provides an interface to write in a root files
+ * @brief Reads a .caendat file written by a 1725 board and provides a hit interface to write to a root file
  */
-  class RootReader : public CaenReaderBase
+  class RootInterface : public CaenReaderBase
   {
   public:
-    RootReader(std::string const & filename, bool handle_traces = true) : 
-      CaenReaderBase(filename)
+    /// @brief ROOT I/O handled by the user.
+    RootInterface(std::string const & caenFilename, bool handle_traces = true) : 
+      CaenReaderBase(caenFilename)
     {
-      m_rootHit.handleTraces(handle_traces);
+      handleTraces(handle_traces);
     }
 
     /// @brief DEV - Resets the reader. The user needs to handle closing and/or writting the ROOT interface (TTrees, TFiles...)
@@ -25,14 +26,45 @@ namespace CaenDataReader1725
       m_nb_hits = 0;
     }
 
-    void makePureVirtual(bool const & isVirtual = false) override {print(isVirtual);}; // To make this class real (printed to get rid of the warning)
-
-    RootReader(std::string const & filename, TTree * tree, bool handle_traces = true) : 
-      CaenReaderBase(filename), m_tree(tree)
+    /// @brief Internal ROOT tree. ROOT file I/O handled by the user.
+    RootInterface(std::string const & caenFilename, TTree * tree, bool handle_traces = true) : 
+      CaenReaderBase(caenFilename), m_tree(tree)
     {
-      m_rootHit.handleTraces(handle_traces);
+      handleTraces(handle_traces);
       if (m_tree) m_rootHit.writeTo(m_tree);
-      else Colib::throw_error("in RootReader::RootReader(std::string filename, TTree * tree) : tree is nullptr");
+      else Colib::throw_error("in RootInterface::RootInterface(std::string caenFilename, TTree * tree) : tree is nullptr");
+    }
+
+    /// @brief Internal ROOT tree and file. Internal I/O management, call RootInterface::Write() to write the TTree in the TFile and clean everything.
+    RootInterface(std::string const & caenFilename, std::string const & rootFilename, TTree * tree, bool handle_traces = true) : 
+      CaenReaderBase(caenFilename), m_tree(tree)
+    {
+      m_file = TFile::Open(rootFilename.c_str(), "RECREATE");
+      handleTraces(handle_traces);
+      if (m_tree) m_rootHit.writeTo(m_tree);
+      else Colib::throw_error("in RootInterface::RootInterface(std::string caenFilename, TTree * tree) : tree is nullptr");
+    }
+
+    void Write()
+    {
+      if (!m_file) Colib::throw_error("in RootInterface::Write() : No output file !!");
+      if (!m_tree) Colib::throw_error("in RootInterface::Write() : No output tree !!");
+      m_file -> cd();
+      m_tree -> Write();
+      m_file -> Close();
+      delete m_file;
+    }
+
+    void setTreeInMemory(bool b) {if (b) gROOT->cd();}
+
+    ~RootInterface() 
+    {
+      if (m_file && m_file->IsZombie() && m_file -> IsOpen()) m_file -> Close();
+    }
+
+    void setBoardReadTrace(std::vector<bool> boards)
+    {
+      m_boardsReadTraces = boards;
     }
 
     void writeTo(TTree * tree)
@@ -42,17 +74,19 @@ namespace CaenDataReader1725
 
     bool readHit() override
     {
+      std::ifstream& data = CaenReaderBase::p_datafile; // Simple aliasing
+
       if (read_board_header)
-      { // We hit a new board aggregate, reading the header
+      { // New board aggregate, reading its header
         m_board.clear();
-        if (!m_board.readHeader(CaenReaderBase::p_datafile)) return false;
+        if (!m_board.readHeader(data)) return false;
         read_board_header = false;
       }
 
       if (read_channel_header)
-      { // We hit a new channel aggregate, reading the header
+      { // New channel aggregate, reading its header
         m_channel.clear();
-        m_board.readChannelHeader(m_channel, CaenReaderBase::p_datafile);
+        m_board.readChannelHeader(m_channel, data); // Crucial to use BoardAggregate::readChannelHeader and not ChannelAggregate::readHeader because it loads the mask and increments the size_read of the board (crucial for m_board.hasMoreChannels())
         read_channel_header = false;
       }
 
@@ -60,7 +94,8 @@ namespace CaenDataReader1725
       { // There is at least one more caen event (=detector hit) to read
         ++m_nb_hits;
         m_caenEvent.clear();
-        m_rootHit.readCaenEvent(CaenReaderBase::p_datafile, m_board, m_channel, m_caenEvent);
+        m_rootHit.clear();
+        m_rootHit.readCaenEvent(data, m_board, m_channel, m_caenEvent, m_boardsReadTraces);
       }
       else
       { // At the end of each channel aggregate, different aggregate headers need proper handling: 
@@ -71,24 +106,16 @@ namespace CaenDataReader1725
       return true;
     }
 
-    /**
-     * @brief 
-     * 
-     * @param b 
-     * @param resetConnection 
-     */
-    void handleTraces(bool const & b, bool resetConnection = true) 
-    {
-      m_rootHit.handleTraces(b);
-      if (resetConnection && m_rootHit.writting && m_tree) writeTo(m_tree); // If the hit is already connected to a tree, then reset the connection to remove or add the trace 
-    }
+    virtual void handleTraces(bool b) {m_rootHit.handleTraces(b);}
 
     auto & getHit() {return m_rootHit;}
 
   private:
-
+    void makePureVirtual(bool isVirtual = false) override {print(isVirtual);}; // To make this class real (printed to get rid of the warning)
+    
     RootHit m_rootHit;
-    TTree* m_tree = nullptr;
+    TTree*  m_tree = nullptr;
+    TFile*  m_file = nullptr;
     
     BoardAggregate    m_board     ;
     ChannelAggregate  m_channel   ;
@@ -96,9 +123,11 @@ namespace CaenDataReader1725
 
     bool read_board_header   = true;
     bool read_channel_header = true;
+
+    std::vector<bool> m_boardsReadTraces;
   };
 };
 
-/// @brief Alias to class CaenDataReader1725::RootReader : reads a .caendat file written by a 1725 board and provides an interface to write in a root files
-using CaenRootReader1725 = CaenDataReader1725::RootReader;
+/// @brief Alias to class CaenDataReader1725::RootInterface : reads a .caendat file written by a 1725 board and provides an interface to write in a root files
+using Caen1725RootInterface = CaenDataReader1725::RootInterface;
 #endif //CAENROOTREADER_HPP

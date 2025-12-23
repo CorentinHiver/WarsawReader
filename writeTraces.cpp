@@ -94,7 +94,7 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
   };
 
   // CaenRawReader725 reader(file);
-  CaenRootReader1725 reader(file);
+  Caen1725RootInterface reader(file);
   reader.handleTraces(true);
 
   vector<string> folders_names;

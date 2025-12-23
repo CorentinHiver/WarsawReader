@@ -15,7 +15,7 @@ std::vector<std::string> DetectorName = {"EAGLE", "BGO", "NEDA", "DSSDRing", "DS
 static constexpr std::array<int, 10> Boards_map = {EAGLE, EAGLE, EMPTY, EMPTY, EMPTY, NEDA, DSSDRing, DSSDSector, DSSDSector, LaBr3};
 
 /// @brief Detector type from board and channel ID
-constexpr inline int getDetectorType(int const & board_ID, int const & channel_ID)
+constexpr inline int getDetectorType(uint8_t board_ID, uint8_t channel_ID)
 {
   if (Boards_map.size() <= size_cast(board_ID))
   {
@@ -27,8 +27,12 @@ constexpr inline int getDetectorType(int const & board_ID, int const & channel_I
   return detectorType;
 }
 
+using Board1725 = CaenDataReader1725::BoardAggregate;
+using Channel1725 = CaenDataReader1725::ChannelAggregate;
+using Event1725 = CaenDataReader1725::CaenEvent;
+
 /// @brief Detector type from board and channel ID
-constexpr inline int getDetectorType(CaenDataReader1725::BoardAggregate const & board, CaenDataReader1725::CaenEvent const & event){
+constexpr inline int getDetectorType(Board1725 const & board, Event1725 const & event){
   return getDetectorType(board.BOARD_ID, event.CH);
 }
 
@@ -36,12 +40,12 @@ inline auto const & getDetectorName(int const & board_ID, int const & channel_ID
   return DetectorName[getDetectorType(board_ID, channel_ID)];
 }
 
-inline auto const & getDetectorName(CaenDataReader1725::BoardAggregate const & board, CaenDataReader1725::CaenEvent const & event){
+inline auto const & getDetectorName(Board1725 const & board, Event1725 const & event){
   return DetectorName[getDetectorType(board, event)];
 }
 
 /// @brief detector label
-constexpr inline auto labels(CaenDataReader1725::BoardAggregate const & board, CaenDataReader1725::ChannelAggregate const & channel, CaenDataReader1725::CaenEvent const & event) {
+constexpr inline auto labels(Board1725 const & board, Channel1725 const & channel, Event1725 const & event) {
   switch (Boards_map[board.BOARD_ID]) {
   case EAGLE:                                   // ID is 0 to 16 : board.BOARD_ID [0;1], channel.ID [0,7]
     return board.BOARD_ID * 8 + channel.ID;
@@ -58,7 +62,7 @@ constexpr inline auto labels(CaenDataReader1725::BoardAggregate const & board, C
 }
 
 /// @brief detector global label
-constexpr inline auto gLabels (CaenDataReader1725::BoardAggregate const & board, CaenDataReader1725::ChannelAggregate const & channel, CaenDataReader1725::CaenEvent const & event) {
+constexpr inline auto gLabels (Board1725 const & board, Channel1725 const & channel, Event1725 const & event) {
   return 16 * getDetectorType(board, event) + labels(board, channel, event);
 }
 
@@ -69,7 +73,7 @@ class RawHit
 {
 public:
   RawHit(){}
-  RawHit(CaenDataReader1725::BoardAggregate const & board, CaenDataReader1725::ChannelAggregate const & channel, CaenDataReader1725::CaenEvent const & event) :
+  RawHit(Board1725 const & board, Channel1725 const & channel, Event1725 const & event) :
   label        (labels(board, channel, event)),
   glabel       (gLabels(board, channel, event)),
   adc          (event.ENERGY),
@@ -112,13 +116,13 @@ class RawHitBuffer
 public:
   RawHitBuffer(){}
 
-  auto const & operator[](size_t const & i) const {return m_buffer[i];}
-  auto         operator[](size_t const & i)       {return m_buffer[i];}
+  auto const & operator[](size_t i) const {return m_buffer[i];}
+  auto         operator[](size_t i)       {return m_buffer[i];}
 
   auto         operator->()       {return &m_buffer;}
   auto const & operator->() const {return &m_buffer;}
 
-  bool const & fill(CaenDataReader1725::BoardAggregate const & board) {
+  bool const & fill(Board1725 const & board) {
     if (full) {
       m_buffer.clear();
       full = false;

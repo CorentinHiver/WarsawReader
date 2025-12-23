@@ -16,15 +16,15 @@ namespace CaenDataReader1725
     
     constexpr bool hasExtendedTimestamp() const {return static_cast<bool>((flag & 0b100) >> 2);}
 
-    Extra2(uint32_t const & word, uint32_t const & timestamp, uint8_t const & _flag) : 
+    Extra2(uint32_t data, uint32_t timestamp, uint8_t _flag) : 
       flag(_flag)
     {
       switch (flag)
       {
         case FineTimestamp_flag:
           // First step : extract the extended and fine timestamp from the EXTRAS2 bit field
-          extended_timestamp  = getBitField(word, 31, 16);
-          fine_timestamp      = getBitField(word, 9, 0) * ticks_to_ps / 1024;
+          extended_timestamp  = getBitField(data, 31, 16);
+          fine_timestamp      = getBitField(data, 9, 0) * ticks_to_ps / 1024;
           
           // Convert to ps :
           extended_timestamp  = ((extended_timestamp << 32) | timestamp) * ticks_to_ps;
@@ -32,21 +32,21 @@ namespace CaenDataReader1725
           break;
           
         case ExtendedTimestamp_flag:
-          extended_timestamp  = getBitField(word, 31, 16);
-          trapezoid_baseline = getBitField(word, 15, 0) / 4;
+          extended_timestamp  = getBitField(data, 31, 16);
+          trapezoid_baseline = getBitField(data, 15, 0) / 4;
 
           // Convert to ps :
           extended_timestamp  = ((extended_timestamp << 32) | timestamp) * ticks_to_ps;
           break;
 
         case TriggerCount_flag:
-          lost_trigger_counter  = getBitField(word, 31, 16);
-          total_trigger_counter = getBitField(word, 15,  0);
+          lost_trigger_counter  = getBitField(data, 31, 16);
+          total_trigger_counter = getBitField(data, 15,  0);
           break;
           
         case ZeroCrossing_flag:
-          event_before_zero_crossing = getBitField(word, 31, 16);
-          event_after_zero_crossing  = getBitField(word, 15,  0);
+          event_before_zero_crossing = getBitField(data, 31, 16);
+          event_after_zero_crossing  = getBitField(data, 15,  0);
           break;
       }
     }

@@ -90,18 +90,16 @@ public:
       if constexpr (is_floating<T>()) trace.push_back(sample - baseline);
       else trace.push_back(static_cast<double>(sample  + random_fast_uniform()) - baseline);
     }
-    // for (auto const & s : trace) std::cout << s << std::endl;
-    // std::cin.get();
     return *this;
   }
 
   template<class T = double>
-  CFD(std::vector<T> const & _trace, int const & shift, double const & fraction, size_t nb_samples_baseline = 1) : CFD(_trace, nb_samples_baseline)
+  CFD(std::vector<T> const & _trace, int shift, double fraction, size_t nb_samples_baseline = 1) : CFD(_trace, nb_samples_baseline)
   {
     this -> calculate(shift, fraction);
   }
 
-  virtual void calculate(size_t const & shift, double const & fraction)
+  virtual void calculate(size_t shift, double fraction)
   {
     if (fraction>1.) {std::cout << RED << "in CFD(trace, shift, fraction): fraction>1 !!" << RESET << std::endl; return;}
 
@@ -118,7 +116,7 @@ public:
   }
 
   /// @brief Calculates the last zero crossing before the calculated cfd signal goes below the given threshold
-  double findZero(double const & threshold)
+  double findZero(double threshold)
   {
     if (threshold>0) std::cout << RED << "in CFD::findZero(threshold) : threshold > 0 !" << RESET << std::endl;
     for (size_t bin_i = 0; bin_i < cfd.size(); ++bin_i){  // Loop through the cfd values
@@ -156,7 +154,7 @@ public:
   /////////////////////////
 
   // Static variables :
-  constexpr static double noZero = 1e-100;
+  constexpr static double noZero   = 1e-100;
   constexpr static double noSignal = 1e-101;
 
   // TODO Static methods to fill the parameters vectors
@@ -187,19 +185,18 @@ public:
   }
   
 protected:
-  double interpolate0(size_t const & bin) const noexcept 
+  double interpolate0(size_t bin) const noexcept 
   {
-    auto const & cfd_0 = cfd[bin];
+    auto const & cfd_0 = cfd[bin  ];
     auto const & cfd_1 = cfd[bin+1];
     if( cfd_0 == cfd_1) return 0;
-    else return bin - cfd_0 / (cfd_1 - cfd_0);
+    else return (bin -      cfd_0 
+                     / (cfd_1 - cfd_0));
   }
   size_t m_size = 0;
 
   
 public:
-  // TODO Parameters :
-
   using Shifts     = std::unordered_map<int, int   >;
   using Thresholds = std::unordered_map<int, double>;
   using Fractions  = std::unordered_map<int, double>;

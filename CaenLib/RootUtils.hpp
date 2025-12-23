@@ -46,48 +46,73 @@ std::unordered_map<std::string, T*> file_get_map_of(TFile* file = nullptr)
   return ret;
 }
 
-static const std::unordered_map<std::type_index, std::string> typeRootMap = 
-{
-  // Bool :
-  {static_cast<std::type_index>(typeid(          true)), "O"},
+// static const std::unordered_map<std::type_index, std::string> typeRootMap = 
+// {
+//   // Bool :
+//   {static_cast<std::type_index>(typeid(          true)), "O"},
 
-  // Integers :
-  {static_cast<std::type_index>(typeid(  static_cast<char>(1))), "B"}, {static_cast<std::type_index>(typeid( static_cast<uchar>(1))), "b"},
-  {static_cast<std::type_index>(typeid( static_cast<short>(1))), "S"}, {static_cast<std::type_index>(typeid(static_cast<ushort>(1))), "s"},
-  {static_cast<std::type_index>(typeid(   static_cast<int>(1))), "I"}, {static_cast<std::type_index>(typeid(  static_cast<uint>(1))), "i"},
-  {static_cast<std::type_index>(typeid(  static_cast<long>(1))), "G"}, {static_cast<std::type_index>(typeid( static_cast<ulong>(1))), "g"},
+//   // Integers :
+//   {static_cast<std::type_index>(typeid(  static_cast<char>(1))), "B"}, {static_cast<std::type_index>(typeid( static_cast<uchar>(1))), "b"},
+//   {static_cast<std::type_index>(typeid( static_cast<short>(1))), "S"}, {static_cast<std::type_index>(typeid(static_cast<ushort>(1))), "s"},
+//   {static_cast<std::type_index>(typeid(   static_cast<int>(1))), "I"}, {static_cast<std::type_index>(typeid(  static_cast<uint>(1))), "i"},
+//   {static_cast<std::type_index>(typeid(  static_cast<long>(1))), "G"}, {static_cast<std::type_index>(typeid( static_cast<ulong>(1))), "g"},
 
-  // Floating point :
-  {static_cast<std::type_index>(typeid(static_cast<double>(1))), "D"}, {static_cast<std::type_index>(typeid( static_cast<float>(1))), "F"},
+//   // Floating point :
+//   {static_cast<std::type_index>(typeid(static_cast<double>(1))), "D"}, {static_cast<std::type_index>(typeid( static_cast<float>(1))), "F"},
 
-  // ROOT types :
-  {static_cast<std::type_index>(typeid(static_cast<Long64_t>(1))), "L"}, {static_cast<std::type_index>(typeid(static_cast<ULong64_t>(1))), "l"}
-};
+//   // ROOT types :
+//   {static_cast<std::type_index>(typeid(static_cast<Long64_t>(1))), "L"}, {static_cast<std::type_index>(typeid(static_cast<ULong64_t>(1))), "l"}
+// };
 
-template<class T>
-std::string typeRoot(T const & t)
-{
-  auto const & typeIndex = static_cast<std::type_index>(typeid(t));
-  auto it = typeRootMap.find(typeIndex);
-  if (it != typeRootMap.end()) return it->second;
-  else                         return "Unknown";
-}
+// template<class T>
+// std::string typeRoot(T const & t)
+// {
+//   std::type_index typeIndex{typeid(t)};
+//   auto it = typeRootMap.find(typeIndex);
+//   if (it != typeRootMap.end()) return it->second;
+//   else                         return "Unknown";
+// }
 
-template<class T>
-std::string typeRoot()
-{
-  T t;
-  auto const & typeIndex = static_cast<std::type_index>(typeid(t));
-  auto it = typeRootMap.find(typeIndex);
-  if (it != typeRootMap.end()) return it->second;
-  else                         return "Unknown";
-}
+// template<class T>
+// std::string typeRoot()
+// {
+//   T t;
+//   std::type_index typeIndex{typeid(t)};
+//   auto it = typeRootMap.find(typeIndex);
+//   return (it != typeRootMap.end()) ? it->second : "Unknown";
+// }
+
+// /// @brief Create a branch for a given array and name
+// /// @param name_size: The name of the leaf that holds the size of the array
+// template<class T>
+// TBranch* createBranchArray(TTree* tree, std::string const & name, T * array, std::string const & name_size, int buffsize = 32000)
+// {
+//   auto type_root_format = name+"["+name_size+"]/"+typeRoot(**array);
+//   return (tree -> Branch(name.c_str(), array, type_root_format, buffsize));
+// }
+#include <string>
+#include <typeinfo>
+
+template<class T> std::string typeRoot()          {return "Unknown";}
+template<> std::string typeRoot<bool>()           {return "O";}
+template<> std::string typeRoot<char>()           {return "B";}
+template<> std::string typeRoot<unsigned char>()  {return "b";}
+template<> std::string typeRoot<short>()          {return "S";}
+template<> std::string typeRoot<unsigned short>() {return "s";}
+template<> std::string typeRoot<int>()            {return "I";}
+template<> std::string typeRoot<unsigned int>()   {return "i";}
+template<> std::string typeRoot<long>()           {return "G";}
+template<> std::string typeRoot<unsigned long>()  {return "g";}
+template<> std::string typeRoot<double>()         {return "D";}
+template<> std::string typeRoot<float>()          {return "F";}
+template<> std::string typeRoot<Long64_t>()       {return "L";}
+template<> std::string typeRoot<ULong64_t>()      {return "l";}
 
 /// @brief Create a branch for a given array and name
 /// @param name_size: The name of the leaf that holds the size of the array
 template<class T>
-auto createBranchArray(TTree* tree, std::string const & name, T * array, std::string const & name_size, int buffsize = 64000)
+TBranch* createBranchArray(TTree* tree, std::string const & name, T * array, std::string const & name_size, int buffsize = 32000)
 {
-  auto const & type_root_format = name+"["+name_size+"]/"+typeRoot(**array);
-  return (tree -> Branch(name.c_str(), array, type_root_format.c_str(), buffsize));
+  std::string type_root_format = name + "[" + name_size + "]/" + typeRoot<std::remove_extent_t<T>>();
+  return tree->Branch(name.c_str(), array, type_root_format.c_str(), buffsize);
 }

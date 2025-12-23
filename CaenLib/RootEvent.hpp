@@ -1,53 +1,19 @@
+#pragma once
+#include "Event.hpp"
 #include "RootHit.hpp"
 
-namespace CaenDataReader
+namespace CaenDataReader1725
 {
-  class RootEvent 
+  class RootEvent : public Event
   {
-    // Helper functions :
-
   public:
-    RootEvent(bool handle_traces = false)
+    /// @brief Inherit constructors from Hit
+    template<class... ARGS>
+    RootEvent(ARGS &&... args) : Event(std::forward<ARGS>(args)...)
+    {}
+
+    virtual ~RootEvent()
     {
-      if (handle_traces) Colib::throw_error("CaenDataReader1725::RootEvent can't handle traces (TBD)");
-    }
-
-    ~RootEvent()
-    {
-    }
-
-    void push_back(RootHit const & hit)
-    {
-      if (maxEvt < static_cast<size_t>(mult)) error("Event too big > 1000");
-
-      label        [mult] = hit.label         ;
-      board_ID     [mult] = hit.board_ID      ;
-      channel_ID   [mult] = hit.channel_ID    ;
-      subchannel_ID[mult] = hit.subchannel_ID ;
-      adc          [mult] = hit.adc           ;
-      qlong        [mult] = hit.qlong         ;
-      timestamp    [mult] = hit.timestamp     ;
-      time         [mult] = hit.time          ;
-      rel_time     [mult] = static_cast<Int_t>(hit.time - time[0]);
-
-      ++mult;
-    }
-
-    void clear()
-    {
-      for (int hit_i = 0; hit_i<mult; ++hit_i)
-      { // might be useless for most fields !! Mandatory for at least qlong
-        label        [hit_i] = 0;
-        board_ID     [hit_i] = 0;
-        channel_ID   [hit_i] = 0;
-        subchannel_ID[hit_i] = 0;
-        adc          [hit_i] = 0;
-        qlong        [hit_i] = 0;
-        timestamp    [hit_i] = 0;
-        time         [hit_i] = 0;
-        rel_time     [hit_i] = 0;
-      }
-      mult = 0;
     }
 
     void writeTo(TTree* tree)
@@ -55,7 +21,6 @@ namespace CaenDataReader
       tree->ResetBranchAddresses();
       tree->Branch("evtNb"        , &evtNb        );
       tree->Branch("mult"         , &mult         );
-      
 
       createBranchArray(tree, "label"        , &label        , "mult");
       createBranchArray(tree, "board_ID"     , &board_ID     , "mult");
@@ -66,8 +31,6 @@ namespace CaenDataReader
       createBranchArray(tree, "timestamp"    , &timestamp    , "mult");
       createBranchArray(tree, "time"         , &time         , "mult");
       createBranchArray(tree, "rel_time"     , &rel_time     , "mult");
-
-      tree->Print();
     }
 
     TTree * readFrom(TTree* tree)
@@ -95,25 +58,6 @@ namespace CaenDataReader
       return tree;
     }
 
-    auto const & size () const {return mult;}
-
-    RootHit operator[](size_t const & i) const
-    {
-      RootHit hit;
-
-      hit.label         = label         [i];
-      hit.board_ID      = board_ID      [i];
-      hit.channel_ID    = channel_ID    [i];
-      hit.subchannel_ID = subchannel_ID [i];
-      hit.adc           = adc           [i];
-      hit.qlong         = qlong         [i];
-      hit.timestamp     = timestamp     [i];
-      hit.time          = time          [i];
-      hit.rel_time      = rel_time      [i];
-
-      return hit;
-    }
-
     friend std::ostream& operator<<(std::ostream& out, RootEvent const & event)
     {
       out << "Event with " << event.mult << " hits :" << std::endl;
@@ -135,33 +79,20 @@ namespace CaenDataReader
       }
       return out;
     }
-
-    size_t evtNb = 0;
-    int    mult  = 0;
-    constexpr static inline size_t maxEvt = 1000;
-    Int_t     label         [maxEvt];
-    Int_t     board_ID      [maxEvt];
-    Int_t     channel_ID    [maxEvt];
-    Int_t     subchannel_ID [maxEvt];
-    Int_t     adc           [maxEvt];
-    Int_t     qlong         [maxEvt];
-    ULong64_t timestamp     [maxEvt];
-    ULong64_t time          [maxEvt];
-    ULong64_t rel_time      [maxEvt];
   };
 
   class RootEventVec 
   {
     // Helper functions :
 
-    /// @brief Create a branch for a given array and name
-    /// @param name_size: The name of the leaf that holds the size of the array
-    template<class T>
-    auto createBranchArray(TTree* tree, std::string const & name, T * array, std::string const & name_size, int buffsize = 64000)
-    {
-      auto const & type_root_format = name+"["+name_size+"]/"+typeRoot(**array);
-      return (tree -> Branch(name.c_str(), array, type_root_format.c_str(), buffsize));
-    }
+    // /// @brief Create a branch for a given array and name
+    // /// @param name_size: The name of the leaf that holds the size of the array
+    // template<class T>
+    // auto createBranchArray(TTree* tree, std::string const & name, T * array, std::string const & name_size, int buffsize = 64000)
+    // {
+    //   auto const & type_root_format = name+"["+name_size+"]/"+typeRoot(**array);
+    //   return (tree -> Branch(name.c_str(), array, type_root_format.c_str(), buffsize));
+    // }
 
   public:
     RootEventVec(bool handle_traces = false)
@@ -265,7 +196,7 @@ namespace CaenDataReader
 
     auto const & size () const {return mult;}
 
-    RootHit operator[](size_t const & i) const
+    RootHit operator[](size_t i) const
     {
       RootHit hit;
 
@@ -319,4 +250,5 @@ namespace CaenDataReader
     std::vector<ULong64_t>  * rel_time      = nullptr;
   };
 };
-using RootCaenEvent = CaenDataReader1725::RootEvent;
+
+using Caen1725RootEvent = CaenDataReader1725::RootEvent;

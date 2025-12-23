@@ -37,7 +37,7 @@ namespace CaenDataReader1725
     bool readHeader(std::istream& data)
     {
       // 1. Size and Check bin :
-      read_buff(&tmp_u32, data); // Read the whole word
+      read_data(data, &tmp_u32); // Read the whole word
       debug("size, check_bin:", std::bitset<32>(tmp_u32));
 
       if (data.eof()) return false;
@@ -56,7 +56,7 @@ namespace CaenDataReader1725
       check_bin = getBitField (tmp_u32, 31, 28);
       
       // 2. Miscellaneous :
-      read_buff(&tmp_u32, data, read_size); // Read the whole word
+      read_data(data, &tmp_u32, read_size); // Read the whole word
       debug("word n°2", std::bitset<32>(tmp_u32));
       DUAL_CHANNEL_MASK = getBitField (tmp_u32, 7     );
       PATTERN           = getBitField (tmp_u32, 22,  8);
@@ -67,12 +67,12 @@ namespace CaenDataReader1725
       maskHelper = std::bitset<8>(DUAL_CHANNEL_MASK);
 
       // 3. Counter :
-      read_buff(&COUNTER, data, read_size);
+      read_data(data, &COUNTER, read_size);
       debug("COUNTER", std::bitset<32>(COUNTER));
       COUNTER &= mask(22);
 
       // 4. Timestamp : 
-      read_buff(&TIME_TAG, data, read_size);
+      read_data(data, &TIME_TAG, read_size);
       debug("TIME_TAG", std::bitset<32>(TIME_TAG));
 
       return true;

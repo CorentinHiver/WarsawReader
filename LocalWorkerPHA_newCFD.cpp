@@ -137,17 +137,17 @@ public:
   }
 
   template<class T = double,typename Shift_Type=int,  typename Fraction_Type=double>
-  CFD(std::vector<T> const & _trace, Shift_Type const & shift, Fraction_Type const & fraction) : CFD(_trace)
+  CFD(std::vector<T> const & _trace, Shift_Type shift, Fraction_Type fraction) : CFD(_trace)
   {
     this -> calculate(shift, fraction);
   }
   template<class T = double,typename Shift_Type=int,  typename Fraction_Type=double>
-  CFD(std::vector<T> const & _trace, Shift_Type const & shift, Fraction_Type const & fraction, size_t const & nb_samples_baseline) : CFD(_trace, nb_samples_baseline)
+  CFD(std::vector<T> const & _trace, Shift_Type shift, Fraction_Type fraction, size_t nb_samples_baseline) : CFD(_trace, nb_samples_baseline)
   {
     this -> calculate(shift, fraction);
   } 
 
-  virtual void calculate(size_t const & shift, double const & fraction)
+  virtual void calculate(size_t shift, double fraction)
   {
     if (fraction>1.) {std::cout << RED << "in CFD(trace, shift, fraction): fraction>1 !!" << RESET << std::endl; return;} 
     cfd.clear(); 
