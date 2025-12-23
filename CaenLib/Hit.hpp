@@ -73,7 +73,7 @@ namespace CaenDataReader1725
       // 2. Trace : looping through the NUM_SAMPLES samples of the waveform of each event :
       if (handle_traces)
       {
-        if((board_ID < boardReadTrace.size()) ? true : boardReadTrace[board_ID])
+        if((board_ID < boardReadTrace.size()) ? boardReadTrace[board_ID] : true)
         {
           debug("Trace with :", channel.NUM_SAMPLES, "samples");
           if (!trace) trace.reset(new Trace);

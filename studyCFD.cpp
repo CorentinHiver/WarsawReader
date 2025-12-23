@@ -13,6 +13,7 @@
 constexpr Long64_t time_window          = 2e6 ; // ps
 constexpr size_t   reserved_buffer_size = 50000ul;
 auto constexpr static ref_label = 81;
+auto static bigHistos = false;
 // auto constexpr static trigg_label = 
 
 enum DetectorTypes{EAGLE, BGO, NEDA, DSSDRing, DSSDSector, LaBr3, EMPTY};
@@ -39,6 +40,10 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
     {7, -500},
     {8, -500}
   };
+
+  auto hasCFDparameters = Colib::LUT<100>([&cfd_shifts](UChar_t boardID){
+    return Colib::key_found(cfd_shifts, boardID);
+  }); // Is static thread_local, hence calculated only once per thread 
 
   auto constexpr static glabel = [](Caen1725RootHit const & hit){
     return hit.board_ID * 16 + hit.channel_ID * 2 + hit.subchannel_ID;
@@ -111,11 +116,11 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
       auto & hit = reader.getHit();
 
-      if (reader.nbHits() % int(1e5) == 0) print(Colib::nicer_double(reader.nbHits(), 1));
+      if (reader.nbHits() % int(1e5) == 0) printsln(Colib::nicer_double(reader.nbHits(), 1));
 
       // Correct timestamp with cfd :
 
-      if (hit.getTrace() && !hit.getTrace()->empty() && Colib::key_found(cfd_shifts, hit.board_ID))
+      if (hasCFDparameters[hit.board_ID] && hit.hasTrace())
       {
         CFD cfd(*hit.getTrace(), cfd_shifts[hit.board_ID], 0.75, 10);
         
@@ -256,12 +261,15 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
     print("Write big bidims");
 
-    for (auto & histo : neda_psds           ) if (filledHisto(histo)) histo->Write();
-    for (auto & histo : dT_all_vs_all       ) if (filledHisto(histo)) histo->Write();
-    for (auto & histo : dT_all_vs_all_cfd   ) if (filledHisto(histo)) histo->Write();
-    for (auto & histo : E_all_vs_ref_dT     ) if (filledHisto(histo)) histo->Write();
-    for (auto & histo : E_all_vs_ref_cfd_dT ) if (filledHisto(histo)) histo->Write();
-    for (auto & histo : cfd_vs_dT           ) if (filledHisto(histo)) histo->Write();
+    if (bigHistos)
+    {
+      for (auto & histo : neda_psds           ) if (filledHisto(histo)) histo->Write();
+      for (auto & histo : dT_all_vs_all       ) if (filledHisto(histo)) histo->Write();
+      for (auto & histo : dT_all_vs_all_cfd   ) if (filledHisto(histo)) histo->Write();
+      for (auto & histo : E_all_vs_ref_dT     ) if (filledHisto(histo)) histo->Write();
+      for (auto & histo : E_all_vs_ref_cfd_dT ) if (filledHisto(histo)) histo->Write();
+      for (auto & histo : cfd_vs_dT           ) if (filledHisto(histo)) histo->Write();
+    }
 
   rootfile->Close();
   print("studyCFD.root written");
@@ -325,6 +333,10 @@ int main(int argc, char** argv)
     {
       double tmp_d; iss >> tmp_d;
       nb_hits = tmp_d;
+    }
+    else if (temp == "-b")
+    {
+      bigHistos = true;
     }
   }
 

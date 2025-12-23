@@ -712,11 +712,11 @@ namespace Colib
 
   using Point = std::pair<double, double>;
 
-  static Point rotate(double const & x, double const & y, double const & angle) 
+  Point rotate(double const & x, double const & y, double const & angle) 
   {
     return Point(x * cos(angle) - y * sin(angle), x * sin(angle) + y * cos(angle));
   }
-   static Point rotate(Point const & point, double const & angle) 
+   Point rotate(Point const & point, double const & angle) 
   {
     return Point(point.first * cos(angle) - point.second * sin(angle), point.first * sin(angle) + point.second * cos(angle));
   }
@@ -1139,6 +1139,7 @@ namespace Colib
   /////////////////////////////
   // Get the terminal output //
   /////////////////////////////
+  
 namespace Colib
 {
   std::string execTerminal(std::string cmd) 

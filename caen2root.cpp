@@ -69,21 +69,21 @@ int main(int argc, char** argv)
 {
   CFD::sShifts = { // BOARD_ID, SAMPLES
     {0, 7},
-    {1, 7}/*,
+    {1, 7},
     {6, 2},
     {7, 2},
-    {8, 2}*/
+    {8, 2}
   };
 
   CFD::sFractions = { // BOARD_ID, fraction
     {0, 0.75},
-    {1, 0.75}/*,
+    {1, 0.75},
     {6, 0.75},
     {7, 0.75},
-    {8, 0.75}*/
+    {8, 0.75}
   };
 
-  auto useCFD = LUT<9*16>([&](int boardID)
+  auto useCFD = LUT<200>([&](int boardID)
   {
     return key_found(CFD::sShifts, boardID);
   });
@@ -148,319 +148,319 @@ int main(int argc, char** argv)
     print(" The traces will be kept for analysis and written in the root file");
   };
   if (argc < 3) {printHelp(); return 1;}
-  else
+  std::istringstream iss(argv_to_string(argv));
+  std::string temp;
+  iss >> temp; // Skipping the first parameter because it is the name of the executable
+  while(iss >> temp)
   {
-    std::istringstream iss(argv_to_string(argv));
-    std::string temp;
-    iss >> temp; // Skipping the first parameter because it is the name of the executable
-    while(iss >> temp)
+          if (temp == "-f" || temp ==  "--files")
     {
-           if (temp == "-f" || temp ==  "--files")
+      iss >> temp;
+      for (auto const & file : Colib::findFilesWildcard(temp)) {filenames.push_back(file);}
+    }
+    else if (temp == "-F" || temp == "--files-nb")
+    {
+      iss >> temp;
+      double nb = -1; iss >> nb;
+      size_t nb_i = static_cast<size_t>(nb); // cast to size_t (). if nb<0 -> overflow -> nb_i is very very big
+      if (nb_i == 0) continue;
+      auto const & files = Colib::findFilesWildcard(temp);
+      for (size_t file_i = 0; file_i < (files.size() && file_i<nb_i); ++file_i) filenames.push_back(files[file_i]);
+    }
+    else if (temp == "-h" || temp == "--help")
+    {
+      printHelp();
+    }
+    else if (temp == "-n")
+    {
+      double tmp_d = 0; iss >> tmp_d;
+      nbHitsMax = static_cast<size_t>(tmp_d);
+      hitsMaxSet = true;
+      print("Maximum hits per file =", nicer_double(nbHitsMax));
+    }
+    else if (temp == "-N")
+    {
+      double tmp_d = 0; iss >> tmp_d;
+      nbHitsMaxTot = static_cast<size_t>(tmp_d);
+      hitsMaxTotSet = true;
+      print("Maximum hits total", nicer_double(nbHitsMaxTot));
+    }
+    else if (temp == "-o")
+    {
+      iss >> outpath;
+    }
+    else if (temp == "-g" || temp == "--group")
+    {
+      iss >> group;
+    }
+    else if (temp == "-T" || temp == "--timeshifts")
+    {
+      iss >> temp;
+      timeshifts.load(temp);
+      print(timeshifts.size(), "timeshifts loaded from", temp);
+    }
+    else if (temp == "--read-traces")
+    {
+      iss >> readTraces;
+    }
+    else if (temp == "--board-skip-trace")
+    {
+      int boardID; iss >> boardID;
+      boardReadTrace[boardID] = false;
+    }
+    else if (temp == "--write-traces")
+    {
+      iss >> writeTraces;
+    }
+    else if (temp == "--ts-evt-build")
+    {
+      iss >> ts_evt_build;
+    }
+    else if (temp == "-t" || temp == "--trigger")
+    {
+      iss >> temp;
+      if (temp == "-l" || temp == "--label")
+      {
+        int label = 0;
+        iss >> label;
+        trigger_labels.push_back(label);
+      }
+      else if (temp == "-b" || temp == "--board")
+      {
+        int boardID = 0; iss >> boardID;
+        for (int label = boardID*16; label < (boardID+1)*16; ++label) trigger_labels.push_back(label);
+      }
+      else if (temp == "-f" || temp == "--file")
       {
         iss >> temp;
-        for (auto const & file : Colib::findFilesWildcard(temp)) {filenames.push_back(file);}
-      }
-      else if (temp == "-F" || temp == "--files-nb")
-      {
-        iss >> temp;
-        double nb = -1; iss >> nb;
-        size_t nb_i = static_cast<size_t>(nb); // cast to size_t (). if nb<0 -> overflow -> nb_i is very very big
-        if (nb_i == 0) continue;
-        auto const & files = Colib::findFilesWildcard(temp);
-        for (size_t file_i = 0; file_i < (files.size() && file_i<nb_i); ++file_i) filenames.push_back(files[file_i]);
-      }
-      else if (temp == "-h" || temp == "--help")
-      {
-        printHelp();
-      }
-      else if (temp == "-n")
-      {
-        double tmp_d = 0; iss >> tmp_d;
-        nbHitsMax = static_cast<size_t>(tmp_d);
-        hitsMaxSet = true;
-        print("Maximum hits per file =", nicer_double(nbHitsMax));
-      }
-      else if (temp == "-N")
-      {
-        double tmp_d = 0; iss >> tmp_d;
-        nbHitsMaxTot = static_cast<size_t>(tmp_d);
-        hitsMaxTotSet = true;
-        print("Maximum hits total", nicer_double(nbHitsMaxTot));
-      }
-      else if (temp == "-o")
-      {
-        iss >> outpath;
-      }
-      else if (temp == "-g" || temp == "--group")
-      {
-        iss >> group;
-      }
-      else if (temp == "-T" || temp == "--timeshifts")
-      {
-        iss >> temp;
-        timeshifts.load(temp);
-        print(timeshifts.size(), "timeshifts loaded from", temp);
-      }
-      else if (temp == "--read-traces")
-      {
-        iss >> readTraces;
-      }
-      else if (temp == "--board-skip-trace")
-      {
-        int boardID; iss >> boardID;
-        boardReadTrace[boardID] = false;
-      }
-      else if (temp == "--write-traces")
-      {
-        iss >> writeTraces;
-      }
-      else if (temp == "--ts-evt-build")
-      {
-        iss >> ts_evt_build;
-      }
-      else if (temp == "-t" || temp == "--trigger")
-      {
-        iss >> temp;
-        if (temp == "-l" || temp == "--label")
+        std::ifstream trigger_file(temp);
+        if (!trigger_file.is_open()) throw_error("Can't open trigger file "+temp+" !!");
+        std::string line;
+        while(std::getline(trigger_file, line))
         {
-          int label = 0;
-          iss >> label;
-          trigger_labels.push_back(label);
+          std::istringstream iss(line);
+          int label;
+          while(iss >> label) trigger_labels.push_back(label);
         }
-        else if (temp == "-b" || temp == "--board")
-        {
-          int boardID = 0; iss >> boardID;
-          for (int label = boardID*16; label < (boardID+1)*16; ++label) trigger_labels.push_back(label);
-        }
-        else if (temp == "-f" || temp == "--file")
-        {
-          iss >> temp;
-          std::ifstream trigger_file(temp);
-          if (!trigger_file.is_open()) throw_error("Can't open trigger file "+temp+" !!");
-          std::string line;
-          while(std::getline(trigger_file, line))
-          {
-            std::istringstream iss(line);
-            int label;
-            while(iss >> label) trigger_labels.push_back(label);
-          }
-        }
-      }
-      else if (temp == "-tw" || temp == "time-window")
-      {
-        double e; iss >> e;
-        time_window = e*1000;
-      }
-      else
-      {
-        throw_error("Unkown " + temp + " command");
       }
     }
-
-    // -------------------- //
-    // Check the parameters //
-    // -------------------- //
-
-    // if (hitsMaxTotSet && multithreadSet) throw-error("Can't have -N and -M at the same time !");
-    print(trigger_labels);
-
-    if (filenames.empty()) throw_error("No files !!");
-
-    size_t nbHitsTot = 0;
-
-    for (auto const & filename : filenames)
+    else if (temp == "-tw" || temp == "time-window")
     {
-      File file(filename);
+      double e; iss >> e;
+      time_window = e*1000;
+    }
+    else
+    {
+      throw_error("Unkown " + temp + " command");
+    }
+  }
 
-      if (!file) {error("can't find ", file); continue;}
-      
-      Caen1725RootInterface reader(filename, readTraces);
-      reader.setBoardReadTrace(boardReadTrace);
-      Caen1725EventBuilder eventBuilder(reserved_buffer_size);
-      eventBuilder.buildOnTimestamp(ts_evt_build);
+  // -------------------- //
+  // Check the parameters //
+  // -------------------- //
 
-      auto rootFilename = outpath + file.shortName()+".root";
-      auto rootFile = TFile::Open(rootFilename.c_str(), "recreate");
-      gROOT->cd();
-      TString treeName = "HIL";
-      if (!group) treeName = "HILplain";
-      auto tree = new TTree(treeName, ("WarsawReader_v"+std::to_string(reader_version)).c_str());
+  // if (hitsMaxTotSet && multithreadSet) throw-error("Can't have -N and -M at the same time !");
+  print(trigger_labels);
 
-      auto & inHit = reader.getHit(); // Aliasing the internal hit of the reader
+  // Look-up tables (LUT) :
+  auto triggerLUT = Colib::LUT<100>([&trigger_labels](UShort_t label){
+    if (Colib::found(trigger_labels, label)) return true;
+  });
 
-      Caen1725RootEvent outEvent(writeTraces);
-      Caen1725RootHit   outHit  (writeTraces);
-      size_t  evtNb   = 0;
-      int     evtMult = 0;
+  if (filenames.empty()) throw_error("No files !!");
 
-      if (group) outEvent.writeTo(tree);
-      else
+  size_t nbHitsTot = 0;
+
+  for (auto const & filename : filenames)
+  {
+    File file(filename);
+
+    if (!file) {error("can't find ", file); continue;}
+    
+    Caen1725RootInterface reader(filename, readTraces);
+    reader.setBoardReadTrace(boardReadTrace);
+    Caen1725EventBuilder eventBuilder(reserved_buffer_size);
+    eventBuilder.buildOnTimestamp(ts_evt_build);
+
+    auto rootFilename = outpath + file.shortName()+".root";
+    auto rootFile = TFile::Open(rootFilename.c_str(), "recreate");
+    gROOT->cd();
+    TString treeName = "HIL";
+    if (!group) treeName = "HILplain";
+    auto tree = new TTree(treeName, ("WarsawReader_v"+std::to_string(reader_version)).c_str());
+
+    auto & inHit = reader.getHit(); // Aliasing the internal hit of the reader
+
+    Caen1725RootEvent outEvent(writeTraces);
+    Caen1725RootHit   outHit  (writeTraces);
+    size_t  evtNb   = 0;
+    int     evtMult = 0;
+
+    if (group) outEvent.writeTo(tree);
+    else
+    {
+      tree -> Branch("evtNb", &evtNb  );
+      tree -> Branch("mult" , &evtMult);
+      outHit.writeTo(tree);
+    }
+
+    Timer timerRead;
+    Timer timerCFD;
+    Timer timerTShift;
+    Timer timerCopy;
+    Timer timerBufferFill;
+    Timer timerTrigger;
+    Timer timerEvtBuild;
+    Timer timerFill;
+
+    // To investigate : might not be optimized
+    // Pre-declaration of this piece of code
+    auto fillTreeAndClear = [&]() -> void
+    {
+      // 3. Perform the event building 
+        timerEvtBuild.Start(); // For profiling
+      eventBuilder.fast_event_building(time_window);
+        timerEvtBuild.Stop(); // For profiling
+
+      // 4. Write the events to the ROOT tree
+      for (auto const & event : eventBuilder)// Loop over all the event in buffer :
       {
-        tree -> Branch("evtNb", &evtNb  );
-        tree -> Branch("mult" , &evtMult);
-        outHit.writeTo(tree);
-      }
+        evtMult = event.size();
 
-      Timer timerRead;
-      Timer timerCFD;
-      Timer timerTShift;
-      Timer timerCopy;
-      Timer timerBufferFill;
-      Timer timerTrigger;
-      Timer timerEvtBuild;
-      Timer timerFill;
-      Timer timerClear;
+      #ifdef TRIGGER
+        // TODO:
+      #endif //TRIGGER
 
-      // To investigate : might not be optimized
-      // Pre-declaration of this piece of code
-      auto fillTreeAndClear = [&]() -> void
-      {
-        // 3. Perform the event building 
-          timerEvtBuild.Start();
-        eventBuilder.fast_event_building(time_window);
-          timerEvtBuild.Stop();
-
-        // 4. Write the events to the ROOT tree
-        for (auto const & event : eventBuilder)// Loop over all the event in buffer :
+        // 4.1 Apply the trigger
+          timerTrigger.Start(); // For profiling
+        bool trigger = true;
+        static thread_local bool trigger_label = !trigger_labels.empty(); // Is static thread_local, hence instanciated only once per thread for better efficiency
+        if (trigger_label)
         {
-          evtMult = event.size();
+          trigger = false;
+          for (auto const & hit_i : event) if (triggerLUT[eventBuilder[hit_i].label]) trigger = true;
+        }
+          timerTrigger.Stop(); // For profiling
 
-        #ifdef TRIGGER
-          // TODO:
-        #endif //TRIGGER
-
-          // 4.1 Apply the trigger
-            timerTrigger.Start();
-          static thread_local bool trigger; trigger = true;
-          static thread_local bool trigger_label = !trigger_labels.empty();
-          if (trigger_label)
+        if (trigger) 
+        {
+          if (group)
           {
-            trigger = false;
-            for (auto const & hit_i : event) if (Colib::found(trigger_labels, eventBuilder[hit_i].label)) trigger = true;
-          }
-            timerTrigger.Stop();
+            // 4.2 Write the event
+            for (auto const & hit_i : event)
+            {
+                timerCopy.Start(); // For profiling
+              outEvent.push_back(eventBuilder[hit_i]);
+                timerCopy.Stop(); // For profiling
+            }
 
-          if (trigger) 
+              timerFill.Start(); // For profiling
+            tree -> Fill();
+              timerFill.Stop(); // For profiling
+
+            outEvent.clear();
+            ++outEvent.evtNb;
+          }
+          else for (auto const & hit_i : event)
           {
-            if (group)
-            {
-              // 4.2 Write the event
-              for (auto const & hit_i : event)
-              {
-                  timerCopy.Start();
-                outEvent.push_back(eventBuilder[hit_i]);
-                  timerCopy.Stop();
-              }
+            eventBuilder[hit_i].rel_time = eventBuilder[hit_i].time - eventBuilder[0].time;
 
-                timerFill.Start();
-              tree -> Fill();
-                timerFill.Stop();
-
-                timerClear.Start();
-              outEvent.clear();
-                timerClear.Stop();
-              ++outEvent.evtNb;
-            }
-            else for (auto const & hit_i : event)
-            {
-              eventBuilder[hit_i].rel_time = eventBuilder[hit_i].time - eventBuilder[0].time;
-                timerCopy.Start();
-              outHit = std::move(eventBuilder[hit_i]);
-                timerCopy.Stop();
-                
-                timerFill.Start();
-              tree -> Fill();
-                timerFill.Stop();
-              ++evtNb;
-            }
+              timerCopy.Start(); // For profiling
+            outHit = std::move(eventBuilder[hit_i]);
+              timerCopy.Stop(); // For profiling
+              
+              timerFill.Start(); // For profiling
+            tree -> Fill();
+              timerFill.Stop(); // For profiling
+            
+            ++evtNb;
           }
         }
-
-        // 5. Reset event builder
-
-        eventBuilder.clear();
-      };
-
-      int nbNoSignal = 0;
-      int nbNoZero = 0;
-
-      // while(reader.readHit())
-      while(true)
-      {
-        // 0. Read the data 
-          timerRead.Start();
-        auto breaking = !reader.readHit();
-          timerRead.Stop();
-        
-        // 0.1 Manage the end of the reading (end of file or max number of hits reached)
-        if (breaking) break;
-        ++nbHitsTot;
-        if (hitsMaxSet && nbHitsMax < reader.nbHits()) break;
-        if (hitsMaxTotSet && nbHitsMaxTot < nbHitsTot) break;
-        if (reader.nbHits() > 0 && reader.nbHits() % int(1e5) == 0) printsln(nicer_double(reader.nbHits(), 1), "    ");
-
-        // 1. Apply the cfd
-          timerCFD.Start();
-        if (applyCFD && readTraces && inHit.hasTrace() && useCFD[inHit.board_ID])
-        {
-          CFD cfd(*inHit.getTrace(), CFD::sShifts[inHit.board_ID], CFD::sFractions[inHit.board_ID]);
-          auto zero = cfd.findZero();
-          // auto zero = cfd.findZero(CFD::sThresholds[inHit.board_ID]); // Not using thresholds anymore
-               if (zero==CFD::noSignal) {inHit.time = inHit.precise_ts; ++nbNoSignal;}
-          else if (zero==CFD::noZero  ) {inHit.time = inHit.precise_ts; ++nbNoZero  ;}
-          else                           inHit.time = inHit.extended_ts + zero * CaenDataReader1725::ticks_to_ps;
-        }
-        else inHit.time = inHit.precise_ts;
-          timerCFD.Stop();
-
-        //1.1 Apply the time shifts if registered
-          timerTShift.Start();
-        if (static_cast<size_t>(inHit.label) < timeshifts.size()) 
-        {
-          inHit.timestamp += timeshifts[inHit.label];
-          inHit.time      += timeshifts[inHit.label];
-        }
-          timerTShift.Stop();
-
-        // 2. Fill the event builder buffer
-        
-        if (!eventBuilder.fill_buffer(std::move(inHit))) fillTreeAndClear(); // If buffer is full, fill the tree and clear the buffer
-      }
-      
-      print();
-      print("noSignal", nbNoSignal);
-      print("noZero"  , nbNoZero  );
-
-      fillTreeAndClear(); // Fill the tree with the last event
-
-      rootFile->cd();
-
-      print();
-      if (group) print(tree->GetEntries(), "events in the tree");
-      else       print(tree->GetEntries(), "hits in the tree"  );
-        Timer timerWrite;
-      tree->Write();
-        timerWrite.Stop();
-      rootFile->Close();
-      
-      if (true)
-      {
-        print("timeRead", timerRead.timeElapsed());
-        print("timeCFD", timerCFD.timeElapsed());
-        print("timeTShift", timerTShift.timeElapsed());
-        print("timeEvtBuild", timerEvtBuild.timeElapsed());
-        print("timeCopy", timerCopy.timeElapsed());
-        print("timerTrigger", timerTrigger.timeElapsed());
-        print("timeBufferFill", timerBufferFill.timeElapsed());
-        print("timeFill", timerFill.timeElapsed());
-        print("timeClear", timerClear.timeElapsed());
-        print("timeWrite", timerWrite.timeElapsed());
       }
 
-      print(rootFile->GetName(), "written");
+      // 5. Reset event builder
+
+      eventBuilder.clear();
+    };
+
+    int nbNoSignal = 0;
+    int nbNoZero = 0;
+
+    // while(reader.readHit())
+    while(true)
+    {
+      // 0. Read the data 
+        timerRead.Start(); // For profiling
+      auto breaking = !reader.readHit();
+        timerRead.Stop(); // For profiling
+      
+      // 0.1 Manage the end of the reading (end of file or max number of hits reached)
+      if (breaking) break;
+      ++nbHitsTot;
+      if (hitsMaxSet && nbHitsMax < reader.nbHits()) break;
+      if (hitsMaxTotSet && nbHitsMaxTot < nbHitsTot) break;
+      if (reader.nbHits() > 0 && reader.nbHits() % int(1e5) == 0) printsln(nicer_double(reader.nbHits(), 1), "    ");
+
+      // 1. Apply the cfd
+        timerCFD.Start(); // For profiling
+      if (applyCFD && readTraces && inHit.hasTrace() && useCFD[inHit.board_ID])
+      {
+        CFD cfd(*inHit.getTrace(), CFD::sShifts[inHit.board_ID], CFD::sFractions[inHit.board_ID]);
+        auto zero = cfd.findZero();
+        // auto zero = cfd.findZero(CFD::sThresholds[inHit.board_ID]); // Not using thresholds anymore
+             if (zero==CFD::noSignal) {inHit.time = inHit.precise_ts; ++nbNoSignal;}
+        else if (zero==CFD::noZero  ) {inHit.time = inHit.precise_ts; ++nbNoZero  ;}
+        else                           inHit.time = inHit.extended_ts + zero * CaenDataReader1725::ticks_to_ps;
+      }
+      else inHit.time = inHit.precise_ts;
+        timerCFD.Stop(); // For profiling
+
+      //1.1 Apply the time shifts if registered
+        timerTShift.Start(); // For profiling
+      if (static_cast<size_t>(inHit.label) < timeshifts.size()) 
+      {
+        inHit.timestamp += timeshifts[inHit.label];
+        inHit.time      += timeshifts[inHit.label];
+      }
+        timerTShift.Stop(); // For profiling
+
+      // 2. Fill the event builder buffer
+      
+      if (!eventBuilder.fill_buffer(std::move(inHit))) fillTreeAndClear(); // If buffer is full, fill the tree and clear the buffer
     }
     
+    print();
+    print("noSignal", nbNoSignal);
+    print("noZero"  , nbNoZero  );
+
+    fillTreeAndClear(); // Fill the tree with the last event
+
+    rootFile->cd();
+
+    print();
+    if (group) print(tree->GetEntries(), "events in the tree");
+    else       print(tree->GetEntries(), "hits in the tree"  );
+      Timer timerWrite; // For profiling
+    tree->Write();
+      timerWrite.Stop(); // For profiling
+    rootFile->Close();
+    
+    if (true)
+    {
+      print("timeRead", timerRead.timeElapsed());
+      print("timeCFD", timerCFD.timeElapsed());
+      print("timeTShift", timerTShift.timeElapsed());
+      print("timeEvtBuild", timerEvtBuild.timeElapsed());
+      print("timeCopy", timerCopy.timeElapsed());
+      print("timerTrigger", timerTrigger.timeElapsed());
+      print("timeBufferFill", timerBufferFill.timeElapsed());
+      print("timeFill", timerFill.timeElapsed());
+      print("timeWrite", timerWrite.timeElapsed());
+    }
+
+    print(rootFile->GetName(), "written");
   }
+
   print(timer());
   return 0;
 }
