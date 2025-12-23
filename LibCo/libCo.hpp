@@ -708,16 +708,16 @@ namespace Colib
 
   using Point = std::pair<double, double>;
 
-#ifdef Cpp17
+#ifdef Cpp20
   constexpr 
-#endif //Cpp17
+#endif //Cpp20
   static Point rotate(double const & x, double const & y, double const & angle) 
   {
     return Point(x * cos(angle) - y * sin(angle), x * sin(angle) + y * cos(angle));
   }
-#ifdef Cpp17
+#ifdef Cpp20
   constexpr 
-#endif //Cpp17
+#endif //Cpp20
   static Point rotate(Point const & point, double const & angle) 
   {
     return Point(point.first * cos(angle) - point.second * sin(angle), point.first * sin(angle) + point.second * cos(angle));
