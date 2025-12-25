@@ -7,17 +7,18 @@ namespace CaenDataReader1725
 {
   class EventBuilder
   {
+    public:
+    
     /// @brief Holds the indices of coincident hits in the hit buffer
-    using Event = std::vector<size_t>;
-
-  public:
+    using EventId = std::vector<size_t>;
 
     EventBuilder(size_t reserved_buffer_size = (50000ul)) noexcept
     {
       m_hit_buffer.reserve(reserved_buffer_size);
     }
 
-    // bool fill_buffer(RootHit const & hit) noexcept
+    /// @brief Forbidden to copy a RootHit
+    bool fill_buffer(RootHit const & hit) noexcept = delete;
     // {
     //   if (m_hit_buffer.size() < m_hit_buffer.capacity())
     //   {
@@ -40,10 +41,11 @@ namespace CaenDataReader1725
     void align()
     {
       Colib::linspace(m_ordered_index, m_hit_buffer.size());
-      std::sort(m_ordered_index.begin(), m_ordered_index.end(), [this](size_t i, size_t j)
-      {
-        if (m_buildOnTimestamp) return m_hit_buffer[j].timestamp > m_hit_buffer[i].timestamp;
-        else                    return m_hit_buffer[j].time      > m_hit_buffer[i].time     ;
+      if (m_buildOnTimestamp) std::sort(m_ordered_index.begin(), m_ordered_index.end(), [this](size_t i, size_t j){
+        return m_hit_buffer[j].timestamp > m_hit_buffer[i].timestamp;
+      });
+      else                    std::sort(m_ordered_index.begin(), m_ordered_index.end(), [this](size_t i, size_t j){
+        return m_hit_buffer[j].time      > m_hit_buffer[i].time     ;
       });
       m_aligned = true;
     }
@@ -53,7 +55,7 @@ namespace CaenDataReader1725
       // 1. Initialize the event buffer
           
       if (!m_aligned) this -> align();
-      Event event;
+      EventId event;
       event.emplace_back(m_ordered_index[0]); 
 
       // 2. Loop through the hits buffer
@@ -108,10 +110,9 @@ namespace CaenDataReader1725
 
   private:
 
-
-    std::vector<size_t> m_ordered_index;
-    std::vector<RootHit> m_hit_buffer;
-    std::vector<Event> m_event_buffer;
+    std::vector<size_t>  m_ordered_index;
+    std::vector<RootHit> m_hit_buffer   ;
+    std::vector<EventId> m_event_buffer ;
     bool m_aligned = false;
 
     // Options

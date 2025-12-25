@@ -76,7 +76,7 @@ bool Timeshifts::load(std::string const & filename)
   }
   inputFile.close();
   print("Timeshifts extracted from", filename);
-  return (m_ok = true);
+  return (m_ok = !m_timeshifts.empty());
 }
 
 void Timeshifts::write(std::string const & fullpath, std::string const & name)

@@ -16,19 +16,18 @@ namespace CaenDataReader1725
     {
     }
 
-    virtual void push_back(Hit const & hit)
+    void push_back(Hit const & hit) noexcept
     {
-      if (maxEvt < static_cast<size_t>(mult)) error("Event too big :", mult, ">", maxEvt);
-
-      label        [mult] = hit.label         ;
-      board_ID     [mult] = hit.board_ID      ;
-      channel_ID   [mult] = hit.channel_ID    ;
-      subchannel_ID[mult] = hit.subchannel_ID ;
-      adc          [mult] = hit.adc           ;
-      qlong        [mult] = hit.qlong         ;
-      timestamp    [mult] = hit.timestamp     ;
-      time         [mult] = hit.time          ;
-      rel_time     [mult] = ((mult == 0) ? 0 : static_cast<Int_t>(hit.time - time[0]));
+      const auto i = mult; // In principle, this helps the compiler optimize
+      label        [i] = hit.label         ;
+      board_ID     [i] = hit.board_ID      ;
+      channel_ID   [i] = hit.channel_ID    ;
+      subchannel_ID[i] = hit.subchannel_ID ;
+      adc          [i] = hit.adc           ;
+      qlong        [i] = hit.qlong         ;
+      timestamp    [i] = hit.timestamp     ;
+      time         [i] = hit.time          ;
+      rel_time     [i] = ((i == 0) ? 0 : static_cast<Int_t>(hit.time - time[0]));
 
       ++mult;
     }

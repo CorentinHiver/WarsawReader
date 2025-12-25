@@ -3,8 +3,8 @@
 // but without any coincidences, simply comparison of both methods !
 
 // #include "CaenLib/CaenRawReader.hpp"
-#include "CaenLib/CaenRootReader.hpp"
 #include "AnalysisLib/CFD.hpp"
+#include "CaenLib/CaenRootInterface.hpp"
 #include "AnalysisLib/RawHit.hpp"
 #include "LibCo/Classes/Timer.hpp"
 #include "LibCo/libCo.hpp"
@@ -17,6 +17,7 @@
 #include "TGraph.h"
 
 using namespace std;
+using namespace Colib;
 
 // #define LOW_PASS
 #ifdef LOW_PASS
@@ -93,33 +94,26 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
     {DSSDRing  , -500}
   };
 
-  // CaenRawReader725 reader(file);
   Caen1725RootInterface reader(file);
-  reader.handleTraces(true);
 
   vector<string> folders_names;
 
+  vector<int> nbNoZero  (1000,0);
+  vector<int> nbNoSignal(1000,0);
+
   while(!finished && reader.readHit())
-  // while(!finished && reader.readBoardAggregate())
   {
-    // auto const & board = reader.getBoard();
-    // for (auto const & channel : board.channels) for (auto const & event : channel.events){
       ++nb_evts;
       auto const & hit = reader.getHit();
-      if (nb_evts % int(1e3) == 0) print(Colib::nicer_double(nb_evts, 1));
+      if (nb_evts % int(1e3) == 0) printsln(nicer_double(nb_evts, 1));
       if (max_events && nb_evts > nb_events_max) finished = true;
 
-      // RawHit hit(board, channel, event);
-      // print(DetectorName[hit.detectorType], int(hit.label), int(hit.glabel), hit.adc, hit.precise_timestamp);
-
-      // if (event.samples.size() == 0) continue;
       if (!hit.trace || hit.trace->size() == 0) continue;
 
       if (hit.adc < adcMin) continue;
 
       if (0 < adcMax && adcMax < hit.adc) continue;
 
-      // auto detectorName = DetectorName[getDetectorType(board, event)]+to_string(labels(board, channel, event));
       auto detectorName = getDetectorName(hit.board_ID, hit.channel_ID)+to_string(hit.label);
 
       TDirectory *dir = rootFile->GetDirectory(detectorName.c_str());
@@ -130,6 +124,7 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
       }
       dir->cd();
       string name = detectorName + "_" + to_string(nb_evts);
+
       // vector<uint16_t> raw_trace; raw_trace.reserve(event.samples.size());
       // vector<double> samplesT; samplesT.resize(event.samples.size(), 0);
       // vector<double> samplesDP1; samplesDP1.resize(event.samples.size(), 0);
@@ -147,9 +142,9 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
       
       // CFD cfd(raw_trace);
 
-      // auto graph  = new TGraph(cfd.trace.size(), Colib::linspace_for(cfd.trace, 0., 4.).data(), cfd.trace.data());
-      // auto graph2 = new TGraph(samplesT .size(), Colib::linspace_for(samplesT , 0., 4.).data(), samplesT .data());
-      // auto graph3 = new TGraph(samplesDP1 .size(), Colib::linspace_for(samplesDP1 , 0., 4.).data(), samplesDP1 .data());
+      // auto graph  = new TGraph(cfd.trace.size(), linspace_for(cfd.trace, 0., 4.).data(), cfd.trace.data());
+      // auto graph2 = new TGraph(samplesT .size(), linspace_for(samplesT , 0., 4.).data(), samplesT .data());
+      // auto graph3 = new TGraph(samplesDP1 .size(), linspace_for(samplesDP1 , 0., 4.).data(), samplesDP1 .data());
 
 
 #ifdef LOW_PASS
@@ -158,7 +153,7 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
       
       auto dataGraph = hit.getTraceBaselineRemoved(10);
 
-      auto graph1  = new TGraph(dataGraph  .size(), Colib::linspace<int>(dataGraph  .size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraph  .data());
+      auto graph1  = new TGraph(dataGraph  .size(), linspace<int>(dataGraph  .size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraph  .data());
       auto dataGraphs2 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.02);
       auto dataGraphs3 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.03);
       auto dataGraphs4 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.04);
@@ -166,12 +161,12 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
       auto dataGraphs5 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.05);
       auto dataGraphs6 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.06);
 
-      auto graphs2 = new TGraph(dataGraphs2.size(), Colib::linspace<int>(dataGraphs2.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs2.data());
-      auto graphs3 = new TGraph(dataGraphs3.size(), Colib::linspace<int>(dataGraphs3.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs3.data());
-      auto graphs4 = new TGraph(dataGraphs4.size(), Colib::linspace<int>(dataGraphs4.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs4.data());
-      auto graphs45 = new TGraph(dataGraphs45.size(), Colib::linspace<int>(dataGraphs45.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs45.data());
-      auto graphs5 = new TGraph(dataGraphs5.size(), Colib::linspace<int>(dataGraphs5.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs5.data());
-      auto graphs6 = new TGraph(dataGraphs6.size(), Colib::linspace<int>(dataGraphs6.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs6.data());
+      auto graphs2 = new TGraph(dataGraphs2.size(), linspace<int>(dataGraphs2.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs2.data());
+      auto graphs3 = new TGraph(dataGraphs3.size(), linspace<int>(dataGraphs3.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs3.data());
+      auto graphs4 = new TGraph(dataGraphs4.size(), linspace<int>(dataGraphs4.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs4.data());
+      auto graphs45 = new TGraph(dataGraphs45.size(), linspace<int>(dataGraphs45.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs45.data());
+      auto graphs5 = new TGraph(dataGraphs5.size(), linspace<int>(dataGraphs5.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs5.data());
+      auto graphs6 = new TGraph(dataGraphs6.size(), linspace<int>(dataGraphs6.size(), 0, CaenDataReader1725::ticks_to_ns).data(), dataGraphs6.data());
 
       graph1 -> SetTitle("Trace");
       graphs2 -> SetTitle("cutoff 0.02");
@@ -214,35 +209,62 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
       graphs[1] -> Draw("same");
       graphs[2] -> Draw("same");
 
-      CFD cfd(*hit.trace, 2);
+      CFD cfd(*hit.trace, 50);
 
       auto const & detectorType = getDetectorType(hit.board_ID, hit.channel_ID);
 
-      if (Colib::key_found(shifts, detectorType))
+      if (key_found(shifts, detectorType))
       {
         cfd.calculate(shifts[detectorType], 0.75);
         
-        auto cfdGraph = new TGraph(cfd.cfd.size(), Colib::linspaceFor(cfd.cfd, 0., CaenDataReader1725::ticks_to_ns).data(), cfd.cfd.data());
-        cfdGraph->SetLineColor(kGray);
-        cfdGraph->Draw("same");
-
-        if (Colib::key_found(thresholds, detectorType))
+        if (key_found(thresholds, detectorType))
         {
-          // auto const & zero = cfd.findZero() * CaenDataReader1725::ticks_to_ns;
-          auto const & zero = cfd.findZero(thresholds[detectorType]) * CaenDataReader1725::ticks_to_ns;
-          if (zero != CFD::noSignal)
+          double zero = cfd.findZero();
+          if (zero == CFD::noSignal)
           {
-            TMarker *zero_marker = new TMarker(zero, 0, 20);
-            zero_marker->SetMarkerStyle(29);
-            zero_marker->SetMarkerColor(kGreen);
-            zero_marker->Draw("SAME");
+            ++nbNoSignal[hit.label];
+            zero = 0;
+            TDirectory *dir = rootFile->GetDirectory(("noSignal"+detectorName).c_str());
+            if (!dir){
+              rootFile->mkdir(("noSignal"+detectorName).c_str());
+              dir = rootFile->GetDirectory(("noSignal"+detectorName).c_str());
+            }
+            dir->cd();
           }
+          else if (zero == CFD::noZero)
+          {
+            ++nbNoZero[hit.label];
+            zero = 1;
+            TDirectory *dir = rootFile->GetDirectory(("noZero"+detectorName).c_str());
+            if (!dir){
+              rootFile->mkdir(("noZero"+detectorName).c_str());
+              dir = rootFile->GetDirectory(("noZero"+detectorName).c_str());
+            }
+            dir->cd();
+          }
+
+          TMarker *zero_marker = new TMarker(zero*CaenDataReader1725::ticks_to_ns, 0, 20);
+          zero_marker->SetMarkerStyle(29);
+          zero_marker->SetMarkerColor(kGreen);
+          zero_marker->Draw("SAME");
+          
+          auto cfdGraph = new TGraph(cfd.cfd.size(), linspaceFor(cfd.cfd, 0., CaenDataReader1725::ticks_to_ns).data(), cfd.cfd.data());
+          cfdGraph->SetLineColor(kGray);
+          cfdGraph->Draw("same");
         }
       // }
       canvas->Write();
     }
   }
   rootFile->Close();
+  
+  print();
+  print("nbNoSignal");
+  for (size_t label_i = 0; label_i<nbNoSignal.size(); ++label_i) if (nbNoSignal[label_i]>0) print(label_i, nbNoSignal[label_i]);
+  print("nbNoZero");
+  for (size_t label_i = 0; label_i<nbNoZero  .size(); ++label_i) if (nbNoZero  [label_i]>0) print(label_i, nbNoZero  [label_i]);
+
+  print();
   print("writeTraces.root written");
   print(timer());
   return 1;
@@ -259,7 +281,7 @@ int main(int argc, char** argv)
     print("adcMax [int] : sets the maximum adc value to store the trace");
     return 1;
   }
-  istringstream iss(Colib::argv_to_string(argv));
+  istringstream iss(argv_to_string(argv));
 
   string file = "empty.caendat";
   iss >> file >> file;

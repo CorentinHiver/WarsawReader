@@ -32,8 +32,6 @@ namespace CaenDataReader1725
       outTree->Branch("adc"          , &adc          );
       outTree->Branch("qlong"        , &qlong        );
       if (Hit::handle_traces && trace) outTree->Branch("trace", &trace);
-      // outTree->Branch("extended_ts"  , &extended_ts  );
-      // outTree->Branch("precise_ts"   , &precise_ts   );
       
       return outTree;
     }
@@ -51,10 +49,7 @@ namespace CaenDataReader1725
       inTree->SetBranchAddress("rel_time"      , &rel_time     );
       inTree->SetBranchAddress("adc"           , &adc          );
       inTree->SetBranchAddress("qlong"         , &qlong        );
-      // Special treatment for the trace : If not found in the data, then deactivate trace handling
-      if (Hit::handle_traces && Hit::trace) inTree->SetBranchAddress("trace", &trace);
-      // inTree->SetBranchAddress("extended_ts"   , &extended_ts  );
-      // inTree->SetBranchAddress("precise_ts"    , &precise_ts   );
+      if (Hit::handle_traces) inTree->SetBranchAddress("trace", &trace);
       
       return inTree;
     }

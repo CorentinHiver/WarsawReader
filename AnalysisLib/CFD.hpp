@@ -85,7 +85,7 @@ public:
     
     trace.reserve(m_size);
 
-    for (auto const & sample : _trace) 
+    for (auto const & sample : _trace)
     {
       if constexpr (is_floating<T>()) trace.push_back(sample - baseline);
       else trace.push_back(static_cast<double>(sample  + random_fast_uniform()) - baseline);

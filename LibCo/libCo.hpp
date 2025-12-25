@@ -57,6 +57,13 @@
 #include <cstring>
 #include <ctime>
 
+// ------------- //
+// -- MACROS -- //
+// ------------- //
+
+#define STRINGIFY_IMPL(x) #x
+#define STRINGIFY(x) STRINGIFY_IMPL(x)
+
 ///////////////////////
 // Versions aliasing //
 ///////////////////////
@@ -1015,7 +1022,8 @@ namespace Colib
   {
     auto value = double_cast(t);
     std::string s;
-        if (value<1.e-9)  {value*=1.e+12; s = " f";}
+    if (value == T{0}) {s = "";}
+    else if (value<1.e-9)  {value*=1.e+12; s = " f";}
     else if (value<1.e-6)  {value*=1.e+9 ; s = " n";}
     else if (value<1.e-3)  {value*=1.e+6 ; s = " µ";}
     else if (value<1.e+0)  {value*=1.e+3 ; s = " m";}

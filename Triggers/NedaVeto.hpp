@@ -1,6 +1,6 @@
 #pragma once
 
-#pragma message "TriggerTest.hpp loaded" // This is a normal preprocessor message
+#pragma message (STRINGIFY(TRIGGER) ".hpp loaded") // This is a normal preprocessor message
 
 #include "../CaenLib/CaenRootEventBuilder.hpp"
 
@@ -18,24 +18,12 @@ public:
     // Here is an example for triggering on
     for (size_t i = 0; i<event_id.size(); ++i) 
     {
-      auto const & boardID_i = (*m_eventBuilder)[event_id[i]].board_ID; // Simple aliasing
-      if (m_RingLUT[boardID_i]) for (size_t j = 0; j<event_id.size(); ++j) 
-      {
-        auto const & boardID_j = (*m_eventBuilder)[event_id[j]].board_ID; // Simple aliasing
-        if (m_SectorLUT[boardID_j]) return true;
-      }
+      auto const & hit = (*m_eventBuilder)[event_id[i]]; // Simple aliasing
+      if (hit.board_ID == 5 && hit.channel_ID < 5) return false;
     }
-    return false;
+    return true;
   }
 
 private:
   Caen1725EventBuilder * m_eventBuilder = nullptr;
-  auto static constexpr m_RingLUT = Colib::LUT<10000>([](UChar_t boardID)
-  {
-    return boardID == 6;
-  });
-  auto static constexpr m_SectorLUT = Colib::LUT<10000>([](UChar_t boardID)
-  {
-    return boardID == 6 || boardID == 7;
-  });
 };

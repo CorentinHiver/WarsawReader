@@ -7,7 +7,7 @@
 #include "LibCo/Classes/Timer.hpp"
 #include "LibCo/libCo.hpp"
 
-#include "CaenLib/CaenRootReader.hpp"
+#include "CaenLib/CaenRootInterface.hpp"
 #include "CaenLib/CaenRootEventBuilder.hpp"
 
 constexpr Long64_t time_window          = 2e6 ; // ps
@@ -104,6 +104,9 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
     }
   }
 
+  std::vector<int> nbNoZero  (1000,0);
+  std::vector<int> nbNoSignal(1000,0);
+
   for (auto const & filename : filenames)
   {
     Caen1725RootInterface reader(filename);
@@ -116,7 +119,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
       auto & hit = reader.getHit();
 
-      if (reader.nbHits() % int(1e5) == 0) printsln(Colib::nicer_double(reader.nbHits(), 1));
+      if (reader.nbHits() % int(1e5) == 0) printsln(Colib::nicer_double(reader.nbHits(), 1), "       ");
 
       // Correct timestamp with cfd :
 
@@ -127,10 +130,10 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
         // auto zero = cfd.findZero(cfd_thresholds[hit.board_ID]);
         auto zero = cfd.findZero();
         
-        if (zero == CFD::noSignal)
+        if (zero == CFD::noSignal) {++nbNoZero[hit.label]; hit.time = hit.extended_ts;}
+        else if (zero == CFD::noSignal) {++nbNoSignal[hit.label]; hit.time = hit.extended_ts;}
+        else 
         {
-          zero = 0;
-        } else {
           zero = zero * CaenDataReader1725::ticks_to_ps;
   
           cfd_corrections->Fill(glabel(hit), zero);

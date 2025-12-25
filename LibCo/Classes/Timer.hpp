@@ -46,26 +46,26 @@ public:
   Timer() noexcept { Start(); }
 
   /// @brief Gets the absolute timestamp
-  time_point_t Now() const noexcept
+  inline time_point_t Now() const noexcept
   {
     return m_clock.now();
   }
 
   /// @brief Starts counting the time elapsed until next Stop() call.
-  time_point_t const & Start()
+  inline time_point_t const & Start() noexcept
   {
     return (m_start = Now());
   }
 
   /// @brief Starts counting the time elapsed until next Stop() call. Resets the time elapsed counting.
-  time_point_t const & Restart()
+  inline time_point_t const & Restart() noexcept
   {
     d_milli = duration_milli_t::zero();
     return Start();
   }
 
   /// @brief Stops counting the time, increments m_stop accordingly
-  time_point_t const & Stop()
+  inline time_point_t const & Stop() noexcept
   {
     m_stop = Now();
     d_milli += duration_milli_t(m_stop - m_start);
@@ -73,26 +73,26 @@ public:
   }
 
   ///@brief Print the time since last Restart, in milliseconds
-  double Time() const noexcept
+  inline double Time() const noexcept
   {
     return(duration_milli_t(Now() - m_start).count());
   }
 
   ///@brief Print the time since last Restart, in the required time unit (ms, s, min, h, j)
-  double Time(std::string const & unit) const noexcept
+  inline double Time(std::string const & unit) const noexcept
   {
     return Time()/m_units.at(unit);
   }
 
   ///@brief Print the time since last Restart, in seconds
-  double TimeSec() const noexcept
+  inline double TimeSec() const noexcept
   {
     Now();
     return(duration_milli_t(Now() - m_start).count()/1000.);
   }
 
   ///@brief Print the time measured between each Start and Stop, in milliseconds
-  double TimeElapsed() const noexcept
+  inline double TimeElapsed() const noexcept
   {
     return d_milli.count();
   }
