@@ -61,8 +61,10 @@
 // -- MACROS -- //
 // ------------- //
 
-#define STRINGIFY_IMPL(x) #x
-#define STRINGIFY(x) STRINGIFY_IMPL(x)
+#define STR_IMPL(x) #x
+#define STR(x) STR_IMPL(x)
+
+#define HEADER(x) STR(x.hpp)
 
 ///////////////////////
 // Versions aliasing //
@@ -1048,7 +1050,7 @@ namespace Colib
   /**
    * @brief Lookup table that can be generated at compile time.
    * @details 
-   * Instanciation :
+   * Example instanciation :
    * constexpr auto squares = LUT<10> ([](int i) { return i*i; }); 
    * 
    */
@@ -1072,13 +1074,14 @@ namespace Colib
     int low = 0;
     int high = N - 1;
   
-    while (low <= high) {
+    while (low <= high) 
+    {
       int mid = (low + high) / 2;
-           if (array[mid] < value) low = mid + 1;
+           if (array[mid] < value) low  = mid + 1;
       else if (array[mid] > value) high = mid - 1;
-      else return true;
+      else return true; // Value found
     }
-    return false;  // Value not found
+    return false;       // Value not found
   }
 }
 

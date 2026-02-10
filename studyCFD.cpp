@@ -25,7 +25,8 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
   if (filenames.empty()) {print("No file !"); return 1;}
   Timer timer;
   bool max_events = (nb_events_max>0);
-  std::unordered_map<UChar_t, int> cfd_shifts = {
+
+  CFD::sShifts = { // BOARD_ID, SAMPLES
     {0, 5},
     {1, 5},
     {6, 2},
@@ -33,17 +34,18 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
     {8, 2}
   };
 
-  std::unordered_map<UChar_t, double> cfd_thresholds = {
-    {0, -50 },
-    {1, -50 },
-    {6, -500},
-    {7, -500},
-    {8, -500}
+  CFD::sFractions = { // BOARD_ID, fraction
+    {0, 0.75},
+    {1, 0.75},
+    {6, 0.75},
+    {7, 0.75},
+    {8, 0.75}
   };
 
-  auto hasCFDparameters = Colib::LUT<100>([&cfd_shifts](UChar_t boardID){
-    return Colib::key_found(cfd_shifts, boardID);
-  }); // Is static thread_local, hence calculated only once per thread 
+  auto useCFD = Colib::LUT<10000>([&](int boardID)
+  {
+    return Colib::key_found(CFD::sShifts, boardID);
+  });
 
   auto constexpr static glabel = [](Caen1725RootHit const & hit){
     return hit.board_ID * 16 + hit.channel_ID * 2 + hit.subchannel_ID;
@@ -79,6 +81,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
   std::vector<TH2F*> E_all_vs_ref_dT; E_all_vs_ref_dT.reserve(200);
   std::vector<TH2F*> E_all_vs_ref_cfd_dT; E_all_vs_ref_cfd_dT.reserve(200);
   std::vector<TH2F*> cfd_vs_dT; cfd_vs_dT.reserve(200);
+  
   for (size_t board_i = 0; board_i<Boards_map.size(); ++board_i) for (size_t channel_i = 0; channel_i<16; ++channel_i)
   {
     if (Boards_map[board_i] == EMPTY)
@@ -106,6 +109,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
   std::vector<int> nbNoZero  (1000,0);
   std::vector<int> nbNoSignal(1000,0);
+  std::vector<int> nb        (1000,0);
 
   for (auto const & filename : filenames)
   {
@@ -123,18 +127,20 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
       // Correct timestamp with cfd :
 
-      if (hasCFDparameters[hit.board_ID] && hit.hasTrace())
+      if (useCFD[hit.board_ID] && hit.hasTrace())
       {
-        CFD cfd(*hit.getTrace(), cfd_shifts[hit.board_ID], 0.75, 10);
+        ++nb[hit.label];
+
+        CFD cfd(*hit.getTrace(), CFD::sShifts[hit.board_ID], CFD::sFractions[hit.board_ID], 10);
         
         // auto zero = cfd.findZero(cfd_thresholds[hit.board_ID]);
         auto zero = cfd.findZero();
         
         if (zero == CFD::noSignal) {++nbNoZero[hit.label]; hit.time = hit.extended_ts;}
-        else if (zero == CFD::noSignal) {++nbNoSignal[hit.label]; hit.time = hit.extended_ts;}
+        else if (zero == CFD::noZero) {++nbNoSignal[hit.label]; hit.time = hit.extended_ts;}
         else 
         {
-          zero = zero * CaenDataReader1725::ticks_to_ps;
+          zero = zero * Caen1725::ticks_to_ps;
   
           cfd_corrections->Fill(glabel(hit), zero);
   
@@ -235,6 +241,13 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
       event_builder.clear();
     }
   }
+
+  print();
+  print("nbNoSignal");
+  for (size_t label_i = 0; label_i<nbNoSignal.size(); ++label_i) if (nbNoSignal[label_i]>0) print(label_i, nbNoSignal[label_i], 100.*nbNoSignal[label_i]/double(nb[label_i]), "%");
+  print("nbNoZero");
+  for (size_t label_i = 0; label_i<nbNoZero  .size(); ++label_i) if (nbNoZero  [label_i]>0) print(label_i, nbNoZero  [label_i], 100.*nbNoZero  [label_i]/double(nb[label_i]), "%");
+
 
   auto rootfile = TFile::Open("studyCFD.root", "recreate"); rootfile->cd();
 

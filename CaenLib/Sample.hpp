@@ -3,7 +3,7 @@
 
 #include "utils.hpp"
 
-namespace CaenDataReader1725
+namespace Caen1725
 {
   /// @brief A sample containing the sampled trace, the analog and the digital probes
   struct Sample

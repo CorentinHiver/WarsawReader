@@ -6,7 +6,7 @@
 
 /**
  * @brief Allows a used-defined trigger. Copy this definition in a new .hpp file named as you whish, 
- * e.g. MyTrigger.hpp, and call it with -DTRIGGER=MyTrigger. But do not rename the class !
+ * e.g. MyTrigger.hpp, and call it at compile time with -DTRIGGER=MyTrigger. But do not rename the class !
  */
 class Trigger
 {

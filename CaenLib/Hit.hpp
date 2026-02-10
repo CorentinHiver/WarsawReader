@@ -4,7 +4,7 @@
 #include "BoardAggregate.hpp"
 #include <RtypesCore.h>
 
-namespace CaenDataReader1725
+namespace Caen1725
 {
   template<typename T>
   using Trace_t = std::vector<T>;
@@ -51,9 +51,9 @@ namespace CaenDataReader1725
 
     bool hasTrace() const {return ( static_cast<bool>(trace) && (!trace -> empty()) );}
 
-    using Board1725 = CaenDataReader1725::BoardAggregate;
-    using Channel1725 = CaenDataReader1725::ChannelAggregate;
-    using Event1725 = CaenDataReader1725::CaenEvent;
+    using Board1725 = Caen1725::BoardAggregate;
+    using Channel1725 = Caen1725::ChannelAggregate;
+    using Event1725 = Caen1725::CaenEvent;
 
     void readCaenEvent(std::istream& data, Board1725 & board, Channel1725 & channel, Event1725 & caenEvent, std::vector<bool> const & boardReadTrace = {})
     {
@@ -65,7 +65,7 @@ namespace CaenDataReader1725
 
       // 1. Timestamp and subchannel_ID
 
-      CaenDataReader1725::read_data(data, &tmp_u32);
+      Caen1725::read_data(data, &tmp_u32);
       debug("CH[31], TRIGGER_TIME_TAG[30:0] :", std::bitset<32>(tmp_u32));
       caenEvent.TRIGGER_TIME_TAG         = getBitField(tmp_u32, 30);
       subchannel_ID = static_cast<UChar_t>(getBit     (tmp_u32, 31));
@@ -83,7 +83,7 @@ namespace CaenDataReader1725
           for (size_t sample_i = 0; sample_i<trace->size(); ++sample_i)
           {
             auto & sample = (*trace.get())[sample_i];      // Simple aliasing
-            CaenDataReader1725::read_data(data, &sample);  // Reading the buffer
+            Caen1725::read_data(data, &sample);  // Reading the buffer
             if(getBit(sample, 15)) trigger_bin = sample_i; // Gets the index of the sample where the trigger time tag have been measured
             (*DP1.get())[sample_i] = getBit(sample, 14);   // Gets the digital probe DP1 value for this sample
             sample &= mask(13);                            // Removes the trigger_bin and DP1 bit values from the sample 
@@ -95,24 +95,24 @@ namespace CaenDataReader1725
         if (trace) trace -> clear();
         if (DP1  ) DP1   -> clear();
         auto const & size_to_skip = channel.NUM_SAMPLES * sizeof(uint16_t);
-        CaenDataReader1725::skip(data, size_to_skip);
+        Caen1725::skip(data, size_to_skip);
       }
 
       // 3. EXTRAS2 field (EXTRAS for PSD)
 
-      if (channel.E2) CaenDataReader1725::read_data(data, &caenEvent.EXTRAS2);
+      if (channel.E2) Caen1725::read_data(data, &caenEvent.EXTRAS2);
       debug("EXTRAS2", std::bitset<32>(caenEvent.EXTRAS2));
 
-      caenEvent.extra = CaenDataReader1725::Extra2(caenEvent.EXTRAS2, caenEvent.TRIGGER_TIME_TAG, caenEvent.EX);
+      caenEvent.extra = Caen1725::Extra2(caenEvent.EXTRAS2, caenEvent.TRIGGER_TIME_TAG, caenEvent.EX);
       
       switch (caenEvent.extra.flag)
       {
-        case CaenDataReader1725::Extra2::ExtendedTimestamp_flag : 
+        case Caen1725::Extra2::ExtendedTimestamp_flag : 
           extended_ts = caenEvent.extra.extended_timestamp;
           timestamp   = caenEvent.extra.extended_timestamp; 
           break;
 
-        case CaenDataReader1725::Extra2::FineTimestamp_flag : 
+        case Caen1725::Extra2::FineTimestamp_flag : 
           extended_ts = caenEvent.extra.extended_timestamp;
           precise_ts  = caenEvent.extra.precise_timestamp ;
           timestamp   = caenEvent.extra.extended_timestamp;
@@ -125,7 +125,7 @@ namespace CaenDataReader1725
 
       // 4. Energy, PU (analog probe) and EXTRAS (qlong for PSD)
 
-      CaenDataReader1725::read_data(data, &tmp_u32);
+      Caen1725::read_data(data, &tmp_u32);
 
       debug("EXTRAS, PU, ENERGY:", std::bitset<32>(tmp_u32));
 
@@ -215,6 +215,29 @@ namespace CaenDataReader1725
       trace->resize(_trace->size());
       std::copy(_trace->begin(), _trace->end(), trace->begin());
     }
+    
+    Hit (
+      UInt_t    _label,
+      UShort_t  _board_ID,
+      UShort_t  _channel_ID,
+      UShort_t  _subchannel_ID,
+      Int_t     _adc,
+      Int_t     _qlong,
+      ULong64_t _timestamp,
+      ULong64_t _time,
+      Int_t     _rel_time
+    ) noexcept : 
+      label         (_label        ),
+      board_ID      (_board_ID     ),
+      channel_ID    (_channel_ID   ),
+      subchannel_ID (_subchannel_ID),
+      adc           (_adc          ),
+      qlong         (_qlong        ),
+      timestamp     (_timestamp    ),
+      time          (_time         ),
+      rel_time      (_rel_time     )
+    {
+    }
 
     // Hit (
     //   UInt_t    _label,
@@ -245,28 +268,7 @@ namespace CaenDataReader1725
     //   }
     // }
 
-    Hit (
-      UInt_t    _label,
-      UShort_t  _board_ID,
-      UShort_t  _channel_ID,
-      UShort_t  _subchannel_ID,
-      Int_t     _adc,
-      Int_t     _qlong,
-      ULong64_t _timestamp,
-      ULong64_t _time,
-      Int_t     _rel_time
-    ) noexcept : 
-      label         (_label        ),
-      board_ID      (_board_ID     ),
-      channel_ID    (_channel_ID   ),
-      subchannel_ID (_subchannel_ID),
-      adc           (_adc          ),
-      qlong         (_qlong        ),
-      timestamp     (_timestamp    ),
-      time          (_time         ),
-      rel_time      (_rel_time     )
-    {
-    }
+    
 
     // Hit (
     //   UInt_t    _label,
@@ -325,4 +327,4 @@ namespace CaenDataReader1725
   };
 };
 
-using Caen1725Hit = CaenDataReader1725::Hit;
+using Caen1725Hit = Caen1725::Hit;

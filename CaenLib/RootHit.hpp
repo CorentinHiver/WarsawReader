@@ -7,20 +7,21 @@
 #include "TTree.h"
 #include "TGraph.h"
 
-namespace CaenDataReader1725
+namespace Caen1725
 {
   class RootHit : public Hit
   {
   public:
-
+    
     /// @brief Inherit constructors from Hit
     template<class... ARGS>
     RootHit(ARGS &&... args) : Hit(std::forward<ARGS>(args)...)
     {}
     
-    TTree * writeTo(TTree * outTree)
+    /// @brief Resets outTree and creates the TBranches with the Hit attributes. Sets RootHit in writting mode.
+    inline TTree * writeTo(TTree * outTree) noexcept
     {
-      writting = true;
+      ioMode = IOmode::Writting;
       outTree->ResetBranchAddresses();
       outTree->Branch("label"        , &label        );
       outTree->Branch("board_ID"     , &board_ID     );
@@ -36,9 +37,10 @@ namespace CaenDataReader1725
       return outTree;
     }
 
+    /// @brief Resets inTree and set the TBranches addresses to the Hit attributes. Sets RootHit in reading mode.
     TTree * readFrom(TTree * inTree)
     {
-      reading = true;
+      ioMode = IOmode::Reading;
       inTree->ResetBranchAddresses();
       inTree->SetBranchAddress("label"         , &label        );
       inTree->SetBranchAddress("board_ID"      , &board_ID     );
@@ -91,9 +93,9 @@ namespace CaenDataReader1725
         if (i == trigger_bin) trig_int[i] = maxS;
       }
 
-      graphs.push_back(new TGraph(data_int.size(), Colib::linspace<int>(data_int.size(), 0, CaenDataReader1725::ticks_to_ns).data(), data_int.data()));
-      graphs.push_back(new TGraph(DP1_int .size(), Colib::linspace<int>(DP1_int .size(), 0, CaenDataReader1725::ticks_to_ns).data(), DP1_int .data()));
-      graphs.push_back(new TGraph(trig_int.size(), Colib::linspace<int>(trig_int.size(), 0, CaenDataReader1725::ticks_to_ns).data(), trig_int.data()));
+      graphs.push_back(new TGraph(data_int.size(), Colib::linspace<int>(data_int.size(), 0, Caen1725::ticks_to_ns).data(), data_int.data()));
+      graphs.push_back(new TGraph(DP1_int .size(), Colib::linspace<int>(DP1_int .size(), 0, Caen1725::ticks_to_ns).data(), DP1_int .data()));
+      graphs.push_back(new TGraph(trig_int.size(), Colib::linspace<int>(trig_int.size(), 0, Caen1725::ticks_to_ns).data(), trig_int.data()));
 
       graphs[0] -> SetName("Trace"  ); graphs[0] -> SetTitle("Trace"  );
       graphs[1] -> SetName("DP1"    ); graphs[1] -> SetTitle("DP1"    );
@@ -119,7 +121,7 @@ namespace CaenDataReader1725
       }
       std::vector<int> data_int; data_int.reserve(N);
       for (auto const sample : *trace) data_int.push_back(sample);
-      auto graph = new TGraph(data_int.size(), Colib::linspace<int>(data_int.size(), 0, CaenDataReader1725::ticks_to_ns).data(), data_int.data());
+      auto graph = new TGraph(data_int.size(), Colib::linspace<int>(data_int.size(), 0, Caen1725::ticks_to_ns).data(), data_int.data());
       graph -> SetName ("Trace"); 
       graph -> SetTitle("Trace");
       return graph;
@@ -153,9 +155,8 @@ namespace CaenDataReader1725
       return graph;
     }
 
-    bool reading  = false; // Reading  to   a TTree
-    bool writting = false; // Writting from a TTree
+    enum class IOmode {None, Reading, Writting} ioMode = IOmode::None; // Read or Write a TTree
   };
 };
 
-using Caen1725RootHit = CaenDataReader1725::RootHit;
+using Caen1725RootHit = Caen1725::RootHit;

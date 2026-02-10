@@ -2,7 +2,7 @@
 #include "Event.hpp"
 #include "RootHit.hpp"
 
-namespace CaenDataReader1725
+namespace Caen1725
 {
   class RootEvent : public Event
   {
@@ -97,7 +97,7 @@ namespace CaenDataReader1725
   public:
     RootEventVec(bool handle_traces = false)
     {
-      if (handle_traces) Colib::throw_error("CaenDataReader1725::RootEventVec can't handle traces (TBD)");
+      if (handle_traces) Colib::throw_error("Caen1725::RootEventVec can't handle traces (TBD)");
       label          = new std::vector<Int_t    >;
       board_ID       = new std::vector<Int_t    >;
       channel_ID     = new std::vector<Int_t    >;
@@ -251,4 +251,4 @@ namespace CaenDataReader1725
   };
 };
 
-using Caen1725RootEvent = CaenDataReader1725::RootEvent;
+using Caen1725RootEvent = Caen1725::RootEvent;

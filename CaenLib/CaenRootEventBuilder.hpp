@@ -3,7 +3,7 @@
 
 #include "RootHit.hpp"
 
-namespace CaenDataReader1725
+namespace Caen1725
 {
   class EventBuilder
   {
@@ -53,35 +53,26 @@ namespace CaenDataReader1725
     void fast_event_building(Long64_t time_window) noexcept
     {
       // 1. Initialize the event buffer
-          
       if (!m_aligned) this -> align();
       EventId event;
       event.emplace_back(m_ordered_index[0]); 
-
       // 2. Loop through the hits buffer
-
       for (size_t loop_i = 1; loop_i < m_hit_buffer.size(); ++loop_i)
       {
         auto const & hit_i      =  m_ordered_index[loop_i       ];
         auto const & hit        =  m_hit_buffer   [hit_i        ];
         auto const & first_hit  =  m_hit_buffer   [event.front()];
-
         // 3. Add new hits until one is out of time window with the first hit of the event
         // moment referred to as "closing the event"
-
         if ((m_buildOnTimestamp) ? (static_cast<Long64_t>(hit.timestamp - first_hit.timestamp) < time_window)
                                  : (static_cast<Long64_t>(hit.time      - first_hit.time     ) < time_window)) 
         {
           event.emplace_back(hit_i);  
           continue;
         }
-
         // -- Piece of code only executed when the event is full -- //
-        
         // 4. Fill the event buffer
-
         m_event_buffer.emplace_back(event);
-
         // 5. Prepare next event : 
         event.clear();
         event.emplace_back(hit_i); // Save the current hit
@@ -120,6 +111,6 @@ namespace CaenDataReader1725
   };
 };
 
-using Caen1725EventBuilder = CaenDataReader1725::EventBuilder;
+using Caen1725EventBuilder = Caen1725::EventBuilder;
 
 #endif //CAENROOTEVENTBUILDER_HPP

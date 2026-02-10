@@ -5,7 +5,7 @@
 #include "Sample.hpp"
 #include "Extra2.hpp"
 
-namespace CaenDataReader1725
+namespace Caen1725
 {
   /// @brief A hit in a detector
   struct CaenEvent
@@ -27,9 +27,9 @@ namespace CaenDataReader1725
 
     void static skip(std::istream& data, int nb_samples)
     {
-      CaenDataReader1725::skip(data, sizeof(tmp_u32));
-      CaenDataReader1725::skip(data, nb_samples * sizeof(nb_samples));
-      CaenDataReader1725::skip(data, 2*sizeof(tmp_u32));
+      Caen1725::skip(data, sizeof(tmp_u32));
+      Caen1725::skip(data, nb_samples * sizeof(nb_samples));
+      Caen1725::skip(data, 2*sizeof(tmp_u32));
     }
 
     void read(std::istream& data, int nb_samples, bool handle_traces)
@@ -54,7 +54,7 @@ namespace CaenDataReader1725
       }
       else {
         auto const & size_to_skip = nb_samples * sizeof(nb_samples);
-        CaenDataReader1725::skip(data, size_to_skip);
+        Caen1725::skip(data, size_to_skip);
       }
   
       // if (channel.E2)  // TODO: do we need to read EXTRAS2 if it is disabled, i.e. if channel.E2=false ?

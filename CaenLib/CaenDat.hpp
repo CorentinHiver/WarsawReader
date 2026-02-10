@@ -3,7 +3,7 @@
 
 #include "utils.hpp"
 
-namespace CaenDataReader1725
+namespace Caen1725
 {
   class CaenDat
   {

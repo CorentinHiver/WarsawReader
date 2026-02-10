@@ -6,8 +6,8 @@
 #include <chrono>
 #include <unordered_map>
 
-using hr_clock_t = std::chrono::high_resolution_clock;
-using time_point_t = std::chrono::time_point<hr_clock_t>;
+using       hr_clock_t = std::chrono::high_resolution_clock;
+using     time_point_t = std::chrono::time_point<hr_clock_t>;
 using duration_milli_t = std::chrono::duration<double, std::milli>;
 
 namespace Colib
@@ -17,6 +17,7 @@ namespace Colib
   {
     T _time = time;
     std::string unit;
+    
          if (_time<1.e-6 ) {_time*=1.e9  ; unit = " ns" ;}
          if (_time<1.e-3 ) {_time*=1.e6  ; unit = " us" ;}
          if (_time<1.    ) {_time*=1.e3  ; unit = " ms" ;}
@@ -46,26 +47,26 @@ public:
   Timer() noexcept { Start(); }
 
   /// @brief Gets the absolute timestamp
-  inline time_point_t Now() const noexcept
+  time_point_t Now() const noexcept
   {
     return m_clock.now();
   }
 
   /// @brief Starts counting the time elapsed until next Stop() call.
-  inline time_point_t const & Start() noexcept
+  time_point_t const & Start()
   {
     return (m_start = Now());
   }
 
   /// @brief Starts counting the time elapsed until next Stop() call. Resets the time elapsed counting.
-  inline time_point_t const & Restart() noexcept
+  time_point_t const & Restart()
   {
     d_milli = duration_milli_t::zero();
     return Start();
   }
 
   /// @brief Stops counting the time, increments m_stop accordingly
-  inline time_point_t const & Stop() noexcept
+  time_point_t const & Stop()
   {
     m_stop = Now();
     d_milli += duration_milli_t(m_stop - m_start);
@@ -73,26 +74,26 @@ public:
   }
 
   ///@brief Print the time since last Restart, in milliseconds
-  inline double Time() const noexcept
+  double Time() const noexcept
   {
     return(duration_milli_t(Now() - m_start).count());
   }
 
   ///@brief Print the time since last Restart, in the required time unit (ms, s, min, h, j)
-  inline double Time(std::string const & unit) const noexcept
+  double Time(std::string const & unit) const noexcept
   {
     return Time()/m_units.at(unit);
   }
 
   ///@brief Print the time since last Restart, in seconds
-  inline double TimeSec() const noexcept
+  double TimeSec() const noexcept
   {
     Now();
     return(duration_milli_t(Now() - m_start).count()/1000.);
   }
 
   ///@brief Print the time measured between each Start and Stop, in milliseconds
-  inline double TimeElapsed() const noexcept
+  double TimeElapsed() const noexcept
   {
     return d_milli.count();
   }
@@ -109,14 +110,14 @@ public:
     double time = Time();
     std::string unit = "ms";
     
-    if (time>86400000.) {time/=86400000.; unit = "j";}
-    if (time>3600000.) {time/=3600000.; unit = "h";}
-    else if (time>120000.){time/=60000.; unit = "min";}
-    else if (time>1000.){time/=1000.; unit = "s";}
+         if (time>86400000.) {time /= 86400000.; unit = "j"  ;}
+    else if (time>3600000. ) {time /=  3600000.; unit = "h"  ;}
+    else if (time>120000.  ) {time /=    60000.; unit = "min";}
+    else if (time>1000.    ) {time /=     1000.; unit = "s"  ;}
+    else if (time>0.001    ) {time *=     1000.; unit = "ms" ;}
 
     std::stringstream ss;
     ss << std::fixed << std::setprecision(precision) << time << " " << unit;
-
     return ss.str();
   }
 
@@ -131,11 +132,9 @@ private:
   hr_clock_t m_clock;
 
   time_point_t m_start;
-  // time_point_t m_now;
   time_point_t m_stop;
 
   duration_milli_t d_milli;
-  // std::string m_unit = "ms";
   std::unordered_map<std::string, double> m_units = 
   {
     {"ms" , 1.},

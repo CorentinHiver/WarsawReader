@@ -4,11 +4,6 @@
 
 #pragma message ("TRIGGER CHOSE TO BE " STRINGIFY(TRIGGER)) // This is a normal preprocessor message
 
-#define STR_IMPL(x) #x
-#define STR(x) STR_IMPL(x)
-
-#define HEADER(x) STR(x.hpp)
-
 // /**
 //  * @brief Allows a used-defined trigger. Copy this definition in a new .hpp file named as you whish, 
 //  * e.g. MyTrigger.hpp, and call it with -DTRIGGER=MyTrigger.

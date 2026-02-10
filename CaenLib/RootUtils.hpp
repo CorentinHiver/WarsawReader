@@ -1,8 +1,11 @@
 #include "TFile.h"
 #include "TKey.h"
 #include "TTree.h"
-#include <unordered_map>
+
+#include <string>
 #include <typeindex>
+#include <typeinfo>
+#include <unordered_map>
 
 /**
  * @brief Creates a unordered_map of all the object of a certain class (TH1F, TH2F...) inside a TFile, indexed by their name
@@ -13,106 +16,83 @@
  * If no file is passed as parameter, reads the current file.
  * Internally perform a file->cd()
  */
-template<class T>
+template <class T>
 std::unordered_map<std::string, T*> file_get_map_of(TFile* file = nullptr)
 {
-  // init
-  std::unordered_map<std::string, T*> ret;
-  T temp_obj; 
+    static_assert(std::is_base_of<TObject, T>::value,
+                  "file_get_map_of<T>: T must inherit from TObject");
 
-  // Check the files :
-  if (file == nullptr) file = gFile;
-  if (!file) { error("in file_get_map_of<", temp_obj.ClassName(), ">(TFile* file): file is nullptr"); return ret;}
-  file->cd();
+    std::unordered_map<std::string, T*> ret;
 
-  // Get the class name :
-  auto const & classname = temp_obj.ClassName();
-  
-  // Loop over the list of keys of every object in the TFile :
-  auto list = file->GetListOfKeys();
-  for (auto&& keyAsObj : *list)
-  {
-    auto key = dynamic_cast<TKey*>(keyAsObj);
-    if(strcmp(key->GetClassName(), classname) == 0) 
-    {
-      T* obj = dynamic_cast<T*>(key->ReadObj());
-      if (obj)
-      {
-        ret.emplace(obj->GetName(), obj);
-      }
+    // Resolve file
+    if (!file) file = gFile;
+    if (!file || file->IsZombie()) {
+        error("file_get_map_of", "Invalid or null TFile");
+        return ret;
     }
-  }
 
-  return ret;
+    file->cd();
+
+    // Use ROOT RTTI instead of constructing a temporary object
+    TClass* cls = TClass::GetClass(typeid(T));
+    if (!cls) {
+        error("file_get_map_of", "Could not resolve TClass for requested type");
+        return ret;
+    }
+
+    const char* classname = cls->GetName();
+
+    // Iterate over keys
+    TIter next(file->GetListOfKeys());
+    while (auto* key = static_cast<TKey*>(next())) {
+        if (std::strcmp(key->GetClassName(), classname) != 0)
+            continue;
+
+        auto* obj = dynamic_cast<T*>(key->ReadObj());
+        if (!obj)
+            continue;
+
+        ret.emplace(obj->GetName(), obj);
+    }
+
+    return ret;
 }
 
-// static const std::unordered_map<std::type_index, std::string> typeRootMap = 
-// {
-//   // Bool :
-//   {static_cast<std::type_index>(typeid(          true)), "O"},
+template <typename T>
+struct RootLeafType {
+    static constexpr const char* value = nullptr;
+};
 
-//   // Integers :
-//   {static_cast<std::type_index>(typeid(  static_cast<char>(1))), "B"}, {static_cast<std::type_index>(typeid( static_cast<uchar>(1))), "b"},
-//   {static_cast<std::type_index>(typeid( static_cast<short>(1))), "S"}, {static_cast<std::type_index>(typeid(static_cast<ushort>(1))), "s"},
-//   {static_cast<std::type_index>(typeid(   static_cast<int>(1))), "I"}, {static_cast<std::type_index>(typeid(  static_cast<uint>(1))), "i"},
-//   {static_cast<std::type_index>(typeid(  static_cast<long>(1))), "G"}, {static_cast<std::type_index>(typeid( static_cast<ulong>(1))), "g"},
+template <> struct RootLeafType<bool>           { static constexpr const char* value = "O"; };
+template <> struct RootLeafType<char>           { static constexpr const char* value = "B"; };
+template <> struct RootLeafType<unsigned char>  { static constexpr const char* value = "b"; };
+template <> struct RootLeafType<short>          { static constexpr const char* value = "S"; };
+template <> struct RootLeafType<unsigned short> { static constexpr const char* value = "s"; };
+template <> struct RootLeafType<int>            { static constexpr const char* value = "I"; };
+template <> struct RootLeafType<unsigned int>   { static constexpr const char* value = "i"; };
+template <> struct RootLeafType<long>           { static constexpr const char* value = "G"; };
+template <> struct RootLeafType<unsigned long>  { static constexpr const char* value = "g"; };
+template <> struct RootLeafType<float>          { static constexpr const char* value = "F"; };
+template <> struct RootLeafType<double>         { static constexpr const char* value = "D"; };
+template <> struct RootLeafType<Long64_t>       { static constexpr const char* value = "L"; };
+template <> struct RootLeafType<ULong64_t>      { static constexpr const char* value = "l"; };
 
-//   // Floating point :
-//   {static_cast<std::type_index>(typeid(static_cast<double>(1))), "D"}, {static_cast<std::type_index>(typeid( static_cast<float>(1))), "F"},
-
-//   // ROOT types :
-//   {static_cast<std::type_index>(typeid(static_cast<Long64_t>(1))), "L"}, {static_cast<std::type_index>(typeid(static_cast<ULong64_t>(1))), "l"}
-// };
-
-// template<class T>
-// std::string typeRoot(T const & t)
-// {
-//   std::type_index typeIndex{typeid(t)};
-//   auto it = typeRootMap.find(typeIndex);
-//   if (it != typeRootMap.end()) return it->second;
-//   else                         return "Unknown";
-// }
-
-// template<class T>
-// std::string typeRoot()
-// {
-//   T t;
-//   std::type_index typeIndex{typeid(t)};
-//   auto it = typeRootMap.find(typeIndex);
-//   return (it != typeRootMap.end()) ? it->second : "Unknown";
-// }
-
-// /// @brief Create a branch for a given array and name
-// /// @param name_size: The name of the leaf that holds the size of the array
-// template<class T>
-// TBranch* createBranchArray(TTree* tree, std::string const & name, T * array, std::string const & name_size, int buffsize = 32000)
-// {
-//   auto type_root_format = name+"["+name_size+"]/"+typeRoot(**array);
-//   return (tree -> Branch(name.c_str(), array, type_root_format, buffsize));
-// }
-#include <string>
-#include <typeinfo>
-
-template<class T> std::string typeRoot()          {return "Unknown";}
-template<> std::string typeRoot<bool>()           {return "O";}
-template<> std::string typeRoot<char>()           {return "B";}
-template<> std::string typeRoot<unsigned char>()  {return "b";}
-template<> std::string typeRoot<short>()          {return "S";}
-template<> std::string typeRoot<unsigned short>() {return "s";}
-template<> std::string typeRoot<int>()            {return "I";}
-template<> std::string typeRoot<unsigned int>()   {return "i";}
-template<> std::string typeRoot<long>()           {return "G";}
-template<> std::string typeRoot<unsigned long>()  {return "g";}
-template<> std::string typeRoot<double>()         {return "D";}
-template<> std::string typeRoot<float>()          {return "F";}
-template<> std::string typeRoot<Long64_t>()       {return "L";}
-template<> std::string typeRoot<ULong64_t>()      {return "l";}
-
-/// @brief Create a branch for a given array and name
-/// @param name_size: The name of the leaf that holds the size of the array
-template<class T>
-TBranch* createBranchArray(TTree* tree, std::string const & name, T * array, std::string const & name_size, int buffsize = 32000)
+template <typename T>
+constexpr const char* typeRoot()
 {
-  std::string type_root_format = name + "[" + name_size + "]/" + typeRoot<std::remove_extent_t<T>>();
-  return tree->Branch(name.c_str(), array, type_root_format.c_str(), buffsize);
+    static_assert(RootLeafType<T>::value != nullptr, "typeRoot<T>: unsupported type for ROOT branch");
+    return RootLeafType<T>::value;
+}
+
+//------------------------------------------------------------------------------
+// Create array branch
+//------------------------------------------------------------------------------
+
+template <class T>
+TBranch* createBranchArray(TTree* tree, const std::string& name, T* array, const std::string& name_size, int buffsize = 32000)
+{
+    if (!tree) {error("createBranchArray", "TTree is null"); return nullptr;}
+    using element_t = std::remove_cv_t<std::remove_extent_t<T>>;
+    const std::string leaflist = name + "[" + name_size + "]/" + typeRoot<element_t>();
+    return tree->Branch(name.c_str(), array, leaflist.c_str(), buffsize);
 }

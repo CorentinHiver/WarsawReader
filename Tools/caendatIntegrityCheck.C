@@ -41,7 +41,7 @@ void caendatIntegrityCheck(std::string filename = "")
         print("Early end of file :", i, "th board with size", board.size, "octets and actual size", board.read_size, "octets");
         break;
       }
-      catch (CaenDataReader1725::CheckBinMissed const & checkBinMissed)
+      catch (Caen1725::CheckBinMissed const & checkBinMissed)
       {
         auto & board = reader.getBoard();
         print("Bin missmatch :", i, "th board with size", board.size, "B and actual size", board.read_size, "B");

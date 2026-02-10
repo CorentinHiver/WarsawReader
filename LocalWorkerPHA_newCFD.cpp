@@ -332,18 +332,18 @@ public:
     {
       // Get the parameter of each board or each detector
       std::istringstream iss(line);
-      int label; iss >> label;
+      int label = 0; iss >> label;
     
       if( key_found(sShifts,label))
       {
-      double tmp_d;
+      double tmp_d = 0.;
           iss >> tmp_d; sShifts    [label]= tmp_d;
           //iss >> tmp_d; sThresholds  [label]= tmp_d;
           iss >> tmp_d; sFractions   [label]= tmp_d;
       }
       else
       {
-      double tmp_d;
+      double tmp_d = 0.;
           iss >> tmp_d; sShifts    .emplace(label, tmp_d);
           //iss >> tmp_d; sThresholds.emplace(label, tmp_d);
           iss >> tmp_d; sFractions .emplace(label, tmp_d);

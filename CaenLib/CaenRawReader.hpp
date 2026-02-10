@@ -3,7 +3,7 @@
 
 #include "CaenReaderBase.hpp"
 
-namespace CaenDataReader1725
+namespace Caen1725
 {
   class RawReader : public CaenReaderBase
   {
@@ -209,6 +209,6 @@ namespace CaenDataReader1725
   };
 };
 
-using CaenRawReader1725 = CaenDataReader1725::RawReader;
+using CaenRawReader1725 = Caen1725::RawReader;
 
 #endif //CAENRAWREADER_HPP

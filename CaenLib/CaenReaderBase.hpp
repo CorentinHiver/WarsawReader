@@ -5,7 +5,7 @@
 #include "AgavaHeader.hpp"
 #include "BoardAggregate.hpp"
 
-namespace CaenDataReader1725
+namespace Caen1725
 {
   class CaenReaderBase
   {
@@ -31,7 +31,7 @@ namespace CaenDataReader1725
       print("Reading file", m_filename);
 
       // Print agava header informations for the first file of each run :
-      if (caenFile.fileNumber() == 0) 
+      if (s_hasAgava && caenFile.fileNumber() == 0) 
       {
         AgavaHeader ah(p_datafile);
       }
@@ -39,8 +39,10 @@ namespace CaenDataReader1725
 
     virtual bool eof() {return p_datafile.eof();}
 
-    virtual bool readHit() {++m_nb_hits; return false;}
+    bool readHit() {++m_nb_hits; return false;}
     auto const & nbHits() const {return m_nb_hits;}
+
+    static void setAgavaHeader(bool b = true) noexcept {s_hasAgava = b;}
 
   protected:    
     virtual void makePureVirtual(bool isVirtual = true) = 0; // To make this class pure virtual
@@ -49,6 +51,8 @@ namespace CaenDataReader1725
     std::ifstream p_datafile;
     std::string   m_filename;
     CaenDat       caenFile;
+
+    inline static bool s_hasAgava = true; 
   };
 };
 #endif //CAENREADER_HPP

@@ -3,7 +3,7 @@
 
 #include "../LibCo/libCo.hpp"
 
-namespace CaenDataReader1725
+namespace Caen1725
 {
   //////////////////////
   // Helper Functions //
@@ -118,7 +118,7 @@ namespace CaenDataReader1725
     size_read += size_to_skip;
   }
 
-  inline constexpr double ticks_to_ns = 4; // ns
+  inline constexpr double ticks_to_ns = 4.; // ns
   inline constexpr double ticks_to_ps = ticks_to_ns * 1000.; // ps
 }
 

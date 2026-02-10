@@ -4,7 +4,7 @@
 #include "utils.hpp"
 #include "CaenEvent.hpp"
 
-namespace CaenDataReader1725
+namespace Caen1725
 {
   struct ChannelAggregate
   {

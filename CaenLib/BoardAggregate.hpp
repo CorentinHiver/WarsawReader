@@ -4,7 +4,7 @@
 #include "utils.hpp"
 #include "ChannelAggregate.hpp"
 
-namespace CaenDataReader1725
+namespace Caen1725
 {  
   struct CheckBinMissed
   {} static checkBinMissed;

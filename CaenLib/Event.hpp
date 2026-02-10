@@ -1,7 +1,7 @@
 #pragma once
 #include "Hit.hpp"
 
-namespace CaenDataReader1725
+namespace Caen1725
 {
   class Event 
   {
@@ -9,7 +9,7 @@ namespace CaenDataReader1725
         
     Event(bool handle_traces = false)
     {
-      if (handle_traces) Colib::throw_error("CaenDataReader1725::Event can't handle traces (TBD)");
+      if (handle_traces) Colib::throw_error("Caen1725::Event can't handle traces (TBD)");
     }
 
     virtual ~Event()

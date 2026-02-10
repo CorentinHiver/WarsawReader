@@ -1,22 +1,23 @@
-STDLIB=-std=c++17
+STDLIB=# -std=c++17
 LIBS=
 INCLUDES=
-# LIBS=$(wildcard AnalysisLib/*.h* Caenlib/*.h* LibCo/*.h* Triggers/*.h*)
-# INCLUDES=-IAnalysisLib -ICaenlib -ILibCo -ITriggers
+# OPT= -O2
+OPT= -O3
+# OPT= -g
 
 all: writeTraces studyCFD caen2root rootReaderExample
 
 writeTraces: writeTraces.cpp $(LIBS)
-	g++ -o writeTraces writeTraces.cpp $(LIBS) -Wall -Wextra $(INCLUDES) `root-config --cflags` `root-config --glibs` -O2 $(STDLIB)
+	g++ -o writeTraces writeTraces.cpp $(LIBS) -Wall -Wextra $(INCLUDES) `root-config --cflags` `root-config --glibs` $(OPT) $(STDLIB)
 
 studyCFD: studyCFD.cpp $(LIBS)
-	g++ -o studyCFD studyCFD.cpp $(LIBS) -Wall -Wextra $(INCLUDES) `root-config --cflags` `root-config --glibs` -O2 $(STDLIB)
+	g++ -o studyCFD studyCFD.cpp $(LIBS) -Wall -Wextra $(INCLUDES) `root-config --cflags` `root-config --glibs` $(OPT) $(STDLIB)
 
 caen2root: caen2root.cpp $(LIBS)
-	g++ -o caen2root caen2root.cpp $(LIBS) -Wall -Wextra $(INCLUDES) `root-config --cflags` `root-config --glibs` -O2 $(STDLIB)
+	g++ -o caen2root caen2root.cpp $(LIBS) -Wall -Wextra $(INCLUDES) `root-config --cflags` `root-config --glibs` $(OPT) $(STDLIB)
 
 rootReaderExample: rootReaderExample.cpp $(LIBS)
-	g++ -o rootReaderExample rootReaderExample.cpp $(LIBS) $(INCLUDES) `root-config --cflags` `root-config --glibs` -O2 $(STDLIB)
+	g++ -o rootReaderExample rootReaderExample.cpp $(LIBS) $(INCLUDES) `root-config --cflags` `root-config --glibs` $(OPT) $(STDLIB)
 
 clean:
 	rm -fr writeTraces

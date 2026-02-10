@@ -27,9 +27,9 @@ constexpr inline int getDetectorType(uint8_t board_ID, uint8_t channel_ID)
   return detectorType;
 }
 
-using Board1725 = CaenDataReader1725::BoardAggregate;
-using Channel1725 = CaenDataReader1725::ChannelAggregate;
-using Event1725 = CaenDataReader1725::CaenEvent;
+using Board1725 = Caen1725::BoardAggregate;
+using Channel1725 = Caen1725::ChannelAggregate;
+using Event1725 = Caen1725::CaenEvent;
 
 /// @brief Detector type from board and channel ID
 constexpr inline int getDetectorType(Board1725 const & board, Event1725 const & event){
@@ -104,7 +104,7 @@ public:
   Timestamp  extended_timestamp =  0;
   Timestamp  precise_timestamp  =  0;
   
-  std::vector<CaenDataReader1725::Sample> samples;
+  std::vector<Caen1725::Sample> samples;
   
   bool operator>(RawHit const & other) const {return precise_timestamp > other.precise_timestamp;}
 };

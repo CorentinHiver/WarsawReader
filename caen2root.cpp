@@ -114,45 +114,30 @@ int main(int argc, char** argv)
 
   std::vector<UShort_t> trigger_labels;
 
-  auto printHelp = [](){ 
+  auto printHelp = [](){
     print("caen2root usage");
+    print("Note: if accepted, it means that e.g. 1e3 is a valid shorthand for 1000)");
     print("-e --ts-evt-build      [0 or 1] (default 0). Perform event building based on the raw timestamp instead of the absolute time (usually corrected by cfd).");
     print("-f --files             [caen_filename] : File to convert. Include wildcards * and ?, but ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\") ");
-    print("-F --files-nb          [caen_filename] [nb_files] : Files to convert. Include wildcards * and ?, but ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\"). For nb_files, -1 = all, scientific format accepted (e.g. 1.e3 (=1000))]");
+    print("-F --files-nb          [caen_filename] [nb_files] : Same as -f. Additionally, can select the number of files (-1 = all, scientific format accepted]");
     print("-g --group             [0 or 1] (default 1) : Sets the output format. 0 : plain tree with additionnal event number and multiplicity fields. 1 : each leaf is a vector.");
     print("-h --help              : print this help");
-    print("-i --in-memory         [0 or 1] (default 1) : Choose weither the tree is built in memory (faster but memory-consuming) or in file");
-    print("-n --hits-nb           [nb_hits (-1 = all, 1.e3 (=1000) format accepted)] : maximum number of hits to be read by the programm IN EACH FILE");
-    print("-N --hits-tot-nb       [nb_hits (-1 = all, 1.e3 (=1000) format accepted)] : maximum number of hits to be read by the programm (if multithread : not thread safe)");
+    print("-i --in-memory         [0 or 1] (default 1) : Choose weither the tree is built in memory (faster but RAM-consuming) or in file (may be much slower)");
+    print("-n --hits-nb           [nb_hits (-1 = all, scientific format accepted)] : maximum number of hits to be read by the programm IN EACH FILE");
+    print("-N --hits-tot-nb       [nb_hits (-1 = all, scientific format accepted)] : maximum number of hits to be read by the programm (if multithread : not thread safe)");
     print("-o --output            [output_path]");
     print("   --read-traces       [0 or 1] (default 1) : Read the traces for all boards.");
     print("   --board-skip-trace  [boardID] : Skip the trace for this boad ID. Used only if --read-traces is true.");
     print("   --write-traces      [0 or 1] (default 0) : Write the trace in the output root file.");
     print("-T --timeshifts        [filename] : List of timestamp shifts. Format : in each line : global_label timeshift[ns].");
     print("-t --trigger [option] : trigger on the given global label or board ID, or a user-defined file with a list of labels. Example : -t -l 0 to trigger on label 0");
-    print("            -l --label [global_label(16 x boardID + channelID)]]");
-    print("            -L --labels [nbLabels] [global_label(16 x boardID + channelID)]]");
-    print("            -b --board [boardID]] ");
-    print("            -f --file  [filename (containing a list of global_labels)]]");
-    print("-tw --time-window      [time_window (float, in ns)] (default 2000 ns) ");
+    print("            -l --label  [global_label(16 x boardID + channelID)]]");
+    print("            -L --labels [nbLabels] [[global_label(16 x boardID + channelID)]]");
+    print("            -b --board  [boardID]] ");
+    print("            -B --boards [nbLabels] [[boardID]] ");
+    print("            -f --file   [filename (containing a list of labels)]]");
+    print("-tw --time-window      [time_window] (default 2000 ns): Coincidence time window for event building (scientific format accepted) ");
     print();
-    print("example of a command line including all the above options :");
-    print();
-    print("./caen2root \\");
-    print("\t -f /data/experiment1/run0/*.caendat \\");
-    print("\t -F /data/experiment1/run1/*.caendat 3 \\");
-    print("\t -n 1e9 \\");
-    print("\t -o /root_data/experiment1/ \\");
-    print("\t -t --label 2 \\");
-    print("\t -t --board 5 -t --board 6 \\");
-    print("\t read-traces 1 \\");
-    print("\t write-traces 1 \\");
-    print();
-    print("This made the folllowing :");
-    print("Gather all the .caendat files found in /data/experiment1/run0/ and the three first found in the run0/ folder.");
-    print(" The code will stop after processing 1e9 hits. The output root files will be written in the /root_data/experiment1/ folder.");
-    print(" Only event containing at least one detector with label 5, or any detector of board_ID==5 or 6 are kept.");
-    print(" The traces will be kept for analysis and written in the root file");
   };
   if (argc < 3) {printHelp(); return 1;}
   std::istringstream iss(argv_to_string(argv));
@@ -238,9 +223,10 @@ int main(int argc, char** argv)
       if (temp == "-L" || temp == "--labels")
       {
         int nbLabels = 0; iss >> nbLabels;
+        int label = 0;
         for (int label_i = 0; label_i < nbLabels; ++label_i)
         {
-          int label = 0; iss >> label;
+          iss >> label;
           trigger_labels.push_back(label);
         }
       }
@@ -248,6 +234,16 @@ int main(int argc, char** argv)
       {
         int boardID = 0; iss >> boardID;
         for (int label = boardID*16; label < (boardID+1)*16; ++label) trigger_labels.push_back(label);
+      }
+      else if (temp == "-B" || temp == "--boards")
+      {
+        int nbLabels = 0; iss >> nbLabels;
+        int boardID = 0;
+        for (int label_i = 0; label_i < nbLabels; ++label_i)
+        {
+          iss >> boardID;
+          for (int label = boardID*16; label < (boardID+1)*16; ++label) trigger_labels.push_back(label);
+        }
       }
       else if (temp == "-f" || temp == "--file")
       {
@@ -266,7 +262,7 @@ int main(int argc, char** argv)
     else if (temp == "-tw" || temp == "time-window")
     {
       double e; iss >> e;
-      time_window = e*1000;
+      time_window = e*1000.;
     }
     else
     {
@@ -278,13 +274,13 @@ int main(int argc, char** argv)
   // Check the parameters //
   // -------------------- //
 
-  const bool useTimeShifts = !timeshifts;
-  const bool hitsMaxSet = 0 < nbHitsMax;
+  const bool hitsMaxSet    = 0 < nbHitsMax   ;
   const bool hitsMaxTotSet = 0 < nbHitsMaxTot;
+  const bool useTimeShifts = !timeshifts    .empty();
+  const bool trigger_label = !trigger_labels.empty();
 
   // if (hitsMaxTotSet && multithreadSet) throw-error("Can't have -N and -M at the same time !");
-  print(trigger_labels);
-  const bool trigger_label = !trigger_labels.empty();
+  if (trigger_label) print(trigger_labels);
 #ifdef TRIGGER
   if (trigger_label) print(STRINGIFY(TRIGGER), "chosen along with label-based trigger. The behavior is AND (contact dev if you want to switch).");
 #endif //TRIGGER
@@ -295,6 +291,8 @@ int main(int argc, char** argv)
   });
 
   if (filenames.empty()) throw_error("No files !!");
+  
+  print(filenames.size(), " file"+std::string((filenames.size() > 1) ? "s" : ""));
 
   size_t nbHitsTot = 0;
 
@@ -415,6 +413,7 @@ int main(int argc, char** argv)
 
     std::vector<int> nbNoZero  (1000,0);
     std::vector<int> nbNoSignal(1000,0);
+    std::vector<int> nb        (1000,0);
 
     // while(reader.readHit())
     while(true)
@@ -426,27 +425,28 @@ int main(int argc, char** argv)
       
       // 0.1 Manage the end of the reading (end of file or max number of hits reached)
       if (breaking) break;
-      if (hitsMaxSet && nbHitsMax < reader.nbHits() || hitsMaxTotSet && nbHitsMaxTot < nbHitsTot) break;
+      if ((hitsMaxSet && nbHitsMax < reader.nbHits()) || (hitsMaxTotSet && nbHitsMaxTot < nbHitsTot)) break;
 
       ++nbHitsTot;
 
       // 0.2 Print the hits numbers
       if (reader.nbHits() > 0 && reader.nbHits() % int(1e5) == 0) 
       {
-        if (group) printsln(nicer_double(reader.nbHits(), 1), "hits in .caendat", nicer_double(tree->GetEntries()), "evts in .root       ");
-        else       printsln(nicer_double(reader.nbHits(), 1), "hits in .caendat", nicer_double(tree->GetEntries()), "hits in .root       ");
+        if (group) printsln(nicer_double(reader.nbHits(), 1), "hits in .caendat", nicer_double(tree->GetEntries(), 1), "evts in .root       ");
+        else       printsln(nicer_double(reader.nbHits(), 1), "hits in .caendat", nicer_double(tree->GetEntries(), 1), "hits in .root       ");
       }
 
       // 1. Apply the cfd
         timerCFD.Start(); // For profiling
       if (applyCFD && readTraces && inHit.hasTrace() && useCFD[inHit.board_ID])
       {
-        CFD cfd(*inHit.getTrace(), CFD::sShifts[inHit.board_ID], CFD::sFractions[inHit.board_ID]);
+        ++nb[inHit.label];
+        CFD cfd(*inHit.getTrace(), CFD::sShifts[inHit.board_ID], CFD::sFractions[inHit.board_ID], 10);
         auto zero = cfd.findZero();
         // auto zero = cfd.findZero(CFD::sThresholds[inHit.board_ID]); // Not using thresholds anymore
              if (zero==CFD::noSignal) {inHit.time = inHit.precise_ts; ++nbNoSignal[inHit.label];}
         else if (zero==CFD::noZero  ) {inHit.time = inHit.precise_ts; ++nbNoZero  [inHit.label];}
-        else                           inHit.time = inHit.extended_ts + zero * CaenDataReader1725::ticks_to_ps;
+        else                           inHit.time = inHit.extended_ts + zero * Caen1725::ticks_to_ps;
       }
       else inHit.time = inHit.precise_ts;
         timerCFD.Stop(); // For profiling
@@ -467,9 +467,9 @@ int main(int argc, char** argv)
     
     print();
     print("nbNoSignal");
-    for (size_t label_i = 0; label_i<nbNoSignal.size(); ++label_i) if (nbNoSignal[label_i]>0) print(label_i, nbNoSignal[label_i]);
+    for (size_t label_i = 0; label_i<nbNoSignal.size(); ++label_i) if (nbNoSignal[label_i]>0) print(label_i, nbNoSignal[label_i], 100.*nbNoSignal[label_i]/double(nb[label_i]), "%");
     print("nbNoZero");
-    for (size_t label_i = 0; label_i<nbNoZero  .size(); ++label_i) if (nbNoZero  [label_i]>0) print(label_i, nbNoZero  [label_i]);
+    for (size_t label_i = 0; label_i<nbNoZero  .size(); ++label_i) if (nbNoZero  [label_i]>0) print(label_i, nbNoZero  [label_i], 100.*nbNoZero  [label_i]/double(nb[label_i]), "%");
 
     fillTreeAndClear(); // Fill the tree with the last event
 
