@@ -28,6 +28,7 @@ namespace Caen1725
     //   else return false;
     // }
 
+    /// @brief Moves the data of the hit into the hit buffer. Returns false if the buffer is full 
     bool fill_buffer(RootHit && hit) noexcept
     {
       if (m_hit_buffer.size() < m_hit_buffer.capacity())

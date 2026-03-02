@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Hit.hpp"
+// #include "Hit.hpp"
 #include "RootUtils.hpp"
 
 #include "TFile.h"
@@ -32,7 +33,7 @@ namespace Caen1725
       outTree->Branch("rel_time"     , &rel_time     );
       outTree->Branch("adc"          , &adc          );
       outTree->Branch("qlong"        , &qlong        );
-      if (Hit::handle_traces && trace) outTree->Branch("trace", &trace);
+      if (Hit::handle_traces) outTree->Branch("trace", &trace);
       
       return outTree;
     }
@@ -69,26 +70,26 @@ namespace Caen1725
     {
       std::vector<TGraph*> graphs;
       if (!handle_traces) {error("Trace not handled"); return graphs;}
-      if (!trace) {error("No trace"); return graphs;}
-      if (trace->size() == 0) {error("trace has no samples"); return graphs;}
+      if (trace.empty()) {error("No trace"); return graphs;}
+      if (trace.size() == 0) {error("trace has no samples"); return graphs;}
 
       double baseline = 0;
       if (nb_samples_baseline != 0)
       {
-        if (trace->size() < nb_samples_baseline) {error("trace has not enough samples for baseline(",nb_samples_baseline," samples required)"); return graphs;}
-        for (size_t sample_i = 0; sample_i<nb_samples_baseline; ++sample_i) baseline += trace->at(sample_i);
+        if (trace.size() < nb_samples_baseline) {error("trace has not enough samples for baseline(",nb_samples_baseline," samples required)"); return graphs;}
+        for (size_t sample_i = 0; sample_i<nb_samples_baseline; ++sample_i) baseline += trace.at(sample_i);
         baseline /= nb_samples_baseline;
       }
 
-      auto const & N = trace->size();
-      auto const & maxS = Colib::maximum(*trace);
+      auto const & N = trace.size();
+      auto const & maxS = Colib::maximum(trace);
       std::vector<int> data_int(N, 0);
       std::vector<int> DP1_int (N, 0);
       std::vector<int> trig_int(N, 0);
 
       for (size_t i = 0; i<N; ++i) 
       {
-        data_int[i] = int((*trace)[i]) - baseline;
+        data_int[i] = int((trace)[i]) - baseline;
         if (DP1_int[i]) DP1_int[i] = maxS;
         if (i == trigger_bin) trig_int[i] = maxS;
       }
@@ -108,19 +109,19 @@ namespace Caen1725
     TGraph* getTraceGraph(size_t nb_samples_baseline = 0) const
     {
       if (!handle_traces) {error("Trace not handled"); return nullptr;}
-      if (!trace) {error("No trace"); return nullptr;}
-      if (trace->size() == 0) {error("trace has no samples"); return nullptr;}
+      if (trace.empty()) {error("No trace"); return nullptr;}
+      if (trace.size() == 0) {error("trace has no samples"); return nullptr;}
 
-      auto const & N = trace->size();
+      auto const & N = trace.size();
       double baseline = 0;
       if (0 < nb_samples_baseline)
       {
-        if (trace->size() < nb_samples_baseline) {error("trace has not enough samples for baseline(",nb_samples_baseline," samples required)"); return nullptr;}
-        for (size_t sample_i = 0; sample_i<nb_samples_baseline; ++sample_i) baseline += trace->at(sample_i) - baseline;
+        if (trace.size() < nb_samples_baseline) {error("trace has not enough samples for baseline(",nb_samples_baseline," samples required)"); return nullptr;}
+        for (size_t sample_i = 0; sample_i<nb_samples_baseline; ++sample_i) baseline += trace.at(sample_i) - baseline;
         baseline /= nb_samples_baseline;
       }
       std::vector<int> data_int; data_int.reserve(N);
-      for (auto const sample : *trace) data_int.push_back(sample);
+      for (auto const sample : trace) data_int.push_back(sample);
       auto graph = new TGraph(data_int.size(), Colib::linspace<int>(data_int.size(), 0, Caen1725::ticks_to_ns).data(), data_int.data());
       graph -> SetName ("Trace"); 
       graph -> SetTitle("Trace");
@@ -132,8 +133,8 @@ namespace Caen1725
     {
       std::vector<TGraph*> graphs;
       if (!handle_traces) {error("Trace not handled"); return graphs;}
-      if (!trace) {error("No trace"); return graphs;}
-      if (trace->size() == 0) {error("trace has no samples"); return graphs;}
+      if (trace.empty()) {error("No trace"); return graphs;}
+      if (trace.size() == 0) {error("trace has no samples"); return graphs;}
 
       graphs = getTracesGraphs();
       graphs[0] -> Draw(options.c_str());
@@ -147,8 +148,8 @@ namespace Caen1725
     {
       TGraph* graph = nullptr;
       if (!handle_traces) {error("Trace not handled"); return graph;}
-      if (!trace) {error("No trace"); return graph;}
-      if (trace->size() == 0) {error("trace has no samples"); return graph;}
+      if (trace.empty()) {error("No trace"); return graph;}
+      if (trace.size() == 0) {error("trace has no samples"); return graph;}
 
       graph = getTraceGraph();
       graph -> Draw(options.c_str());
@@ -158,5 +159,3 @@ namespace Caen1725
     enum class IOmode {None, Reading, Writting} ioMode = IOmode::None; // Read or Write a TTree
   };
 };
-
-using Caen1725RootHit = Caen1725::RootHit;

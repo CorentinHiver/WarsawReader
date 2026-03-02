@@ -89,24 +89,31 @@ namespace Caen1725
   thread_local uint16_t tmp_u16 = 0 ;
   thread_local uint32_t tmp_u32 = 0 ;
 
-  template<class Type>
-  inline std::istream& read_data(std::istream& data, Type * buff) 
+  template<class T>
+  constexpr inline std::istream& read_data(std::istream& data, T * value) 
   {
-  // #ifdef Cpp17
-  //   static_assert(std::is_trivially_copyable_v<Type>);
-  // #endif //Cpp17
-    return data.read(reinterpret_cast<char*>(buff), sizeof(Type));
+    static_assert(std::is_trivially_copyable<T>::value, "Cannot binary read into non-trivial types (e.g., std::string, classes with vtables)");
+    return data.read(reinterpret_cast<char*>(value), sizeof(T));
   }
 
-  template<class Type>
-  inline std::istream& read_data(std::istream& data, Type * buff, size_t & size_read) 
+  template<class T>
+  inline std::istream& read_data(std::istream& data, T * value, size_t & size_read) 
   {
-  // #ifdef Cpp17
-  //   static_assert(std::is_trivially_copyable_v<Type>);
-  // #endif //Cpp17
-    auto & ret = read_data(data, buff);
-    if (ret) size_read += sizeof(Type);
-    return ret;
+    read_data(data, value);
+    size_read += data.gcount();
+    return data;
+  }
+
+  template<class T>
+  inline std::istream& read_data(std::istream& data, T & value) 
+  {
+    return read_data(data, &value);
+  }
+
+  template<class T>
+  inline std::istream& read_data(std::istream& data, T & value, size_t & size_read) 
+  {
+    return read_data(data, &value, size_read);
   }
 
   inline void skip(std::istream& data, size_t size_to_skip)

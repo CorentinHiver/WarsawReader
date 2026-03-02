@@ -10,7 +10,9 @@
             ],
             "defines": [],
             "cStandard": "c17",
-            "intelliSenseMode": "linux-clang-x64"
+            "intelliSenseMode": "${default}",
+            "compilerPath": "/home/corentin/miniconda3/envs/work-env/bin/g++",
+            "cppStandard": "c++20"
         }
     ],
     "version": 4

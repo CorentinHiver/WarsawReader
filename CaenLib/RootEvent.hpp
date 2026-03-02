@@ -250,5 +250,3 @@ namespace Caen1725
     std::vector<ULong64_t>  * rel_time      = nullptr;
   };
 };
-
-using Caen1725RootEvent = Caen1725::RootEvent;

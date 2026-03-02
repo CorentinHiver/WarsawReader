@@ -47,7 +47,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
     return Colib::key_found(CFD::sShifts, boardID);
   });
 
-  auto constexpr static glabel = [](Caen1725RootHit const & hit){
+  auto constexpr static glabel = [](Caen1725::RootHit const & hit){
     return hit.board_ID * 16 + hit.channel_ID * 2 + hit.subchannel_ID;
   };
 
@@ -131,7 +131,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
       {
         ++nb[hit.label];
 
-        CFD cfd(*hit.getTrace(), CFD::sShifts[hit.board_ID], CFD::sFractions[hit.board_ID], 10);
+        CFD cfd(std::move(hit.trace), CFD::sShifts[hit.board_ID], CFD::sFractions[hit.board_ID], 10);
         
         // auto zero = cfd.findZero(cfd_thresholds[hit.board_ID]);
         auto zero = cfd.findZero();
@@ -140,7 +140,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
         else if (zero == CFD::noZero) {++nbNoSignal[hit.label]; hit.time = hit.extended_ts;}
         else 
         {
-          zero = zero * Caen1725::ticks_to_ps;
+          zero *= Caen1725::ticks_to_ps;
   
           cfd_corrections->Fill(glabel(hit), zero);
   
@@ -154,7 +154,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
       if (hit.adc < 10) continue;
 
       if (  ((max_events) ? (reader.nbHits() < size_cast(nb_events_max)) : (true)) 
-         && event_builder.fill_buffer(std::forward<Caen1725RootHit>(hit))) continue;
+         && event_builder.fill_buffer(std::forward<Caen1725::RootHit>(hit))) continue;
 
       ////////////////////
       // Event Building //

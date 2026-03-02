@@ -14,8 +14,7 @@ public:
   Trigger(Caen1725EventBuilder * eventBuilder) : m_eventBuilder(eventBuilder) {}
   bool operator() (Caen1725EventBuilder::EventId const & event_id) 
   {
-    // Example : DSSD labels are defined true in the m_lut (lookup table)
-    // Here is an example for triggering on
+    // Here is an example for triggering on at least one ring and one sector
     for (size_t i = 0; i<event_id.size(); ++i) 
     {
       auto const & boardID_i = (*m_eventBuilder)[event_id[i]].board_ID; // Simple aliasing

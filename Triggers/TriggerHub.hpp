@@ -2,6 +2,11 @@
 
 #ifdef TRIGGER
 
+#ifndef STRINGIFY
+#define STRINGIFY1(x) #x
+#define STRINGIFY(x) STRINGIFY1(x)
+#endif
+
 #pragma message ("TRIGGER CHOSE TO BE " STRINGIFY(TRIGGER)) // This is a normal preprocessor message
 
 // /**
@@ -14,7 +19,6 @@
 //   TriggerTemplate(CaenRootEventBuilder * eventBuilder) : m_eventBuilder(eventBuilder) {}
 //   bool operator(CaenRootEventBuilder::EventId const & event_id) 
 //   {
-//     // Example : DSSD labels are defined true in the m_lut (lookup table)
 //     // Here is an example for triggering on at least one ring and one sector
 //     for (int i = 0; i<event_id.size(); ++i) 
 //     {

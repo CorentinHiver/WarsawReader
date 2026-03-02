@@ -4,6 +4,9 @@
 #include "BoardAggregate.hpp"
 #include <RtypesCore.h>
 
+/*
+ * Deprecated because it uses a pointer to the trace instead of using the modern move semantics
+ */
 namespace Caen1725
 {
   template<typename T>
@@ -35,8 +38,8 @@ namespace Caen1725
     Int_t     rel_time      = 0; // Relative time in the event. Units : ps. This field must be filled by the user (i.e., the program using this class).
     
     // Trace-related fields :
-    Trace trace; // Signal trace.
-    DP1_t DP1 ; // Digital probe. Look at documentation. Use printTrace() to visualise it.
+    std::unique_ptr<Trace> trace; // Signal trace.
+    std::unique_ptr<DP1_t>  DP1 ; // Digital probe. Look at documentation. Use printTrace() to visualise it.
     uint16_t trigger_bin = 0;     // Trigger position in the trace. Use printTrace() to visualise it.
 
     // Root io parameters :
@@ -49,14 +52,13 @@ namespace Caen1725
     
     ~Hit() {}
 
+    bool hasTrace() const {return ( static_cast<bool>(trace) && (!trace -> empty()) );}
+
     using Board1725 = Caen1725::BoardAggregate;
     using Channel1725 = Caen1725::ChannelAggregate;
     using Event1725 = Caen1725::CaenEvent;
 
-    /**
-     * @brief Loads the buffer in the hit. You can use skipTrace to choose hit-by-hit if trace analysis is needed (usefull to skip trace analysis only for some detectors)
-     */
-    void readCaenEvent(std::istream& data, Board1725 & board, Channel1725 & channel, Event1725 & caenEvent, bool loadTrace)
+    void readCaenEvent(std::istream& data, Board1725 & board, Channel1725 & channel, Event1725 & caenEvent, std::vector<bool> const & boardReadTrace = {})
     {
       auto const pos_init = data.tellg();
 
@@ -66,33 +68,35 @@ namespace Caen1725
 
       // 1. Timestamp and subchannel_ID
 
-      Caen1725::read_data(data, tmp_u32);
+      Caen1725::read_data(data, &tmp_u32);
       debug("CH[31], TRIGGER_TIME_TAG[30:0] :", std::bitset<32>(tmp_u32));
       caenEvent.TRIGGER_TIME_TAG         = getBitField(tmp_u32, 30);
       subchannel_ID = static_cast<UChar_t>(getBit     (tmp_u32, 31));
       
       // 2. Trace : looping through the NUM_SAMPLES samples of the waveform of each event :
-      if (handle_traces && loadTrace)
+      if (handle_traces)
       {
-        auto const & N = channel.NUM_SAMPLES;
-        debug("Trace with :", N, "samples");
-        trace.clear();
-        DP1  .clear();
-        trace.resize(N);
-        DP1  .resize(N);
-        for (size_t sample_i = 0; sample_i<N; ++sample_i)
+        if((board_ID < boardReadTrace.size()) ? boardReadTrace[board_ID] : true)
         {
-          auto & sample = trace[sample_i];      // Simple aliasing
-          Caen1725::read_data(data, sample);  // Reading the buffer
-          if(getBit(sample, 15)) trigger_bin = sample_i; // Gets the index of the sample where the trigger time tag have been measured
-          DP1[sample_i] = getBit(sample, 14);   // Gets the digital probe DP1 value for this sample
-          sample &= mask(13);                            // Removes the trigger_bin and DP1 bit values from the sample 
+          debug("Trace with :", channel.NUM_SAMPLES, "samples");
+          if (!trace) trace.reset(new Trace);
+          if (!DP1  ) DP1  .reset(new DP1_t);
+          trace -> resize(channel.NUM_SAMPLES);
+          DP1   -> resize(channel.NUM_SAMPLES);
+          for (size_t sample_i = 0; sample_i<trace->size(); ++sample_i)
+          {
+            auto & sample = (*trace.get())[sample_i];      // Simple aliasing
+            Caen1725::read_data(data, &sample);  // Reading the buffer
+            if(getBit(sample, 15)) trigger_bin = sample_i; // Gets the index of the sample where the trigger time tag have been measured
+            (*DP1.get())[sample_i] = getBit(sample, 14);   // Gets the digital probe DP1 value for this sample
+            sample &= mask(13);                            // Removes the trigger_bin and DP1 bit values from the sample 
+          }
         }
       }
       else 
       { // If traces are not used, skip the data
-        trace.clear();
-        DP1  .clear();
+        if (trace) trace -> clear();
+        if (DP1  ) DP1   -> clear();
         auto const & size_to_skip = channel.NUM_SAMPLES * sizeof(uint16_t);
         Caen1725::skip(data, size_to_skip);
       }
@@ -147,18 +151,19 @@ namespace Caen1725
       std::vector<int> traces;
       
       if (!handle_traces) {error("Trace not handled"); return traces;}
-      if (trace.empty()) {error("No trace"); return traces;}
-      if (trace.size() == 0) {error("trace has no samples"); return traces;}
+      if (!trace) {error("No trace"); return traces;}
+      if (trace->size() == 0) {error("trace has no samples"); return traces;}
 
-      std::vector<int> _trace; _trace.reserve(trace.size());
+      std::vector<int> _trace; _trace.reserve(trace->size());
       int baseline = 0;
-      for (size_t i = 0; i<nb_samples_baseline; ++i) baseline += trace.at(i);
+      for (size_t i = 0; i<nb_samples_baseline; ++i) baseline += trace->at(i);
       baseline /= nb_samples_baseline;
-      for (auto const & sample : trace) _trace . push_back(sample - baseline);
+      for (auto const & sample : *trace) _trace . push_back(sample - baseline);
       return _trace;
     }
 
-    bool hasTrace() const {return !trace.empty();}
+    /// @brief Get the trace.
+    auto const & getTrace() const {return trace;}
 
     void clear()
     {
@@ -173,8 +178,8 @@ namespace Caen1725
       precise_ts    = 0;
       time          = 0;
       rel_time      = 0;
-      trace.clear();
-      DP1.clear();
+      if (trace) trace->clear();
+      if (DP1  ) DP1->clear();
     }
 
     friend std::ostream& operator<<(std::ostream& out, Hit const & hit)
@@ -195,7 +200,7 @@ namespace Caen1725
       if (hit.rel_time    != 0) out << " rel_time "    <<  std::setprecision(10) << double_cast(hit.rel_time)   ;
       if (hit.adc         != 0) out << " adc "         <<                                       hit.adc         ;
       if (hit.qlong       != 0) out << " qlong "       <<                                       hit.qlong       ;
-      if (!hit.trace.empty()  ) out << " trace "       <<  hit.trace.size() << " samples "                   ;
+      if (hit.trace           ) out << " trace "       <<  hit.trace -> size() << " samples "                   ;
       out << std::setprecision(6);
       return out;
     }
@@ -204,6 +209,16 @@ namespace Caen1725
     Hit(Hit const & other) = delete; // Non copyable
     Hit& operator=(Hit&& other) noexcept = default;
 
+    /// @brief Efficient copy of the trace. If trace is nullptr this function makes nothing.
+    void traceEfficientCopy(Trace* _trace)
+    {
+      if (!_trace) return;
+      trace->reserve(_trace->size());
+      trace->clear();
+      trace->resize(_trace->size());
+      std::copy(_trace->begin(), _trace->end(), trace->begin());
+    }
+    
     Hit (
       UInt_t    _label,
       UShort_t  _board_ID,
@@ -227,33 +242,90 @@ namespace Caen1725
     {
     }
 
-    Hit (
-      UInt_t    _label,
-      UShort_t  _board_ID,
-      UShort_t  _channel_ID,
-      UShort_t  _subchannel_ID,
-      Int_t     _adc,
-      Int_t     _qlong,
-      ULong64_t _timestamp,
-      ULong64_t _time,
-      Int_t     _rel_time,
-      Trace     && _trace
-    ) noexcept : 
-      label         (_label        ),
-      board_ID      (_board_ID     ),
-      channel_ID    (_channel_ID   ),
-      subchannel_ID (_subchannel_ID),
-      adc           (_adc          ),
-      qlong         (_qlong        ),
-      timestamp     (_timestamp    ),
-      time          (_time         ),
-      rel_time      (_rel_time     ),
-      trace         (std::move(_trace))
-    {
-      if (!_trace.empty())
-      {
-        handleTraces(true);
-      }
-    }
+    // Hit (
+    //   UInt_t    _label,
+    //   UShort_t  _board_ID,
+    //   UShort_t  _channel_ID,
+    //   UShort_t  _subchannel_ID,
+    //   Int_t     _adc,
+    //   Int_t     _qlong,
+    //   ULong64_t _timestamp,
+    //   ULong64_t _time,
+    //   Int_t     _rel_time,
+    //   Trace     && _trace
+    // ) noexcept : 
+    //   label         (_label        ),
+    //   board_ID      (_board_ID     ),
+    //   channel_ID    (_channel_ID   ),
+    //   subchannel_ID (_subchannel_ID),
+    //   adc           (_adc          ),
+    //   qlong         (_qlong        ),
+    //   timestamp     (_timestamp    ),
+    //   time          (_time         ),
+    //   rel_time      (_rel_time     ),
+    //   trace(std::make_unique<std::vector<uint16_t>>(std::move(_trace)))
+    // {
+    //   if (_trace.)
+    //   {
+    //     handleTraces(true);
+    //   }
+    // }
+
+    
+
+    // Hit (
+    //   UInt_t    _label,
+    //   UShort_t  _board_ID,
+    //   UShort_t  _channel_ID,
+    //   UShort_t  _subchannel_ID,
+    //   Int_t     _adc,
+    //   Int_t     _qlong,
+    //   ULong64_t _timestamp,
+    //   ULong64_t _extended_ts,
+    //   ULong64_t _precise_ts,
+    //   ULong64_t _time,
+    //   Int_t     _rel_time,
+    //   Trace  && _trace
+    // ) noexcept : 
+    //   label         (_label        ),
+    //   board_ID      (_board_ID     ),
+    //   channel_ID    (_channel_ID   ),
+    //   subchannel_ID (_subchannel_ID),
+    //   adc           (_adc          ),
+    //   qlong         (_qlong        ),
+    //   timestamp     (_timestamp    ),
+    //   extended_ts   (_extended_ts  ),
+    //   precise_ts    (_precise_ts   ),
+    //   time          (_time         ),
+    //   rel_time      (_rel_time     ),
+    //   trace(std::make_unique<std::vector<uint16_t>>(std::move(_trace)))
+    // {
+    //   // if (_trace)
+    //   // {
+    //     // handleTraces(true);
+    //     // traceEfficientCopy(_trace);
+    //   // }
+    // }
+
+    // Hit const & copy(Hit const & other, bool copyTrace = true)
+    // {
+    //   label         = other.label        ;
+    //   board_ID      = other.board_ID     ;
+    //   channel_ID    = other.channel_ID   ;
+    //   subchannel_ID = other.subchannel_ID;
+    //   adc           = other.adc          ;
+    //   qlong         = other.qlong        ;
+    //   timestamp     = other.timestamp    ;
+    //   extended_ts   = other.extended_ts  ;
+    //   precise_ts    = other.precise_ts   ;
+    //   time          = other.time         ;
+    //   rel_time      = other.rel_time     ;
+    //   if (copyTrace && handle_traces && other.trace)
+    //   {
+    //     // if (!trace) trace.reset();
+    //     // traceEfficientCopy(other.trace);
+    //   }
+    //   return other;
+    // }
   };
 };

@@ -99,11 +99,14 @@ namespace Caen1725
       // From all this information, it is possible to know if there are still events in the aggregate
 
       std::ifstream& data = CaenReaderBase::p_datafile; // Simple aliasing
+      bool loadTrace = true;
 
       if (read_board_header)
       { // New board aggregate, reading its header
         m_board.clear();
         if (!m_board.readHeader(data)) return false; // Returning false because the end of file has been reached
+        loadTrace = (m_board.BOARD_ID < m_boardsReadTraces.size()) ? m_boardsReadTraces[m_board.BOARD_ID] : true; // Determines if the traces of the detectors of this board are read
+        Colib::printAndPause(int(m_board.BOARD_ID), nicer_bool(loadTrace));
         read_board_header = false;
       }
 
@@ -119,7 +122,7 @@ namespace Caen1725
         ++m_nb_hits;
         m_caenEvent.clear();
         m_rootHit.clear();
-        m_rootHit.readCaenEvent(data, m_board, m_channel, m_caenEvent, m_boardsReadTraces);
+        m_rootHit.readCaenEvent(data, m_board, m_channel, m_caenEvent, loadTrace);
       }
       else
       { // At the end of each channel aggregate, different aggregate headers need proper handling: 
@@ -149,6 +152,7 @@ namespace Caen1725
     bool read_channel_header = true;
 
     std::vector<bool> m_boardsReadTraces;
+    // std::vector<bool> m_glabelReadTraces; // TODO if interesting
   };
 };
 

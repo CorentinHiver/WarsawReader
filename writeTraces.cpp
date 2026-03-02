@@ -123,6 +123,9 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
 
   vector<int> nbNoZero  (1000,0);
   vector<int> nbNoSignal(1000,0);
+  vector<int> nbTot     (1000,0);
+
+  CFD cfd;
 
   while(!finished && reader.readHit())
   {
@@ -148,28 +151,6 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
       }
       dir->cd();
       string name = detectorName + "_" + to_string(nb_evts);
-
-      // vector<uint16_t> raw_trace; raw_trace.reserve(event.samples.size());
-      // vector<double> samplesT; samplesT.resize(event.samples.size(), 0);
-      // vector<double> samplesDP1; samplesDP1.resize(event.samples.size(), 0);
-      // for (size_t sample_i = 0; sample_i<event.samples.size(); ++sample_i) 
-      // {
-      //   auto const & sample = event.samples[sample_i];
-      //   raw_trace.push_back(sample.sample);
-      //   if (sample.T) samplesT[sample_i] = 1;
-      //   if (sample.DP1) samplesDP1[sample_i] = 1;
-      // }
-
-      // auto const & maxSample = maximum(*hit.trace);
-      // for (auto & Ti : samplesT) if (Ti > 0.5) Ti = maxSample;
-      // for (auto & DP1 : samplesDP1) if (DP1 > 0.5) DP1 = maxSample;
-      
-      // CFD cfd(raw_trace);
-
-      // auto graph  = new TGraph(cfd.trace.size(), linspace_for(cfd.trace, 0., 4.).data(), cfd.trace.data());
-      // auto graph2 = new TGraph(samplesT .size(), linspace_for(samplesT , 0., 4.).data(), samplesT .data());
-      // auto graph3 = new TGraph(samplesDP1 .size(), linspace_for(samplesDP1 , 0., 4.).data(), samplesDP1 .data());
-
 
 #ifdef LOW_PASS
 
@@ -238,12 +219,12 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
 
       if (hit.hasTrace() && useCFD[hit.board_ID])
       {
-        CFD cfd(*hit.trace, CFD::sShifts[hit.board_ID], CFD::sFractions[hit.board_ID], 10);
         // cfd.calculate();
-        
+        cfd.generate(hit.trace, CFD::sShifts[hit.board_ID], CFD::sFractions[hit.board_ID], 10);
         // if (key_found(thresholds, detectorType))
         // {
           double zero = cfd.findZero();
+          ++nbTot[hit.label];
           if (zero == CFD::noSignal)
           {
             ++nbNoSignal[hit.label];
@@ -258,7 +239,7 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
           else if (zero == CFD::noZero)
           {
             ++nbNoZero[hit.label];
-            zero = 1;
+            zero = 0;
             TDirectory *dir = rootFile->GetDirectory(("noZero"+detectorName).c_str());
             if (!dir){
               rootFile->mkdir(("noZero"+detectorName).c_str());
@@ -284,9 +265,9 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
   
   print();
   print("nbNoSignal");
-  for (size_t label_i = 0; label_i<nbNoSignal.size(); ++label_i) if (nbNoSignal[label_i]>0) print(label_i, nbNoSignal[label_i]);
+  for (size_t label_i = 0; label_i<nbNoSignal.size(); ++label_i) if (nbNoSignal[label_i]>0) print(label_i, nbNoSignal[label_i], (100.*nbNoSignal[label_i])/nbTot[label_i],"%");
   print("nbNoZero");
-  for (size_t label_i = 0; label_i<nbNoZero  .size(); ++label_i) if (nbNoZero  [label_i]>0) print(label_i, nbNoZero  [label_i]);
+  for (size_t label_i = 0; label_i<nbNoZero  .size(); ++label_i) if (nbNoZero  [label_i]>0) print(label_i, nbNoZero  [label_i], (100.*nbNoZero  [label_i])/nbTot[label_i],"%");
 
   print();
   print("writeTraces.root written");
@@ -336,3 +317,27 @@ int main(int argc, char** argv)
 }
 
 // g++ -o writeTraces writeTraces.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -O2
+
+
+
+      // vector<uint16_t> raw_trace; raw_trace.reserve(event.samples.size());
+      // vector<double> samplesT; samplesT.resize(event.samples.size(), 0);
+      // vector<double> samplesDP1; samplesDP1.resize(event.samples.size(), 0);
+      // for (size_t sample_i = 0; sample_i<event.samples.size(); ++sample_i) 
+      // {
+      //   auto const & sample = event.samples[sample_i];
+      //   raw_trace.push_back(sample.sample);
+      //   if (sample.T) samplesT[sample_i] = 1;
+      //   if (sample.DP1) samplesDP1[sample_i] = 1;
+      // }
+
+      // auto const & maxSample = maximum(hit.trace);
+      // for (auto & Ti : samplesT) if (Ti > 0.5) Ti = maxSample;
+      // for (auto & DP1 : samplesDP1) if (DP1 > 0.5) DP1 = maxSample;
+      
+      // CFD cfd(raw_trace);
+
+      // auto graph  = new TGraph(cfd.trace.size(), linspace_for(cfd.trace, 0., 4.).data(), cfd.trace.data());
+      // auto graph2 = new TGraph(samplesT .size(), linspace_for(samplesT , 0., 4.).data(), samplesT .data());
+      // auto graph3 = new TGraph(samplesDP1 .size(), linspace_for(samplesDP1 , 0., 4.).data(), samplesDP1 .data());
+

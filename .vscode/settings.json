@@ -135,6 +135,8 @@
     "signature": "cpp",
     "rcsv_ntuple": "cpp",
     "graph": "cpp"
-  }
+  },
+  "C_Cpp.default.compilerPath": "/usr/bin/g++-12",
+  "C_Cpp.errorSquiggles": "disabled"
 }
 

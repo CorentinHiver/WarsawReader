@@ -139,8 +139,6 @@ namespace Caen1725
 };
 #endif //CHANNELAGGREGATE_HPP
 
-
-
 // ChannelAggregate(ChannelAggregate const & other):
 //   size           (other.size),
 //   FI             (other.FI),

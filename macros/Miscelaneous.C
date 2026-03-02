@@ -1,18 +1,31 @@
 #include "../CaenLib/RootReader.hpp"
 #include "TH2F.h"
 
+void GeSpectrums(TFile* file, std::string const & calibName = "")
+{
+  if (calibName != "") Colib::throw_error("Calibration option not coded yet!");
+  Caen1725::RootReader reader(file);
+  auto & event = reader.getEvent();
+  auto h2 = new TH2F("GeSpectrumsH",";label;energy[ADC]",20,0,20, 3500,0,35000);
+  while(reader.readNextEvent()) for (size_t hit_i = 0; hit_i < event.size(); ++hit_i)
+  {// Loop through the hits
+    if (event.board_ID[hit_i]<3 && event.subchannel_ID[hit_i]==0) h2->Fill(event.label[hit_i]/2, event.adc[hit_i]);
+  }
+  print("GeSpectrumsH created, GeSpectrumsH->Draw() to see it");
+}
+
 void dT(TFile* file, int ref_label=81)
 {
-  RootReader reader(file);
+  
+  Caen1725::RootReader reader(file);
   auto & event = reader.getEvent();
-  // print("Sets the number of time bins between -2us and +2us. Default: 4000 (length = 1ns).")
-  auto dT = new TH2F("hdT","dT;label;dT[ps]",200,0,200, 4000,-2000000,2000000);
+  auto dT = new TH2F("hdT","dT;label;dT[ps]",200,0,200, 6000,-3000000,3000000);
   while(reader.readNextEvent())
   { // Looping through the events
     for (size_t trigger_i = 0; trigger_i < event.size(); ++trigger_i) if (event.label[trigger_i] == ref_label) 
     { // Looping through the hits of the event and proceed only if  a hit in the reference detector have been found
       for (size_t hit_i = 0; hit_i < event.size(); ++hit_i) if (hit_i !=trigger_i)
-      {// Looping again through the hits of the events and calculate time diff between the reference and every other detector
+      {// Looping again through the hits of the event and calculate time diff between the reference and every other detector
         dT->Fill(event.label[hit_i], int(event.time[hit_i]-event.time[trigger_i]));
       }
       break;
@@ -24,4 +37,26 @@ void dT(TFile* file, int ref_label=81)
 void dT(std::string const & filename, int ref_label = 81)
 {
   dT(TFile::Open(filename.c_str(), "READ"), ref_label);
+}
+
+void coincMatrix(TFile* file)
+{
+  Caen1725::RootReader reader(file);
+  auto & event = reader.getEvent();
+
+  auto coinc = new TH2F("coincMatrixH",";label;label",200,0,200, 200,0,200);
+  while(reader.readNextEvent())
+  { // Looping through the events
+    for (size_t hit_i = 0; hit_i < event.size(); ++hit_i)
+    { // Looping through the hits of the event
+      for (size_t hit_j = hit_i+1; hit_j < event.size(); ++hit_j)
+      {// Looping through the other hits of the event
+        coinc->Fill(event.label[hit_i], event.label[hit_j]);
+        coinc->Fill(event.label[hit_j], event.label[hit_i]);
+      }
+      break;
+    }
+  }
+  print("coincMatrixH created, coincMatrix->Draw() to see it");
+  reader.resetCursor();
 }

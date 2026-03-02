@@ -7,18 +7,19 @@
 
 void rootReaderExample(std::vector<std::string> filenames, std::string program_str = "print", int nbHitsMax = -1)
 {
+  print(program_str);
   for (auto const & filename : filenames)
   {
     if (Colib::extension(filename) != "root")
     {
-      print("Skipping file", filename, "that is without .root extension");
+      print("Skipping file", filename, "because it doesn't have .root extension");
       continue;
     }
 
     // --------------------------------------------- //
     // A. Attaching the data reader to the root file //
     // --------------------------------------------- //
-    RootReader reader(filename, nbHitsMax); 
+    Caen1725::RootReader reader(filename, nbHitsMax); 
 
     // ---------------------------------------------- //
     // B. Looping through the events in the root file //
@@ -32,7 +33,7 @@ void rootReaderExample(std::vector<std::string> filenames, std::string program_s
     
       // Two ways to loop through the hits of the event :
       // 1. range-based loop (prettier)
-      // for (auto const & hit : reader.getEvent())
+      // for (auto const & hit : reader.getEvent()) print(hit);
       // 2. Classic loop, get access to the hit index in the event hit_i :
       for (size_t hit_i = 0; hit_i<reader.getEvent().size(); ++hit_i) 
       { // Printing hit by hit

@@ -32,13 +32,10 @@ namespace Caen1725
       ++mult;
     }
 
-    void clear()
-    {
-      mult = 0;
-    }
-
+    void clear() {mult = 0;}
     
-    auto const & size () const {return mult;}
+    auto size () const {return static_cast<size_t>(mult);}
+    auto const & multiplicity () const {return mult;}
 
     Hit operator[](size_t i) const
     {
