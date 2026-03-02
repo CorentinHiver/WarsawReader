@@ -43,7 +43,7 @@ namespace Caen1725
     {
       Colib::linspace(m_ordered_index, m_hit_buffer.size());
       if (m_buildOnTimestamp) std::sort(m_ordered_index.begin(), m_ordered_index.end(), [this](size_t i, size_t j){
-        return m_hit_buffer[j].timestamp > m_hit_buffer[i].timestamp;
+        return m_hit_buffer[j].caen_time > m_hit_buffer[i].caen_time;
       });
       else                    std::sort(m_ordered_index.begin(), m_ordered_index.end(), [this](size_t i, size_t j){
         return m_hit_buffer[j].time      > m_hit_buffer[i].time     ;
@@ -65,7 +65,7 @@ namespace Caen1725
         auto const & first_hit  =  m_hit_buffer   [event.front()];
         // 3. Add new hits until one is out of time window with the first hit of the event
         // moment referred to as "closing the event"
-        if ((m_buildOnTimestamp) ? (static_cast<Long64_t>(hit.timestamp - first_hit.timestamp) < time_window)
+        if ((m_buildOnTimestamp) ? (static_cast<Long64_t>(hit.caen_time - first_hit.caen_time) < time_window)
                                  : (static_cast<Long64_t>(hit.time      - first_hit.time     ) < time_window)) 
         {
           event.emplace_back(hit_i);  

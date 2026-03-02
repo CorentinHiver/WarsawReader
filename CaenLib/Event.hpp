@@ -18,6 +18,8 @@ namespace Caen1725
 
     void push_back(Hit const & hit) noexcept
     {
+      if (maxEvt <= mult) return;
+
       const auto i = mult; // In principle, this helps the compiler optimize
       label        [i] = hit.label         ;
       board_ID     [i] = hit.board_ID      ;
@@ -25,9 +27,10 @@ namespace Caen1725
       subchannel_ID[i] = hit.subchannel_ID ;
       adc          [i] = hit.adc           ;
       qlong        [i] = hit.qlong         ;
-      timestamp    [i] = hit.timestamp     ;
+      caen_time    [i] = hit.caen_time     ;
       time         [i] = hit.time          ;
       rel_time     [i] = ((i == 0) ? 0 : static_cast<Int_t>(hit.time - time[0]));
+      wfa_success  [i] = hit.wfa_success;
 
       ++mult;
     }
@@ -46,24 +49,25 @@ namespace Caen1725
         subchannel_ID [i],
         adc           [i],
         qlong         [i],
-        timestamp     [i],
+        caen_time     [i],
         time          [i],
-        rel_time      [i]
+        rel_time      [i],
+        wfa_success   [i]
       );
     }
 
-
-    size_t evtNb = 0;
-    int    mult  = 0;
-    constexpr static inline size_t maxEvt = 1000;
-    Int_t     label         [maxEvt];
-    Int_t     board_ID      [maxEvt];
-    Int_t     channel_ID    [maxEvt];
-    Int_t     subchannel_ID [maxEvt];
+    Long64_t evtNb = 0;
+    Int_t    mult  = 0;
+    constexpr static inline Int_t maxEvt = 1000;
+    UInt_t    label         [maxEvt];
+    UShort_t  board_ID      [maxEvt];
+    UChar_t   channel_ID    [maxEvt];
+    UChar_t   subchannel_ID [maxEvt];
     Int_t     adc           [maxEvt];
     Int_t     qlong         [maxEvt];
-    ULong64_t timestamp     [maxEvt];
+    ULong64_t caen_time     [maxEvt];
     ULong64_t time          [maxEvt];
-    ULong64_t rel_time      [maxEvt];
+    Int_t     rel_time      [maxEvt];
+    Bool_t    wfa_success   [maxEvt];
   };
 }

@@ -106,7 +106,6 @@ namespace Caen1725
         m_board.clear();
         if (!m_board.readHeader(data)) return false; // Returning false because the end of file has been reached
         loadTrace = (m_board.BOARD_ID < m_boardsReadTraces.size()) ? m_boardsReadTraces[m_board.BOARD_ID] : true; // Determines if the traces of the detectors of this board are read
-        Colib::printAndPause(int(m_board.BOARD_ID), nicer_bool(loadTrace));
         read_board_header = false;
       }
 

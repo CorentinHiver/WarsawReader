@@ -26,14 +26,11 @@ using namespace Colib;
     UShort_t  board_ID      : Board label [0;max board ID]
     UShort_t  channel_ID    : Channel label [0;8]
     UShort_t  subchannel_ID : Sub channel label [0,1]
-    UShort_t  adc           : PHA : ADC value.               PSD : qshort value.
-    UShort_t  qlong         : PHA : EXTRA[16:32] (see doc.). PSD : qlong value.
-    ULong64_t extended_ts   : Raw timestamp. Units : ps. Used only if fine timestamp and extended timestamp are found in the data. Internal use only.
-    ULong64_t timestamp     : Raw timestamp (ts). Units : ps. Is equal to precise_ts if fine ts is found in the data, or extended_ts if only extended ts is found, or TRIGGER_TIME_TAG if no extended timestamp found
-    ULong64_t precise_ts    : Raw timestamp. Units : ps. Used only if fine timestamp mode is found in the data. Internal use only.
+    Int_t     adc           : PHA : ADC value.               PSD : qshort value.
+    Int_t     qlong         : PHA : EXTRA[16:32] (see doc.). PSD : qlong value.
+    ULong64_t caen_time     : Raw timestamp. Units : ps. Is equal to extended_timestamp if fine or extended timestamp is found in the data, or TRIGGER_TIME_TAG if no extended timestamp found
     ULong64_t time          : Absolute time. Units : ps. This field must be filled by the user (i.e., the program using this class).
-    Int_t     rel_time      : Relative time in the event. Units : ps. This field must be filled by the user (i.e., the program using this class).
-    
+    // Int_t     rel_time      : Relative time in the event. Units : ps. This field must be filled by the user (i.e., the program using this class).
  */
 
 //////////////////////////////////////
@@ -56,6 +53,12 @@ How to use the trigger :
   g++ (the rest of the line) -DTRIGGER="\"Triggers/TheNameOfYourTriggerFile.hpp\""
   
   Attention : do not forget the ' \" ', if you know how to get rid of this requirement contact me
+
+
+  TODO :
+  Ajouter un booléen wfa_success // wave form analysis successful
+  renommer timestamp board_time
+  renommer time best_time
 */
 
 class Profiler : public Timer
@@ -352,8 +355,8 @@ int main(int argc, char** argv)
 
     Caen1725::RootEvent outEvent(writeTraces);
     Caen1725::RootHit   outHit  (writeTraces);
-    size_t  evtNb   = 0;
-    int     evtMult = 0;
+    Long64_t evtNb   = 0;
+    Int_t    evtMult = 0;
 
     if (group) outEvent.writeTo(tree);
     else
@@ -413,6 +416,12 @@ int main(int argc, char** argv)
               outEvent.push_back(eventBuilder[hit_i]);
             }
               timerCopy.StopProfiling();
+
+              if (outEvent.mult == Caen1725::Event::maxEvt-1)
+              {
+                error("Event with multiplicity > 1000 for event n",evtNb,", not written");
+                continue;
+              }
 
               timerFill.StartProfiling();
             tree -> Fill();
@@ -481,7 +490,7 @@ int main(int argc, char** argv)
         // auto zero = cfd.findZero(CFD::sThresholds[inHit.board_ID]); // Not using thresholds anymore
              if (zero==CFD::noSignal) {inHit.time = inHit.precise_ts; ++nbNoSignal[inHit.label];}
         else if (zero==CFD::noZero  ) {inHit.time = inHit.precise_ts; ++nbNoZero  [inHit.label];}
-        else                           inHit.time = inHit.extended_ts + zero*Caen1725::ticks_to_ps;
+        else                          {inHit.time = inHit.extended_ts + zero*Caen1725::ticks_to_ps; inHit.wfa_success = true;}
       }
       else inHit.time = inHit.precise_ts;
         timerCFD.StopProfiling();
@@ -490,7 +499,7 @@ int main(int argc, char** argv)
         timerTShift.StartProfiling();
       if (useTimeShifts && static_cast<size_t>(inHit.label) < timeshifts.size()) 
       {
-        inHit.timestamp += timeshifts[inHit.label];
+        inHit.caen_time += timeshifts[inHit.label];
         inHit.time      += timeshifts[inHit.label];
       }
         timerTShift.StopProfiling();

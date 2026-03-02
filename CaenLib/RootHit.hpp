@@ -28,12 +28,13 @@ namespace Caen1725
       outTree->Branch("board_ID"     , &board_ID     );
       outTree->Branch("channel_ID"   , &channel_ID   );
       outTree->Branch("subchannel_ID", &subchannel_ID);
-      outTree->Branch("timestamp"    , &timestamp    );
+      outTree->Branch("caen_time"    , &caen_time    );
       outTree->Branch("time"         , &time         );
       outTree->Branch("rel_time"     , &rel_time     );
       outTree->Branch("adc"          , &adc          );
       outTree->Branch("qlong"        , &qlong        );
       if (Hit::handle_traces) outTree->Branch("trace", &trace);
+      outTree->Branch("wfa_success"  , &wfa_success  );
       
       return outTree;
     }
@@ -47,12 +48,13 @@ namespace Caen1725
       inTree->SetBranchAddress("board_ID"      , &board_ID     );
       inTree->SetBranchAddress("channel_ID"    , &channel_ID   );
       inTree->SetBranchAddress("subchannel_ID" , &subchannel_ID);
-      inTree->SetBranchAddress("timestamp"     , &timestamp    );
+      inTree->SetBranchAddress("caen_time"     , &caen_time    );
       inTree->SetBranchAddress("time"          , &time         );
       inTree->SetBranchAddress("rel_time"      , &rel_time     );
       inTree->SetBranchAddress("adc"           , &adc          );
       inTree->SetBranchAddress("qlong"         , &qlong        );
       if (Hit::handle_traces) inTree->SetBranchAddress("trace", &trace);
+      inTree->SetBranchAddress("wfa_success"   , &wfa_success  );
       
       return inTree;
     }
