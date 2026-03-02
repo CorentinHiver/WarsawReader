@@ -1,4 +1,4 @@
-STDLIB=# -std=c++17
+STDLIB= -std=c++17
 LIBS=
 INCLUDES= 
 OPTIONS=-Wall -Wextra
@@ -6,7 +6,7 @@ OPTIONS=-Wall -Wextra
 OPT= -O3
 # OPT= -g
 
-all: writeTraces studyCFD caen2root rootReaderExample
+all: clean writeTraces studyCFD caen2root rootReaderExample
 
 writeTraces: writeTraces.cpp $(LIBS)
 	g++ -o writeTraces writeTraces.cpp $(LIBS) $(OPTIONS) `root-config --cflags` `root-config --glibs` $(INCLUDES) $(OPT) $(STDLIB)

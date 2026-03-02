@@ -125,7 +125,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
       if (reader.nbHits() % int(1e5) == 0) printsln(Colib::nicer_double(reader.nbHits(), 1), "       ");
 
-      // Correct timestamp with cfd :
+      // Correct caen_time with cfd :
 
       if (useCFD[hit.board_ID] && hit.hasTrace())
       {
@@ -195,13 +195,13 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
             HitPattern2D->Fill(glabel_0, glabel_1);
             HitPattern2D->Fill(glabel_1, glabel_0);
 
-            dT_all_vs_all[glabel_0]->Fill(glabel_1, Long64_t(hit_1.timestamp - hit_0.timestamp));
-            dT_all_vs_all[glabel_1]->Fill(glabel_0, Long64_t(hit_0.timestamp - hit_1.timestamp));
+            dT_all_vs_all[glabel_0]->Fill(glabel_1, Long64_t(hit_1.caen_time - hit_0.caen_time));
+            dT_all_vs_all[glabel_1]->Fill(glabel_0, Long64_t(hit_0.caen_time - hit_1.caen_time));
 
             dT_all_vs_all_cfd[glabel_0]->Fill(glabel_1, Long64_t(hit_1.time - hit_0.time));
             dT_all_vs_all_cfd[glabel_1]->Fill(glabel_0, Long64_t(hit_0.time - hit_1.time));
 
-            dT_all->Fill(Long64_t(hit_1.timestamp - hit_0.timestamp));
+            dT_all->Fill(Long64_t(hit_1.caen_time - hit_0.caen_time));
             dT_all_cfd->Fill(Long64_t(hit_1.time - hit_0.time));
           }
 
@@ -214,7 +214,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
             auto const & hit_1       = event_builder[hit_index_j];
             auto const & glabel_1    = glabel(hit_1);
 
-            auto const & dT     = Long64_t(hit_1.timestamp - hit_0.timestamp);
+            auto const & dT     = Long64_t(hit_1.caen_time - hit_0.caen_time);
             auto const & dT_cfd = Long64_t(hit_1.time - hit_0.time);
             
             dT_Ref_VS_all     -> Fill(glabel_1, dT    );
