@@ -35,7 +35,7 @@ public:
   auto const & operator[] (int const & label) const {return m_timeshifts[label];}
 
   /// @brief Returns the timeshift of the detector with the given label
-  auto const & get(int const & i) const {return m_timeshifts[i];}
+  auto get(int const & i) const {return (i<m_timeshifts.size()) ? m_timeshifts[i] : Timeshift_t{0};}
 
   #ifdef HIT_HPP // If Hit.hpp is included (Nuball2)
     /// @brief Returns the timeshift of the detector with the label of the given hit

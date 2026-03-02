@@ -1,4 +1,5 @@
 #include "../CaenLib/RootReader.hpp"
+#include "../LibCo/Classes/Timeshifts.hpp"
 #include "TH2F.h"
 
 void GeSpectrums(TFile* file, std::string const & calibName = "")
@@ -16,7 +17,6 @@ void GeSpectrums(TFile* file, std::string const & calibName = "")
 
 void dT(TFile* file, int ref_label=81)
 {
-  
   Caen1725::RootReader reader(file);
   auto & event = reader.getEvent();
   auto dT = new TH2F("hdT","dT;label;dT[ps]",200,0,200, 6000,-3000000,3000000);
@@ -59,4 +59,22 @@ void coincMatrix(TFile* file)
   }
   print("coincMatrixH created, coincMatrix->Draw() to see it");
   reader.resetCursor();
+}
+
+void forMarcin(std::string filename, std::string tsFile)
+{
+  auto file = TFile::Open(filename.c_str(), "READ");
+  if (!file) Colib::throw_error(filename+" not found");
+  Caen1725::RootReader reader(file);
+  auto & event = reader.getEvent();
+  auto dT = new TH2F("hdT","dT;HPGe_label;dT[ps]", 6000,-3000000,3000000, 20,0,20);
+  Timeshifts ts(tsFile);
+  while(reader.readNextEvent()) for (size_t dssd_i = 0; dssd_i < event.size(); ++dssd_i) if (7<event.board_ID[dssd_i])
+  {// Loop through the hits
+    auto const & label_dssd = event.label[dssd_i];
+    event.time[dssd_i]+=ts.get(label_dssd);
+    for (size_t Ge_i = 0; Ge_i < event.size(); ++Ge_i) if (event.board_ID[Ge_i] < 3 && event.subchannel_ID[Ge_i]==0)
+      dT->Fill(event.time[Ge_i] - event.time[dssd_i], event.board_ID[Ge_i]*8 + event.channel_ID[Ge_i]);
+  }
+  print("hdT created, hdT->Draw() to see it");
 }

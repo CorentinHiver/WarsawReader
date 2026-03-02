@@ -1,4 +1,4 @@
-STDLIB= -std=c++17
+STDLIB= #-std=c++17
 LIBS=
 INCLUDES= 
 OPTIONS=-Wall -Wextra
