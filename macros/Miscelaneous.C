@@ -1,6 +1,7 @@
 #include "../CaenLib/RootReader.hpp"
 #include "../LibCo/Classes/Timeshifts.hpp"
 #include "TH2F.h"
+#include "TChain.h"
 
 void GeSpectrums(TFile* file, std::string const & calibName = "")
 {
@@ -63,18 +64,23 @@ void coincMatrix(TFile* file)
 
 void forMarcin(std::string filename, std::string tsFile)
 {
-  auto file = TFile::Open(filename.c_str(), "READ");
-  if (!file) Colib::throw_error(filename+" not found");
-  Caen1725::RootReader reader(file);
-  auto & event = reader.getEvent();
   auto dT = new TH2F("hdT","dT;HPGe_label;dT[ps]", 6000,-3000000,3000000, 20,0,20);
-  Timeshifts ts(tsFile);
-  while(reader.readNextEvent()) for (size_t dssd_i = 0; dssd_i < event.size(); ++dssd_i) if (5<event.board_ID[dssd_i])
-  {// Loop through the hits
-    auto const & label_dssd = event.label[dssd_i];
-    event.time[dssd_i]-=ts.get(label_dssd-6*16)*1000;
-    for (size_t Ge_i = 0; Ge_i < event.size(); ++Ge_i) if (event.board_ID[Ge_i] < 3 && event.subchannel_ID[Ge_i]==0)
-      dT->Fill(event.time[Ge_i] - event.time[dssd_i], event.board_ID[Ge_i]*8 + event.channel_ID[Ge_i]);
+  auto files = Colib::findFilesWildcard(filename);
+  for (auto const & file : files)
+  {
+    if (Colib::extension(file) != "root") {error(file+" not a .root file"); continue;}
+    auto rootFile = TFile::Open(file.c_str(), "READ");
+    if (!rootFile) {error(file+" not found or wrong format"); continue;}
+    Caen1725::RootReader reader(rootFile);
+    auto & event = reader.getEvent();
+    Timeshifts ts(tsFile);
+    while(reader.readNextEvent()) for (size_t dssd_i = 0; dssd_i < event.size(); ++dssd_i) if (5<event.board_ID[dssd_i])
+    {// Loop through the hits
+      auto const & label_dssd = event.label[dssd_i];
+      event.time[dssd_i]-=ts.get(label_dssd-6*16)*1000;
+      for (size_t Ge_i = 0; Ge_i < event.size(); ++Ge_i) if (event.board_ID[Ge_i] < 3 && event.subchannel_ID[Ge_i]==0)
+        dT->Fill(event.time[Ge_i] - event.time[dssd_i], event.board_ID[Ge_i]*8 + event.channel_ID[Ge_i]);
+    }
   }
   print("hdT created, hdT->Draw() to see it");
 }
