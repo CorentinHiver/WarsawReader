@@ -56,6 +56,8 @@ namespace Caen1725
       );
     }
 
+    constexpr auto dT(int index1, int index2) const noexcept {return Long64_t(time[index1]-time[index2]);}
+
     Long64_t evtNb = 0;
     Int_t    mult  = 0;
     constexpr static inline Int_t maxEvt = 1000;

@@ -71,6 +71,7 @@ void forMarcin(std::string filename, std::string tsFile)
   auto dT = new TH2F("hdT","dT;HPGe_label;dT[ps]", 2000,-1000000,1000000, 20,0,20);
   // dT->SetDirectory(gFile);
   auto files = Colib::findFilesWildcard(filename);
+  print(files);
   for (auto const & file : files)
   {
     if (Colib::extension(file) != "root") {error(file+" not a .root file"); continue;}
@@ -96,7 +97,7 @@ void forMarcin(std::string filename, std::string tsFile)
         auto const & label_ring = event.label[ring_i];
         event.time[ring_i]-=ts.get(label_ring-6*16)*1000;
         for (size_t Ge_i = 0; Ge_i < event.size(); ++Ge_i) if (event.board_ID[Ge_i] < 3 && event.subchannel_ID[Ge_i]==0)
-          dT->Fill(Long64_t(event.time[Ge_i] - event.time[ring_i]), event.board_ID[Ge_i]*8 + event.channel_ID[Ge_i]);
+          dT->Fill(event.dT(Ge_i, ring_i), event.board_ID[Ge_i]*8 + event.channel_ID[Ge_i]);
       }
     }
   }
