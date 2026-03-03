@@ -68,7 +68,7 @@ bool isDSSDSector(UInt_t label) {return 7 == label || label == 8;}
 
 void forMarcin(std::string filename, std::string tsFile)
 {
-  auto dT = new TH2F("hdT","dT;HPGe_label;dT[ps]", 6000,-3000000,3000000, 20,0,20);
+  auto dT = new TH2F("hdT","dT;HPGe_label;dT[ps]", 2000,-1000000,1000000, 20,0,20);
   // dT->SetDirectory(gFile);
   auto files = Colib::findFilesWildcard(filename);
   for (auto const & file : files)
