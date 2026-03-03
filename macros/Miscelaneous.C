@@ -62,6 +62,10 @@ void coincMatrix(TFile* file)
   reader.resetCursor();
 }
 
+bool isDSSD(UInt_t label) {return 5<label && label < 9;}
+bool isDSSDRing(UInt_t label) {return 6 == label;}
+bool isDSSDSector(UInt_t label) {return 7 == label || label == 8;}
+
 void forMarcin(std::string filename, std::string tsFile)
 {
   auto dT = new TH2F("hdT","dT;HPGe_label;dT[ps]", 6000,-3000000,3000000, 20,0,20);
@@ -73,12 +77,27 @@ void forMarcin(std::string filename, std::string tsFile)
     Caen1725::RootReader reader(file);
     auto & event = reader.getEvent();
     Timeshifts ts(tsFile);
-    while(reader.readNextEvent()) for (size_t dssd_i = 0; dssd_i < event.size(); ++dssd_i) if (5<event.board_ID[dssd_i])
-    {// Loop through the hits
-      auto const & label_dssd = event.label[dssd_i];
-      event.time[dssd_i]-=ts.get(label_dssd-6*16)*1000;
-      for (size_t Ge_i = 0; Ge_i < event.size(); ++Ge_i) if (event.board_ID[Ge_i] < 3 && event.subchannel_ID[Ge_i]==0)
-        dT->Fill(event.time[Ge_i] - event.time[dssd_i], event.board_ID[Ge_i]*8 + event.channel_ID[Ge_i]);
+    size_t nbSectors = 0; size_t nbRings = 0; size_t ring_i = 0;
+    while(reader.readNextEvent()) 
+    {
+      nbSectors = 0; nbRings = 0; ring_i = 0;
+      for (size_t hit_i = 0; hit_i < event.size(); ++hit_i) 
+      {
+        auto const & boardID = event.board_ID[hit_i];
+        if (isDSSDSector(boardID)) ++nbSectors;
+        else if (isDSSDRing(boardID)) 
+        {
+          ring_i = hit_i;
+          ++nbRings  ;
+        }
+      }
+      if (nbSectors == 1 && nbRings == 1)
+      {
+        auto const & label_ring = event.label[ring_i];
+        event.time[ring_i]-=ts.get(label_ring-6*16)*1000;
+        for (size_t Ge_i = 0; Ge_i < event.size(); ++Ge_i) if (event.board_ID[Ge_i] < 3 && event.subchannel_ID[Ge_i]==0)
+          dT->Fill(event.time[Ge_i] - event.time[ring_i], event.board_ID[Ge_i]*8 + event.channel_ID[Ge_i]);
+      }
     }
   }
   dT->SaveAs("MarcinHistogram.root");
