@@ -62,9 +62,11 @@ void coincMatrix(TFile* file)
   reader.resetCursor();
 }
 
-bool isDSSD(UInt_t label) {return 5<label && label < 9;}
-bool isDSSDRing(UInt_t label) {return 6 == label;}
-bool isDSSDSector(UInt_t label) {return 7 == label || label == 8;}
+bool isDSSD(int board_ID) {return 5<board_ID && board_ID < 9;}
+bool isDSSDRing(int board_ID) {return 6 == board_ID;}
+bool isDSSDSector(int board_ID) {return 7 == board_ID || board_ID == 8;}
+bool isGe(UShort_t board_ID, UChar_t subchannel_ID) {return board_ID < 3 && subchannel_ID == 0;}
+UShort_t GeLabel(Caen1725::Event const & event, size_t Ge_i) {return event.board_ID[Ge_i]*8 + event.channel_ID[Ge_i];}
 
 void forMarcin(std::string filename, std::string tsFile)
 {
@@ -72,7 +74,7 @@ void forMarcin(std::string filename, std::string tsFile)
   // dT->SetDirectory(gFile);
   auto files = Colib::findFilesWildcard(filename);
   Timeshifts ts(tsFile);
-  size_t nbEvts = 0;
+  size_t nbEvts = 0; size_t nbEvtsGoodDSSD = 0;
   for (auto const & file : files)
   {
     if (Colib::extension(file) != "root") {error(file+" not a .root file"); continue;}
@@ -95,14 +97,16 @@ void forMarcin(std::string filename, std::string tsFile)
       }
       if (nbSectors == 1 && nbRings == 1)
       {
+        ++nbEvtsGoodDSSD;
         auto const & label_ring = event.label[ring_i];
         event.time[ring_i]-=ts.get(label_ring-6*16)*1000;
-        for (size_t Ge_i = 0; Ge_i < event.size(); ++Ge_i) if (event.board_ID[Ge_i] < 3 && event.subchannel_ID[Ge_i]==0)
-          dT->Fill(event.dT(Ge_i, ring_i), event.board_ID[Ge_i]*8 + event.channel_ID[Ge_i]);
+        for (size_t Ge_i = 0; Ge_i < event.size(); ++Ge_i) if (isGe(event.board_ID[Ge_i], event.subchannel_ID[Ge_i]))
+          dT->Fill(event.dT(Ge_i, ring_i), GeLabel(event, Ge_i));
       }
     }
   }
   print(nbEvts, "events");
+  print(nbEvtsGoodDSSD, "good DSSD events");
   dT->SaveAs("MarcinHistogram.root");
   print("hdT created, hdT->Draw() to see it");
 }

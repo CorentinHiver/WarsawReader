@@ -79,11 +79,11 @@ namespace Caen1725
     bool readNextEvent()
     {
       if (m_grouped)
-      {
-        return readNextHit(); // Because we're in group mode, a TTree entry is not a single hit but already an event
+      {// In group mode, a TTree entry is not a single hit but already an event
+        return readNextHit(); 
       }
       else
-      {
+      {// In ungrouped mode, a TTree entry a single hit, and
         if (m_finished) return false;
         if (readNextHit()) 
         {
