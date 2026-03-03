@@ -28,6 +28,11 @@ namespace Caen1725
     {
       connectFile(filename);
     }
+
+    ~RootReader()
+    {
+      if (m_file && !m_file->IsZombie()) m_file->Close();
+    }
   
     TTree* connectTree(TTree* tree)
     {
