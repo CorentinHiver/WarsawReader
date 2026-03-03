@@ -75,13 +75,13 @@ void forMarcin(std::string filename, std::string tsFile)
   size_t nbEvts = 0;
   for (auto const & file : files)
   {
-    ++nbEvts;
     if (Colib::extension(file) != "root") {error(file+" not a .root file"); continue;}
     Caen1725::RootReader reader(file);
     auto & event = reader.getEvent();
     size_t nbSectors = 0; size_t nbRings = 0; size_t ring_i = 0;
     while(reader.readNextEvent()) 
     {
+      ++nbEvts;
       nbSectors = 0; nbRings = 0; ring_i = 0;
       for (size_t hit_i = 0; hit_i < event.size(); ++hit_i) 
       {
