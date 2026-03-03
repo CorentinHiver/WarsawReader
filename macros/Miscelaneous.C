@@ -96,7 +96,7 @@ void forMarcin(std::string filename, std::string tsFile)
         auto const & label_ring = event.label[ring_i];
         event.time[ring_i]-=ts.get(label_ring-6*16)*1000;
         for (size_t Ge_i = 0; Ge_i < event.size(); ++Ge_i) if (event.board_ID[Ge_i] < 3 && event.subchannel_ID[Ge_i]==0)
-          dT->Fill(event.time[Ge_i] - event.time[ring_i], event.board_ID[Ge_i]*8 + event.channel_ID[Ge_i]);
+          dT->Fill(Long64_t(event.time[Ge_i] - event.time[ring_i]), event.board_ID[Ge_i]*8 + event.channel_ID[Ge_i]);
       }
     }
   }
