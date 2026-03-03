@@ -71,13 +71,14 @@ void forMarcin(std::string filename, std::string tsFile)
   auto dT = new TH2F("hdT","dT;HPGe_label;dT[ps]", 2000,-1000000,1000000, 20,0,20);
   // dT->SetDirectory(gFile);
   auto files = Colib::findFilesWildcard(filename);
-  print(files);
+  Timeshifts ts(tsFile);
+  size_t nbEvts = 0;
   for (auto const & file : files)
   {
+    ++nbEvts;
     if (Colib::extension(file) != "root") {error(file+" not a .root file"); continue;}
     Caen1725::RootReader reader(file);
     auto & event = reader.getEvent();
-    Timeshifts ts(tsFile);
     size_t nbSectors = 0; size_t nbRings = 0; size_t ring_i = 0;
     while(reader.readNextEvent()) 
     {
@@ -101,6 +102,7 @@ void forMarcin(std::string filename, std::string tsFile)
       }
     }
   }
+  print(nbEvts, "events");
   dT->SaveAs("MarcinHistogram.root");
   print("hdT created, hdT->Draw() to see it");
 }
