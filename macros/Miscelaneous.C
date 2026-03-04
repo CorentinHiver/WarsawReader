@@ -3,10 +3,14 @@
 #include "TH2F.h"
 #include "TChain.h"
 
-void GeSpectrums(TFile* file, std::string const & calibName = "")
+using namespace Colib;
+using namespace Caen1725;
+using namespace std;
+
+void GeSpectrums(TFile* file, string const & calibName = "")
 {
-  if (calibName != "") Colib::throw_error("Calibration option not coded yet!");
-  Caen1725::RootReader reader(file);
+  if (calibName != "") throw_error("Calibration option not coded yet!");
+  RootReader reader(file);
   auto & event = reader.getEvent();
   auto h2 = new TH2F("GeSpectrumsH",";label;energy[ADC]",20,0,20, 3500,0,35000);
   while(reader.readNextEvent()) for (size_t hit_i = 0; hit_i < event.size(); ++hit_i)
@@ -18,7 +22,7 @@ void GeSpectrums(TFile* file, std::string const & calibName = "")
 
 void dT(TFile* file, int ref_label=81)
 {
-  Caen1725::RootReader reader(file);
+  RootReader reader(file);
   auto & event = reader.getEvent();
   auto dT = new TH2F("hdT","dT;label;dT[ps]",200,0,200, 6000,-3000000,3000000);
   while(reader.readNextEvent())
@@ -35,14 +39,14 @@ void dT(TFile* file, int ref_label=81)
   print("hdT created, hdT->Draw() to see it");
 }
 
-void dT(std::string const & filename, int ref_label = 81)
+void dT(string const & filename, int ref_label = 81)
 {
   dT(TFile::Open(filename.c_str(), "READ"), ref_label);
 }
 
 void coincMatrix(TFile* file)
 {
-  Caen1725::RootReader reader(file);
+  RootReader reader(file);
   auto & event = reader.getEvent();
 
   auto coinc = new TH2F("coincMatrixH",";label;label",200,0,200, 200,0,200);
@@ -65,20 +69,20 @@ void coincMatrix(TFile* file)
 bool isDSSD(int board_ID) {return 5<board_ID && board_ID < 9;}
 bool isDSSDRing(int board_ID) {return 6 == board_ID;}
 bool isDSSDSector(int board_ID) {return 7 == board_ID || board_ID == 8;}
-bool isGe(UShort_t board_ID, UChar_t subchannel_ID) {return board_ID < 3 && subchannel_ID == 0;}
-UShort_t GeLabel(Caen1725::Event const & event, size_t Ge_i) {return event.board_ID[Ge_i]*8 + event.channel_ID[Ge_i];}
+bool     isGe   (Event const & event, size_t Ge_i) {return event.board_ID[Ge_i] < 3 && event.subchannel_ID[Ge_i] == 0;}
+UShort_t GeLabel(Event const & event, size_t Ge_i) {return event.board_ID[Ge_i] * 8 +  event.channel_ID   [Ge_i];}
 
-void forMarcin(std::string filename, std::string tsFile)
+void forMarcin(string filename, string tsFile)
 {
   auto dT = new TH2F("hdT","dT;HPGe_label;dT[ps]", 2000,-1000000,1000000, 20,0,20);
   // dT->SetDirectory(gFile);
-  auto files = Colib::findFilesWildcard(filename);
+  auto files = findFilesWildcard(filename);
   Timeshifts ts(tsFile);
   size_t nbEvts = 0; size_t nbEvtsGoodDSSD = 0;
   for (auto const & file : files)
   {
-    if (Colib::extension(file) != "root") {error(file+" not a .root file"); continue;}
-    Caen1725::RootReader reader(file);
+    if (extension(file) != "root") {error(file+" not a .root file"); continue;}
+    RootReader reader(file);
     auto & event = reader.getEvent();
     size_t nbSectors = 0; size_t nbRings = 0; size_t ring_i = 0;
     while(reader.readNextEvent()) 
@@ -100,7 +104,7 @@ void forMarcin(std::string filename, std::string tsFile)
         ++nbEvtsGoodDSSD;
         auto const & label_ring = event.label[ring_i];
         event.time[ring_i]-=ts.get(label_ring-6*16)*1000;
-        for (size_t Ge_i = 0; Ge_i < event.size(); ++Ge_i) if (isGe(event.board_ID[Ge_i], event.subchannel_ID[Ge_i]))
+        for (size_t Ge_i = 0; Ge_i < event.size(); ++Ge_i) if (isGe(event, Ge_i))
           dT->Fill(event.dT(Ge_i, ring_i), GeLabel(event, Ge_i));
       }
     }

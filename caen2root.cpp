@@ -155,16 +155,16 @@ int main(int argc, char** argv)
     print("-N --hits-tot-nb       [nb_hits (-1 = all, scientific format accepted)] : maximum number of hits to be read by the programm");
     print("-o --output            [output_path]");
     print("   --read-traces       [0 or 1] (default 1) : Read the traces for all boards.");
-    print("   --board-skip-trace  [boardID] : Do not read the trace for this boad ID, hence no trace analysis (e.g. CFD) is done. Used only if --read-traces is true.");
+    print("   --board-skip-trace  [boardID] : Do not read the trace for this board ID, hence no trace analysis (e.g. CFD) is done. Used only if --read-traces is true.");
     print("   --write-traces      [0 or 1] (default 0) : Write the trace in the output root file.");
-    print("-T --timeshifts        [filename] : List of timestamp shifts. Format : in each line : global_label timeshift[ns].");
+    print("-T --timeshifts        [filename] : List of timeshifts. Format : in each line : global_label timeshift[ns].");
     print("-t --trigger [option] : trigger on the given global label or board ID, or a user-defined file with a list of labels. Example : -t -l 0 to trigger on label 0");
     print("            -l --label  [global_label(16 x boardID + channelID)]]");
     print("            -L --labels [nb labels] [[global_label(16 x boardID + channelID)]]");
     print("            -b --board  [boardID]] ");
     print("            -B --boards [nb labels] [[boardID]] ");
     print("            -f --file   [filename (containing a list of labels)]]");
-    print("-tw --time-window      [time_window] (default 2000 ns): Coincidence time window for event building (scientific format accepted) ");
+    print("-tw --time-window      [time_window ns] (default 2000) : Coincidence time window for event building (scientific format accepted) ");
     print();
   };
   if (argc < 3) {printHelp(); return 1;}
