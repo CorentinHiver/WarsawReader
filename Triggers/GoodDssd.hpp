@@ -23,8 +23,6 @@ public:
       if (6 == hit.board_ID) ++m_nbRings;
       else if (7 == hit.board_ID || 8 == hit.board_ID) ++m_nbSectors;
     }
-    print("nbRings", m_nbRings);
-    print("nbSectors", m_nbSectors);
     return m_nbRings==1 && m_nbSectors==1;
   }
 
