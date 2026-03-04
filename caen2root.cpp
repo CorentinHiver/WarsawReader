@@ -316,7 +316,7 @@ int main(int argc, char** argv)
   // if (hitsMaxTotSet && multithreadSet) throw-error("Can't have -N and -M at the same time !");
   if (trigger_label) print(trigger_labels);
 #ifdef TRIGGER
-  if (trigger_label) print(STRINGIFY(TRIGGER), "chosen along with label-based trigger. The behavior is AND (contact dev if you want to switch).");
+  if (trigger_label) print(STRINGIFY(TRIGGER), "chosen along with label-based trigger. The behavior is AND (possibility to develop it if you really need a OR logic).");
 #endif //TRIGGER
 
   // Look-up tables (LUT) :
@@ -385,10 +385,10 @@ int main(int argc, char** argv)
       eventBuilder.fast_event_building(time_window);
         timerEvtBuild.StopProfiling();
 
-      bool triggerBool = true;
       // 4. Write the events to the ROOT tree
       for (auto const & event : eventBuilder)// Loop over all the event in buffer :
       {
+        bool triggerBool = true;
         if (!group) evtMult = static_cast<int>(event.size());
 
           timerTrigger.StartProfiling();
@@ -400,7 +400,7 @@ int main(int argc, char** argv)
         }
         
       #ifdef TRIGGER
-        triggerBool = triggerBool && trigger(event);
+        triggerBool = trigger(event) && triggerBool;
       #endif //TRIGGER
 
           timerTrigger.StopProfiling();

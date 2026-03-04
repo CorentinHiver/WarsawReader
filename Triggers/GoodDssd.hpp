@@ -15,17 +15,21 @@ public:
   bool operator() (Caen1725EventBuilder::EventId const & event_id) 
   {
     // Trigger on "good DSSD" events, i.e. exactly one ring and one sector in the event 
-    int nbRings = 0;
-    int nbSectors = 0;
+    m_nbRings = 0;
+    m_nbSectors = 0;
     for (size_t i = 0; i<event_id.size(); ++i) 
     {
       auto const & hit = (*m_eventBuilder)[event_id[i]]; // Simple aliasing
-      if (6 == hit.board_ID) ++nbRings;
-      else if (7 == hit.board_ID || 8 == hit.board_ID) ++nbSectors;
+      if (6 == hit.board_ID) ++m_nbRings;
+      else if (7 == hit.board_ID || 8 == hit.board_ID) ++m_nbSectors;
     }
-    return nbRings==1 && nbSectors==1;
+    print("nbRings", m_nbRings);
+    print("nbSectors", m_nbSectors);
+    return m_nbRings==1 && m_nbSectors==1;
   }
 
 private:
+  int m_nbRings = 0;
+  int m_nbSectors = 0;
   Caen1725EventBuilder * m_eventBuilder = nullptr;
 };
