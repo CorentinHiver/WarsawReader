@@ -5,6 +5,7 @@ OPTIONS=-Wall -Wextra
 # OPT= -O2
 OPT= -O3
 # OPT= -g
+TRIGGER=NedaVeto
 
 all: clean writeTraces studyCFD caen2root rootReaderExample
 
