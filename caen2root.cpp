@@ -338,7 +338,7 @@ int main(int argc, char** argv)
     
     Caen1725RootInterface reader(filename, readTraces);
     reader.setBoardReadTrace(boardReadTrace);
-    Caen1725EventBuilder eventBuilder(reserved_buffer_size);
+    Caen1725::EventBuilder eventBuilder(reserved_buffer_size);
     eventBuilder.buildOnTimestamp(ts_evt_build);
   #ifdef TRIGGER
     Trigger trigger(&eventBuilder);

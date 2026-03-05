@@ -1,9 +1,9 @@
-STDLIB= #-std=c++17
+STDLIB= -std=c++17
 LIBS=
 INCLUDES= 
 OPTIONS=-Wall -Wextra
 # OPT= -O2
-OPT= -O3
+OPT= -O3 -march=native
 # OPT= -g
 TRIGGER=
 
@@ -20,6 +20,10 @@ caen2root: caen2root.cpp $(LIBS)
 
 rootReaderExample: rootReaderExample.cpp $(LIBS)
 	g++ -o rootReaderExample rootReaderExample.cpp $(LIBS) $(OPTIONS) `root-config --cflags` `root-config --glibs` $(INCLUDES) $(OPT) $(STDLIB) $(TRIGGER)
+
+debug: OPT= -g
+debug: clean
+debug: all
 
 clean:
 	rm -fr writeTraces

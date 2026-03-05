@@ -1,13 +1,24 @@
 Compile lines at the end of the .cpp files
 If none (.C files), call them with root because they are pure ROOT macros
 
+To compile with make:
+> make clean
+> make -j4
+
+make options:
+TRIGGER="-DTRIGGER=[TriggerName]" (Read Triggers/)
+
+Update using:
+> sh UPDATE.sh
+
 - General purpose tools : 
 
 caen2root                   Converts .caendat raw datafile into time-ordered and event-built root file
 Tools/caendatInspect        Dumps raw data from .caendat datafile in the terminal
 Tools/caendatIntegrityCheck Checks if the raw .caendat datafile is not corrupted
+macros/Miscellaneous.C      Collection of tree analysis created by caen2root (examples, timeshifts, spectra, special requests ...)
 
-- Special tools (hard-coded variables) :
+- Special tools :
 
 writeTraces    Writes the traces in TGraphs with CFD
 studyCFD       After event-building, checks the time correlations between detectors

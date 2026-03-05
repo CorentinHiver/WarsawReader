@@ -11,8 +11,8 @@
 class Trigger
 {
 public:
-  Trigger(Caen1725EventBuilder * eventBuilder) : m_eventBuilder(eventBuilder) {}
-  bool operator() (Caen1725EventBuilder::EventId const & event_id) 
+  Trigger(Caen1725::EventBuilder * eventBuilder) : m_eventBuilder(eventBuilder) {}
+  bool operator() (Caen1725::EventBuilder::EventId const & event_id) 
   {
     // Here is an example to reject events with NEDA hits inside
     for (size_t i = 0; i<event_id.size(); ++i) 
@@ -24,5 +24,5 @@ public:
   }
 
 private:
-  Caen1725EventBuilder * m_eventBuilder = nullptr;
+  Caen1725::EventBuilder * m_eventBuilder = nullptr;
 };

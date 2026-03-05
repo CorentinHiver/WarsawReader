@@ -112,6 +112,4 @@ namespace Caen1725
   };
 };
 
-using Caen1725EventBuilder = Caen1725::EventBuilder;
-
 #endif //CAENROOTEVENTBUILDER_HPP

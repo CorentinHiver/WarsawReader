@@ -11,8 +11,8 @@
 class Trigger
 {
 public:
-  Trigger(Caen1725EventBuilder * eventBuilder) : m_eventBuilder(eventBuilder) {}
-  bool operator() (Caen1725EventBuilder::EventId const & event_id) 
+  Trigger(Caen1725::EventBuilder * eventBuilder) : m_eventBuilder(eventBuilder) {}
+  bool operator() (Caen1725::EventBuilder::EventId const & event_id) 
   {
     // Trigger on "good DSSD" events, i.e. exactly one ring and one sector in the event 
     m_nbRings = 0;
@@ -29,5 +29,5 @@ public:
 private:
   int m_nbRings = 0;
   int m_nbSectors = 0;
-  Caen1725EventBuilder * m_eventBuilder = nullptr;
+  Caen1725::EventBuilder * m_eventBuilder = nullptr;
 };
