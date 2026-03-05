@@ -13,7 +13,7 @@
 constexpr Long64_t time_window          = 2e6 ; // ps
 constexpr size_t   reserved_buffer_size = 50000ul;
 auto constexpr static ref_label = 81;
-auto static fullOutput = false;
+auto static fullOutput = true;
 // auto constexpr static trigg_label = 
 
 enum DetectorTypes{EAGLE, BGO, NEDA, DSSDRing, DSSDSector, LaBr3, EMPTY};
@@ -325,6 +325,7 @@ int main(int argc, char** argv)
     print("Options :");
     print("-f [/path/to/data/filename*.root]");
     print("-n [max_hits_number]");
+    print("--short : short output, removing all big histograms");
   };
 
   if (argc == 1)
@@ -350,9 +351,9 @@ int main(int argc, char** argv)
       double tmp_d; iss >> tmp_d;
       nb_hits = tmp_d;
     }
-    else if (temp == "--full")
+    else if (temp == "--short")
     {
-      fullOutput = true;
+      fullOutput = false;
     }
   }
 
