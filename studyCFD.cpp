@@ -13,7 +13,7 @@
 constexpr Long64_t time_window          = 2e6 ; // ps
 constexpr size_t   reserved_buffer_size = 50000ul;
 auto constexpr static ref_label = 81;
-auto static bigHistos = false;
+auto static fullOutput = false;
 // auto constexpr static trigg_label = 
 
 enum DetectorTypes{EAGLE, BGO, NEDA, DSSDRing, DSSDSector, LaBr3, EMPTY};
@@ -277,7 +277,7 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
     print("Write big bidims");
 
-    if (bigHistos)
+    if (fullOutput)
     {
       for (auto & histo : neda_psds           ) if (filledHisto(histo)) histo->Write();
       for (auto & histo : dT_all_vs_all       ) if (filledHisto(histo)) histo->Write();
@@ -350,9 +350,9 @@ int main(int argc, char** argv)
       double tmp_d; iss >> tmp_d;
       nb_hits = tmp_d;
     }
-    else if (temp == "-b")
+    else if (temp == "--full")
     {
-      bigHistos = true;
+      fullOutput = true;
     }
   }
 
