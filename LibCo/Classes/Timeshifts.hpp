@@ -63,6 +63,8 @@ public:
   /// @brief Returns the size of the timestamp vector
   auto size() const {return m_timeshifts.size();}
 
+  auto nbDetectors() const {return m_nb_detectors;}
+
 private:
   std::string m_filename;
   Timeshifts_t m_timeshifts;
