@@ -26,7 +26,7 @@ public:
   Timeshifts& operator=(Timeshifts const & other) noexcept = default;
 
   /// @brief Use this method to load timeshifts from a .dT file
-  bool load(std::string const & filename);
+  bool load(std::string const & filename, bool ns = false);
 
   /// @brief Saves the timeshift file to disk
   void write(std::string const & fullpath, std::string const & name);
@@ -63,7 +63,7 @@ public:
   /// @brief Returns the size of the timestamp vector
   auto size() const {return m_timeshifts.size();}
 
-  auto nbDetectors() const {return m_nb_detectors;}
+  auto const & nbDetectors() const {return m_nb_detectors;}
 
 private:
   std::string m_filename;
@@ -84,7 +84,7 @@ private:
 
 };
 
-bool Timeshifts::load(std::string const & filename)
+bool Timeshifts::load(std::string const & filename, bool ns = false)
 {
   std::ifstream inputFile(filename, std::ifstream::in);
   if (!inputFile.good()) {throw NotFoundError(filename);}
@@ -95,8 +95,12 @@ bool Timeshifts::load(std::string const & filename)
   { 
     std::istringstream iss(line);
     iss >> label;
-    if (m_timeshifts.size() <= label) m_timeshifts.resize(label+1);
-    iss >> m_timeshifts[label];
+    if (ns)
+    {
+      double ts; iss >> ts;
+      m_timeshifts[label] = 1000*ts;
+    }
+    else iss >> m_timeshifts[label];
     ++m_nb_detectors;
   }
   inputFile.close();
