@@ -93,6 +93,7 @@ bool Timeshifts::load(std::string const & filename, bool ns)
   size_t label = 0; // Reading buffer
   while (getline(inputFile, line))
   { 
+    line = Colib::removeLastPart(line, "#");
     std::istringstream iss(line);
     iss >> label;
     if (label>=m_timeshifts.size()) m_timeshifts.resize((label+1)*2);
