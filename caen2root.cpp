@@ -223,10 +223,8 @@ int main(int argc, char** argv)
     else if (temp == "-T" || temp == "--timeshifts")
     {
       iss >> temp;
-      timeshifts.load(temp);
-      int temp_nb = 0; 
-      for (size_t i = 0; i<timeshifts.size(); ++i) if (0 < timeshifts[i]) ++temp_nb;
-      print(temp_nb, "timeshifts loaded from", temp);
+      timeshifts.load(temp, true);
+      print(timeshifts.nbDetectors(), "timeshifts loaded from", temp);
     }
     else if (temp == "--read-traces")
     {
