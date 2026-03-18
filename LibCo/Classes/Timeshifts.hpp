@@ -95,7 +95,7 @@ bool Timeshifts::load(std::string const & filename, bool ns)
   { 
     std::istringstream iss(line);
     iss >> label;
-    if (label>=m_timeshifts.size()) m_timeshifts.resize(label*2);
+    if (label>=m_timeshifts.size()) m_timeshifts.resize((label+1)*2);
     if (ns)
     {
       double ts; iss >> ts;
