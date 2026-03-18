@@ -84,7 +84,7 @@ private:
 
 };
 
-bool Timeshifts::load(std::string const & filename, bool ns = false)
+bool Timeshifts::load(std::string const & filename, bool ns)
 {
   std::ifstream inputFile(filename, std::ifstream::in);
   if (!inputFile.good()) {throw NotFoundError(filename);}
