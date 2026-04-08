@@ -2,48 +2,33 @@
 #include "RootEvent.hpp"
 #include "TFile.h"
 
-/**
- * @brief Reads a .root files
- */
-
 namespace Caen1725
 {
   class RootReader
   {
   public:
-    RootReader(int hits_nb = 0) : m_size(hits_nb) {};
+    RootReader(size_t hits_nb = Colib::big<int>()) : m_size(hits_nb) {};
     
-    RootReader(TTree * tree, int hits_nb = 0) : RootReader(hits_nb)
-    {
-      m_tree = tree;
-      connectTree(tree);
-    }
-  
-    RootReader(TFile * file, int hits_nb = 0) : RootReader(hits_nb)
-    {
-      connectFile(file);
-    }
-  
-    RootReader(std::string const & filename, int hits_nb = 0) : RootReader(hits_nb)
-    {
-      connectFile(filename);
-    }
+    RootReader(TTree * tree, size_t hits_nb = Colib::big<int>()) : RootReader(hits_nb) 
+      {connectTree(tree);}  
+    RootReader(TFile * file, size_t hits_nb = Colib::big<int>()) : RootReader(hits_nb) 
+      {connectFile(file);}  
+    RootReader(std::string const & filename, size_t hits_nb = Colib::big<int>()) : RootReader(hits_nb) 
+      {connectFile(filename);}
 
-    ~RootReader()
-    {
-      if (m_file && !m_file->IsZombie()) m_file->Close();
-    }
+    ~RootReader() {if (m_file && !m_file->IsZombie()) m_file->Close();}
   
     TTree* connectTree(TTree* tree)
     {
       if (!tree) {error("in connectTree(TTree* tree) : tree is nullptr"); return nullptr;}
       m_tree = m_event.readFrom(tree);
-      if (!m_grouped)
+      if (m_plain)
       {
-        m_tree->SetBranchAddress("evtNb", &m_evtNb);
-        m_tree->SetBranchAddress("mult", &m_evtMult);
+        m_hit.readFrom(tree);
+        m_tree->SetBranchAddress("eventID", &m_eventID);
+        m_tree->SetBranchAddress("mult"   , &m_evtMult);
       }
-      m_size = m_tree->GetEntries();
+      m_size = std::min(m_size, static_cast<size_t>(m_tree->GetEntries()));
       print(m_size);
       return tree;
     }
@@ -53,20 +38,29 @@ namespace Caen1725
       if (!file) {error("in connectFile(TFile * file) : file is nullptr"); return nullptr;}
       m_file = file;
       auto const & listTrees = file_get_map_of<TTree>(m_file);
-           if (Colib::key_found(listTrees, std::string("HIL")     )) {m_grouped = true ; return connectTree(listTrees.at("HIL"     ));}
-      else if (Colib::key_found(listTrees, std::string("HILplain"))) {m_grouped = false; return connectTree(listTrees.at("HILplain"));}
+           if (Colib::key_found(listTrees, std::string("HIL")     )) 
+      {
+        m_plain = false ; 
+        return connectTree(listTrees.at("HIL"));
+      }
+      else if (Colib::key_found(listTrees, std::string("HILplain"))) 
+      {
+        m_plain = true; 
+        return connectTree(listTrees.at("HILplain"));
+      }
       else return nullptr;
     }
   
     TTree* connectFile(std::string const & filename)
     {
-      print(filename);
       m_file = TFile::Open(filename.c_str(), "READ");
       if (!m_file)  {error("RootReader::RootReader(std::string filename) : Can't read m_file" + filename); return nullptr;}
       return connectFile(m_file);
     }
-  
-    bool readNextHit()
+        
+    /// @brief Advanced users only. Read next event in grouped mode, or next hit in plain mode
+    /// @return false if last entry
+    bool readNextEntry()
     {
       if (m_cursor < m_size)
       {
@@ -75,63 +69,76 @@ namespace Caen1725
       }
       return false; 
     }
-  
+
+    /// @brief Read next event
+    /// @return false if last event
     bool readNextEvent()
     {
-      if (m_grouped)
-      {// In group mode, a TTree entry is not a single hit but already an event
-        return readNextHit(); 
+      // In plain mode, a TTree entry is a single hit. This loop is therefor used to reconstruct the full event
+      if (m_plain)
+      {
+        m_event.clear();
+        bool continuing = false;
+        while((continuing = readNextEntry()) && m_event.size() < size_cast(m_evtMult))
+          m_event.push_back(m_hit);
+        return continuing;
       }
-      else
-      {// In ungrouped mode, a TTree entry a single hit, and
-        if (m_finished) return false;
-        if (readNextHit()) 
-        {
-          if (m_oldEvt < m_evtNb) m_oldEvt = m_evtNb;
-          else m_event.push_back(m_hit);
-        }
-        return (m_finished = true);
-      }
+      // In event mode, a TTree entry is already an event
+      else return readNextEntry(); 
     }
   
     // Setters :
   
+    /// @brief Starts reading the tree from the beginning
     void resetCursor() {m_cursor = 0;}
     
     // Getters :
     
+    /// @brief Get a read-only access to the current hit.
     auto const & getHit()   const {return m_hit  ;}
+    /// @brief Get an access to the current hit.
     auto       & getHit()         {return m_hit  ;}
+    /// @brief Get a read-only access to the current event.
     auto const & getEvent() const {return m_event;}
+    /// @brief Get an access to the current event.
     auto       & getEvent()       {return m_event;}
   
+    /// @brief Advanced users only. Get a pointer to the TTree.
     auto getTree() {return m_tree;}
+    /// @brief Advanced users only. Get a pointer to the TFile.
     auto getFile() {return m_file;}
   
+    /// @brief Get a read-only access to the cursor.
     auto const & getCursor() const {return m_cursor;}
   
-    void Scan(bool stop = 0)
+    /// @brief 
+    void Scan(bool scanHits = false)
     {
       std::string user_input;
-      if (m_grouped) while(this -> readNextEvent())
+      int nbLinesWritten = 0;
+      if (m_plain) while((scanHits) ? this->readNextEntry() : this -> readNextEvent())
       {
-        auto const & nbLines = Colib::getTerminalRows()-2;
-        if (!stop && (m_cursor) % nbLines == 0) {
+        if (Colib::Terminal::getRows()-2 < ++nbLinesWritten) 
+        {
+          nbLinesWritten = 0;
           println("Press enter for continuing, enter q for stopping (or Ctrl+C of course) ");
           std::getline(std::cin, user_input);
           if (user_input == "q") break;
         }
-        print(m_event);
+        if (scanHits) print("EventID", m_eventID, "eventMult", m_evtMult, m_hit);
+        else print("EventID", m_eventID, "eventMult", m_evtMult, m_event);
       }
-      else while(this -> readNextHit())
+      else while(this -> readNextEvent())
       {
-        auto const & nbLines = Colib::getTerminalRows()-2;
-        if (!stop && (m_cursor) % nbLines == 0) {
+        if (Colib::Terminal::getRows()-2 < ++nbLinesWritten) 
+        {
+          nbLinesWritten = 0;
           println("Press enter for continuing, enter q for stopping (or Ctrl+C of course) ");
           std::getline(std::cin, user_input);
           if (user_input == "q") break;
         }
-        print(m_evtNb, m_hit);
+        if (scanHits) print(m_event);
+        else for (size_t hit_i = 0; hit_i<m_event.size(); ++hit_i) print(m_hit);
       }
     }
   
@@ -144,11 +151,9 @@ namespace Caen1725
     TTree *m_tree = nullptr;
     size_t m_cursor = 0;
     size_t m_size = 0;
-    bool m_grouped = true;
+    bool m_plain = false;
   
-    size_t m_oldEvt = 0;
-    size_t m_evtNb = 0;
-    int m_evtMult = 0;
-    bool m_finished = false;
+    Caen1725::EventID   m_eventID = 0;
+    Caen1725::EventMult m_evtMult = 0;
   };
 }

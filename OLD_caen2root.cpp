@@ -19,8 +19,46 @@ constexpr size_t LUT_size = 10000;
 
 using namespace Colib;
 
-/*
-  To learn how to create a user-defined trigger, read Triggers/TriggerExample.hpp
+/**
+ * Structure of the output tree :
+ * 
+    UInt_t    label         : Global label (=board_ID*16 + channel_ID*2 + subchannel_ID)
+    UShort_t  board_ID      : Board label [0;max board ID]
+    UShort_t  channel_ID    : Channel label [0;8]
+    UShort_t  subchannel_ID : Sub channel label [0,1]
+    Int_t     adc           : PHA : ADC value.               PSD : qshort value.
+    Int_t     qlong         : PHA : EXTRA[16:32] (see doc.). PSD : qlong value.
+    ULong64_t caen_time     : Raw timestamp. Units : ps. Is equal to extended_timestamp if fine or extended timestamp is found in the data, or TRIGGER_TIME_TAG if no extended timestamp found
+    ULong64_t time          : Absolute time. Units : ps. This field must be filled by the user (i.e., the program using this class).
+    // Int_t     rel_time      : Relative time in the event. Units : ps. This field must be filled by the user (i.e., the program using this class).
+ */
+
+//////////////////////////////////////
+// Version 1.04                     //
+// Validated on real data           //
+//////////////////////////////////////
+
+//////////////////////////////////////
+// Version 1.03                     //
+// Is now included :                //
+//    - Writting events in .root    //
+//  Todo :                          //
+//    - Include traces in events    //
+//////////////////////////////////////
+
+/* Do not read the following, this trigger logic is stil TBD :
+How to use the trigger : 
+- First, create your own trigger in the folder Triggers by following the instructions
+- Then, include your trigger in the compilation command found at the end of this file : 
+  g++ (the rest of the line) -DTRIGGER="\"Triggers/TheNameOfYourTriggerFile.hpp\""
+  
+  Attention : do not forget the ' \" ', if you know how to get rid of this requirement contact me
+
+
+  TODO :
+  Ajouter un booléen wfa_success // wave form analysis successful
+  renommer timestamp board_time
+  renommer time best_time
 */
 
 class Profiler : public Timer
@@ -30,7 +68,7 @@ public:
   auto StartProfiling()
   {
   #ifdef PROFILE
-    return start();
+    return Start();
   #else
     return;
   #endif //PROFILE
@@ -38,10 +76,14 @@ public:
   auto StopProfiling()
   {
   #ifdef PROFILE
-    return stop();
+    return Stop();
   #else
     return;
   #endif //PROFILE
+  }
+  void printElapsedTime(std::string const & prepend = "", std::string const & append = "")
+  {
+    print(prepend, timeElapsed(), append);
   }
 };
 
@@ -106,15 +148,15 @@ int main(int argc, char** argv)
     print("-e --ts-evt-build      [0 or 1] (default 0). Perform event building based on : [0] the absolute time (usually corrected by cfd) [1] the raw timestamp.");
     print("-f --files             [caen_filename] : File to convert. Include wildcards * and ?, but ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\") ");
     print("-F --files-nb          [caen_filename] [nb_files] : Same as -f. Additionally, can select the number of files (-1 = all, scientific format accepted]");
-    print("-g --group             [0 or 1] (default 1) : Sets the output format. 0 : plain tree with, each row represents a Caen1725::RootHit, with extra eventID and eventMult leaves. 1 : each row is a Caen1725::RootEvent. Caen1725::RootReader can read both.");
+    print("-g --group             [0 or 1] (default 1) : Sets the output format. 0 : plain tree with additionnal event number and multiplicity fields. 1 : each leaf is a vector representing the event.");
     print("-h --help              : print this help");
     print("-i --in-memory         [0 or 1] (default 1) : Choose weither the tree is built in memory (faster but RAM-consuming) or in file (may be much slower)");
     print("-n --hits-nb           [nb_hits (-1 = all, scientific format accepted)] : maximum number of hits to be read by the programm IN EACH FILE");
     print("-N --hits-tot-nb       [nb_hits (-1 = all, scientific format accepted)] : maximum number of hits to be read by the programm");
     print("-o --output            [output_path]");
-    print("   --read-traces       [0 or 1] (default 1) : Read the traces for all boards. If false, skip trace for all boards and no trace analysis is performed.");
-    print("   --board-skip-trace  [boardID] : Do not read the trace for this board ID, hence no trace analysis (e.g. CFD) is done. Used only if --read-traces is 1.");
-    print("   --write-traces      [0 or 1] (default 0) : Write the trace in the output root file. Used only if -g (--group) is 0.");
+    print("   --read-traces       [0 or 1] (default 1) : Read the traces for all boards.");
+    print("   --board-skip-trace  [boardID] : Do not read the trace for this board ID, hence no trace analysis (e.g. CFD) is done. Used only if --read-traces is true.");
+    print("   --write-traces      [0 or 1] (default 0) : Write the trace in the output root file.");
     print("-T --timeshifts        [filename] : List of timeshifts. Format : in each line : global_label timeshift[ns].");
     print("-t --trigger [option] : trigger on the given global label or board ID, or a user-defined file with a list of labels. Example : -t -l 0 to trigger on label 0");
     print("            -l --label  [global_label(16 x boardID + channelID)]]");
@@ -288,11 +330,11 @@ int main(int argc, char** argv)
 
   for (auto const & filename : filenames)
   {
-    std::string file(filename);
+    File file(filename);
 
-    if (!Colib::fileExists(file)) {error("can't find ", file); continue;}
+    if (!file) {error("can't find ", file); continue;}
     
-    Caen1725::RootInterface reader(filename, readTraces);
+    Caen1725RootInterface reader(filename, readTraces);
     reader.setBoardReadTrace(boardReadTrace);
     Caen1725::EventBuilder eventBuilder(reserved_buffer_size);
     eventBuilder.buildOnTimestamp(ts_evt_build);
@@ -300,7 +342,7 @@ int main(int argc, char** argv)
     Trigger trigger(&eventBuilder);
   #endif //TRIGGER
 
-    auto rootFilename = outpath + Colib::getShortname(file)+".root";
+    auto rootFilename = outpath + file.shortName()+".root";
     auto rootFile = TFile::Open(rootFilename.c_str(), "recreate");
     if (inMemory) gROOT->cd();
     TString treeName = "HIL";
@@ -309,29 +351,26 @@ int main(int argc, char** argv)
 
     auto & inHit = reader.getHit(); // Aliasing the internal hit of the reader
 
-    // Interface of group mode :
-    Caen1725::RootEvent outEvent(writeTraces); 
-
-    // Interface of plain mode :
+    Caen1725::RootEvent outEvent(writeTraces);
     Caen1725::RootHit   outHit  (writeTraces);
-    Caen1725::EventID   eventID = 0;
-    Caen1725::EventMult evtMult = 0;
+    Long64_t evtNb   = 0;
+    Int_t    evtMult = 0;
 
     if (group) outEvent.writeTo(tree);
     else
-    {// Plain mode :
-      tree -> Branch("eventID", &eventID);
-      tree -> Branch("mult"   , &evtMult);
-      outHit.writeTo(tree, false);
+    {
+      tree -> Branch("evtNb", &evtNb  );
+      tree -> Branch("mult" , &evtMult);
+      outHit.writeTo(tree);
     }
 
-    Profiler timerRead    ;
-    Profiler timerCFD     ;
-    Profiler timerTShift  ;
-    Profiler timerCopy    ;
-    Profiler timerTrigger ;
+    Profiler timerRead;
+    Profiler timerCFD;
+    Profiler timerTShift;
+    Profiler timerCopy;
+    Profiler timerTrigger;
     Profiler timerEvtBuild;
-    Profiler timerFill    ;
+    Profiler timerFill;
 
     CFD cfd;
 
@@ -345,26 +384,20 @@ int main(int argc, char** argv)
         timerEvtBuild.StopProfiling();
 
       // 4. Write the events to the ROOT tree
-      for (auto const & event : eventBuilder)
-      {// Loop over all the events of the buffer :
-        if (Caen1725::Event::maxSize < event.size())
-        {
-          error("Event with multiplicity > 1000 for event n",eventID,", not written, not counted");
-          continue;
-        }
-        
-          timerTrigger.StartProfiling();
-
-        // 4.1 Apply the trigger
+      for (auto const & event : eventBuilder)// Loop over all the event in buffer :
+      {
         bool triggerBool = true;
-        if (trigger_label) 
-        { // if using command-line trigger:
+        if (!group) evtMult = static_cast<int>(event.size());
+
+          timerTrigger.StartProfiling();
+        // 4.1 Apply the trigger
+        if (trigger_label)
+        {
           triggerBool = false;
           for (auto const & hit_i : event) if (triggerLUT[eventBuilder[hit_i].label]) triggerBool = true;
         }
         
-      #ifdef TRIGGER // if using user-defined trigger. 
-        // AND logic : both the command-line and user-defined trigger must be validated
+      #ifdef TRIGGER
         triggerBool = trigger(event) && triggerBool;
       #endif //TRIGGER
 
@@ -382,29 +415,32 @@ int main(int argc, char** argv)
             }
               timerCopy.StopProfiling();
 
+              if (outEvent.mult == Caen1725::Event::maxEvt-1)
+              {
+                error("Event with multiplicity > 1000 for event n",evtNb,", not written");
+                continue;
+              }
+
               timerFill.StartProfiling();
             tree -> Fill();
               timerFill.StopProfiling();
 
             outEvent.clear();
-            ++outEvent.eventID;
+            ++outEvent.evtNb;
           }
-          else 
+          else for (auto const & hit_i : event)
           {
-            evtMult = static_cast<Caen1725::EventMult> (event.size());
-            for (auto const & hit_i : event)
-            {
-              eventBuilder[hit_i].rel_time = eventBuilder[hit_i].time - eventBuilder[event.front()].time;
+            eventBuilder[hit_i].rel_time = eventBuilder[hit_i].time - eventBuilder[0].time;
 
-                timerCopy.StartProfiling();
-              outHit = std::move(eventBuilder[hit_i]);
-                timerCopy.StopProfiling();
-                
-                timerFill.StartProfiling();
-              tree -> Fill();
-                timerFill.StopProfiling();
-              }
-            ++eventID;
+              timerCopy.StartProfiling();
+            outHit = std::move(eventBuilder[hit_i]);
+              timerCopy.StopProfiling();
+              
+              timerFill.StartProfiling();
+            tree -> Fill();
+              timerFill.StopProfiling();
+            
+            ++evtNb;
           }
         }
       }
@@ -435,7 +471,7 @@ int main(int argc, char** argv)
       ++nbHitsTot;
 
       // 0.2 Print the hits number
-      if (reader.nbHits() > 0 && reader.nbHits() % int(1e5) == 0)
+      if (reader.nbHits() > 0 && reader.nbHits() % int(1e5) == 0) 
       {
         if (group) printsln(nicer_double(reader.nbHits(), 1), "hits in .caendat", nicer_double(tree->GetEntries(), 1), "evts in .root       ");
         else       printsln(nicer_double(reader.nbHits(), 1), "hits in .caendat", nicer_double(tree->GetEntries(), 1), "hits in .root       ");
@@ -447,7 +483,9 @@ int main(int argc, char** argv)
       {
         ++nbHit[inHit.label];
         cfd.generate(inHit.trace, CFD::sShifts[inHit.board_ID], CFD::sFractions[inHit.board_ID], 10);
+        // CFD cfd(std::move(inHit.getTrace()), CFD::sShifts[inHit.board_ID], CFD::sFractions[inHit.board_ID], 10);
         auto zero = cfd.findZero();
+        // auto zero = cfd.findZero(CFD::sThresholds[inHit.board_ID]); // Not using thresholds anymore
              if (zero==CFD::noSignal) {inHit.time = inHit.precise_ts; ++nbNoSignal[inHit.label];}
         else if (zero==CFD::noZero  ) {inHit.time = inHit.precise_ts; ++nbNoZero  [inHit.label];}
         else                          {inHit.time = inHit.extended_ts + zero*Caen1725::ticks_to_ps; inHit.wfa_success = true;}
@@ -483,25 +521,23 @@ int main(int argc, char** argv)
     rootFile->cd();
 
     print();
-    if (group) print(nicer_double(tree->GetEntries()), "evts in .root");
-    else       print(nicer_double(tree->GetEntries()), "hits in .root");
-
+    if (group) print(nicer_double(tree->GetEntries()), "evts in .root       ");
+    else       print(nicer_double(tree->GetEntries()), "hits in .root       ");
       Profiler timerWrite;
     tree->Write();
       timerWrite.StopProfiling();
-
     rootFile->Close();
     
     #ifdef PROFILE
     {
-      print("timeRead", timerRead.elapsed("s"));
-      print("timeCFD", timerCFD.elapsed("s"));
-      print("timeTShift", timerTShift.elapsed("s"));
-      print("timeEvtBuild", timerEvtBuild.elapsed("s"));
-      print("timeCopy", timerCopy.elapsed("s"));
-      print("timerTrigger", timerTrigger.elapsed("s"));
-      print("timeFill", timerFill.elapsed("s"));
-      print("timeWrite", timerWrite.elapsed("s"));
+      print("timeRead", timerRead.timeElapsed());
+      print("timeCFD", timerCFD.timeElapsed());
+      print("timeTShift", timerTShift.timeElapsed());
+      print("timeEvtBuild", timerEvtBuild.timeElapsed());
+      print("timeCopy", timerCopy.timeElapsed());
+      print("timerTrigger", timerTrigger.timeElapsed());
+      print("timeFill", timerFill.timeElapsed());
+      print("timeWrite", timerWrite.timeElapsed());
     }
     #endif //PROFILE
 

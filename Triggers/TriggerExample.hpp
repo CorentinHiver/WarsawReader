@@ -6,8 +6,13 @@
 #include "../CaenLib/CaenRootEventBuilder.hpp"
 
 /**
- * @brief Allows a used-defined trigger. Copy this definition in a new .hpp file named as you whish, 
- * e.g. MyTrigger.hpp, and call it at compile time with -DTRIGGER=MyTrigger. But do not rename the class !
+ * @brief A used-defined trigger.
+ * @details
+ * How to use the trigger : 
+ * - First, create your own trigger in the folder Triggers by following the instructions
+ * - Then, include your trigger in the compilation command found at the end of this file : 
+ *   g++ (the rest of the line) -DTRIGGER="Triggers/TheNameOfYourTriggerFile.hpp"
+ * If using the Makefile, do make TRIGGER=-DTRIGGER="Triggers/TheNameOfYourTriggerFile.hpp"
  */
 class Trigger
 {

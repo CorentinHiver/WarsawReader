@@ -17,10 +17,17 @@
 
 namespace Caen1725
 {
-  template<typename T>
-  using Trace_t = std::vector<T>;
-  using Trace = Trace_t<uint16_t>;
-  using DP1_t = Trace_t<bool>;
+  template<typename T> using Trace_t = std::vector<T>;
+
+  using Trace     = Trace_t<uint16_t> ;
+  using DP1_t     = Trace_t<bool>     ;
+  using Label     = UInt_t            ;
+  using BoardID   = UShort_t          ;
+  using ChannelID = UChar_t           ;
+  using ADC       = Int_t             ;
+  using Timestamp = ULong64_t         ;
+  using Time_rel  = Int_t             ;
+
   /**
    * @brief Interface between the caen binary data and root TTree.
    * @note  There are different time and timstamps, please read carefully the comments.
@@ -33,20 +40,20 @@ namespace Caen1725
 
   public:
     // Data fields :
-    UInt_t    label         = {}; // Global label (=board_ID*16 + channel_ID*2 + subchannel_ID)
-    UShort_t  board_ID      = {}; // Board label [0;max board ID]
-    UChar_t   channel_ID    = {}; // Channel label [0;8]
-    UChar_t   subchannel_ID = {}; // Sub channel label [0,1]
-    Int_t     adc           = {}; // PHA : ADC value.               PSD : qshort value.
-    Int_t     qlong         = {}; // PHA : EXTRA[16:32] (see doc.). PSD : qlong value.
-    ULong64_t caen_time     = {}; // Raw caen_time (ts). Units : ps. Is equal to extended_timestamp in fine and extended timestamps modes, or TRIGGER_TIME_TAG if no extended caen_time found
-    ULong64_t time          = {}; // Absolute time. Units : ps. This field must be filled by the user (i.e., the program using this class).
-    Int_t     rel_time      = {}; // Relative time in the event. Units : ps. This field must be filled by the user (i.e., the program using this class).
-    Bool_t    wfa_success   = {};
-    
+    Label     label         = {}; // Global label (=board_ID*16 + channel_ID*2 + subchannel_ID)
+    BoardID   board_ID      = {}; // Board label [0;max board ID]
+    ChannelID channel_ID    = {}; // Channel label [0;8]
+    ChannelID subchannel_ID = {}; // Sub channel label [0,1]
+    ADC       adc           = {}; // PHA : ADC value.               PSD : qshort value.
+    ADC       qlong         = {}; // PHA : EXTRA[16:32] (see doc.). PSD : qlong value.
+    Timestamp caen_time     = {}; // Raw caen_time (ts). Units : ps. Is equal to extended_timestamp in fine and extended timestamps modes, or TRIGGER_TIME_TAG if no extended caen_time found
+    Timestamp time          = {}; // Absolute time. Units : ps. This field must be filled by the user (i.e., the program using this class).
+    Time_rel  rel_time      = {}; // Relative time in the event. Units : ps. This field must be filled by the user (i.e., the program using this class).
+    Bool_t    wfa_success   = {}; // True if wave form analysis have been performed and was successful, false otherwise
+  
     // Internal variables :
-    ULong64_t extended_ts   = {}; // Raw caen_time. Units : ps. Used only if fine caen_time and extended caen_time are found in the data.
-    ULong64_t precise_ts    = {}; // Raw caen_time. Units : ps. Used only if fine caen_time mode is found in the data.
+    Timestamp extended_ts   = {}; // Raw caen_time. Units : ps. Used only if fine caen_time and extended caen_time are found in the data.
+    Timestamp precise_ts    = {}; // Raw caen_time. Units : ps. Used only if fine caen_time mode is found in the data.
     
     // Trace-related fields :
     Trace trace; // Signal trace.
@@ -205,16 +212,18 @@ namespace Caen1725
       //  " board_ID "        <<  Colib::fill(hit.board_ID  , 3, '0') <<
       //  " channel_ID "      <<  Colib::fill(hit.channel_ID, 3, '0') <<
        " subchannel_ID "   <<              hit.subchannel_ID       <<
-        std::scientific     ;
-      if (hit.caen_time   != 0) out << " caen_time "   <<  std::setprecision(10) << double_cast(hit.caen_time)  ;
-      if (hit.extended_ts != 0) out << " extended_ts " <<  std::setprecision(10) << double_cast(hit.extended_ts);
-      if (hit.precise_ts  != 0) out << " precise_ts "  <<  std::setprecision(10) << double_cast(hit.precise_ts) ;
-      if (hit.time        != 0) out << " time "        <<  std::setprecision(10) << double_cast(hit.time)       ;
-      if (hit.rel_time    != 0) out << " rel_time "    <<  std::setprecision(10) << double_cast(hit.rel_time)   ;
-      if (hit.adc         != 0) out << " adc "         <<                                       hit.adc         ;
-      if (hit.qlong       != 0) out << " qlong "       <<                                       hit.qlong       ;
-      if (!hit.trace.empty()  ) out << " trace "       <<  hit.trace.size() << " samples "                      ;
-      if (!hit.wfa_success    ) out << " wave form analysis success "                                           ;
+        std::scientific    ;
+      int constexpr precision = 6;
+      if (hit.caen_time   != 0) out << " caen_time "   <<  std::setprecision(precision) << double_cast(hit.caen_time)  ;
+      if (hit.extended_ts != 0) out << " extended_ts " <<  std::setprecision(precision) << double_cast(hit.extended_ts);
+      if (hit.precise_ts  != 0) out << " precise_ts "  <<  std::setprecision(precision) << double_cast(hit.precise_ts) ;
+      if (hit.time        != 0) out << " time "        <<  std::setprecision(precision) << double_cast(hit.time)       ;
+      if (hit.rel_time    != 0) out << " rel_time "    <<  std::setprecision(precision) << double_cast(hit.rel_time)   ;
+      if (hit.adc         != 0) out << " adc "         <<  hit.adc  ;
+      if (hit.qlong       != 0) out << " qlong "       <<  hit.qlong;
+      if (!hit.trace.empty()  ) out << " trace "       <<  hit.trace.size() << " samples ";
+
+      out << " wfa " << ((hit.wfa_success) ? "success" : "failed");
       out << std::setprecision(6);
       return out;
     }

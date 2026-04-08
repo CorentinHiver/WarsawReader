@@ -19,7 +19,7 @@ public:
     m_nbSectors = 0;
     for (size_t i = 0; i<event_id.size(); ++i) 
     {
-      auto const & hit = (*m_eventBuilder)[event_id[i]]; // Simple aliasing
+      auto const & hit = (*m_eventBuilder)[event_id[i]]; // Simple aliasing, hit in read-only mode
       if (6 == hit.board_ID) ++m_nbRings;
       else if (7 == hit.board_ID || 8 == hit.board_ID) ++m_nbSectors;
     }

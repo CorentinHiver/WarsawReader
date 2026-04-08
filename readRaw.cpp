@@ -12,7 +12,7 @@ void readRaw()
   for (auto const & filename : filenames)
   {
     TTree* outTree = new TTree("caenData", "caenData");
-    Caen1725RootInterface reader(filename, outTree, true);
+    Caen1725::RootInterface reader(filename, outTree, true);
     while(reader.readHit() && reader.nbHits()<int(2e5)) 
     {
       if (reader.nbHits()%int(1e4) == 0) printsln(reader.nbHits()*100/int(2e5), "%");

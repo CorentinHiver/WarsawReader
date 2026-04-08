@@ -36,15 +36,67 @@
 //----------------------------------------------------//
 namespace Colib
 {
+  /// @brief "/path/to/file.ext" -> "/path/to/file"
   std::string removeExtension (std::string const & string) { return (string.substr(0, string.find_last_of(".")  ));}
+  /// @brief "/path/to/file.ext" -> ".ext"
   std::string extension       (std::string const & string) { return (string.substr(   string.find_last_of(".")+1));}
   std::string getExtension    (std::string const & string) { return (string.substr(   string.find_last_of(".")+1));}
   std::string getPath         (std::string const & string) { return (string.substr(0, string.find_last_of("/")+1));}
   std::string removePath      (std::string const & string) { return (string.substr(   string.find_last_of("/")+1));}
   std::string rmPathAndExt    (std::string const & string) { return            removePath(removeExtension(string));}
   std::string getShortname    (std::string const & string) { return            removePath(removeExtension(string));}
+  std::string getFilename     (std::string const & string) { return            removePath(string)                 ;}
   
   bool fileIsEmpty(std::ifstream& file) { return file.peek() == std::ifstream::traits_type::eof();}
+  
+  std::string & appendIfMissing(std::string & string, char const & character)
+  {
+    if (string.back() != character) string.push_back(character);
+    return string;
+  }
+    
+  std::string setExtension(std::string const & string, std::string const & extension)
+  {
+    return removeExtension(string)+"."+extension;
+  }
+
+  bool pathExists(std::string path)
+  {
+    appendIfMissing(path, '/');
+    DIR *dp = nullptr;
+    dp = opendir(path.c_str());
+    bool ret = (dp != nullptr);
+    std::string str = ((dp!=nullptr) ? "oui" : "non");
+    if (dp) closedir(dp);
+    return ret;
+  }
+  
+  bool pathExists(std::string path, bool const & verbose)
+  {
+    appendIfMissing(path, '/');
+    if (pathExists(path)) return true;
+    if (verbose) print("Path", path, "not found...");
+    return false;
+  }
+
+  void mkdir(std::string path, bool verbose = 0)
+  {
+    if (path=="")
+    {
+      print("Colib::mkdir(): No path !");
+      return;
+    }
+  #ifdef CoMT
+    lock_mutex lock(Colib::MT::mutex);
+  #endif //CoMT
+    path = getPath(path);
+    if (!pathExists(path))
+    {
+      if (verbose) print("Creating path", path);
+      // mkdir -p to create the full path if needed (otherwise crashes if some directory of the path is missing)
+      system(("mkdir -p "+path).c_str());
+    }
+  }
   
   void goToBeginning(std::ifstream& file) {file.seekg(0, std::ios::beg);}
   

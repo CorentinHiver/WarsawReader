@@ -117,7 +117,7 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
     return Colib::key_found(CFD::sShifts, boardID);
   });
 
-  Caen1725RootInterface reader(file);
+  Caen1725::RootInterface reader(file);
 
   vector<string> folders_names;
 

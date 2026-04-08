@@ -30,6 +30,7 @@
 #include <fstream>
 #include <functional>
 #include <initializer_list>
+#include <limits>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -77,6 +78,19 @@
 #define ROOTCpp20 defined(__CLING__) && defined(__CLING__CXX20__)
 #define ROOTCpp17 defined(__CLING__) && defined(__CLING__CXX17__)
 #define ROOTCpp14 defined(__CLING__) && defined(__CLING__CXX14__)
+
+//System//
+
+bool is_SSD(const std::string& device_name = "sda") 
+{
+  std::string path = "/sys/block/" + device_name + "/queue/rotational";
+  std::ifstream file(path);
+  if (!file) return false; // Par sécurité, on assume HDD si on ne peut pas lire
+
+  int val;
+  file >> val;
+  return val == 0;
+}
 
 // Useful overload of operator<< into a std::cout stream :
 
@@ -135,18 +149,21 @@ namespace Colib
 
 namespace Colib
 {
-  int getTerminalRows() 
+  namespace Terminal
   {
-    struct winsize w;
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) return 24; // fallback
-    return w.ws_row;
-  }
-  
-  int getTerminalCols() 
-  {
-    struct winsize w;
-    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) return 80; // fallback
-    return w.ws_col;
+    int getRows()
+    {
+      struct winsize w;
+      if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) return 24; // fallback
+      return w.ws_row;
+    }
+    
+    int getCols()
+    {
+      struct winsize w;
+      if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == -1) return 80; // fallback
+      return w.ws_col;
+    }
   }
 }
 
@@ -156,6 +173,110 @@ namespace Colib
 
 namespace Colib
 {
+  // template <typename T>
+  // std::string nicer_seconds(T const & time, int nb_decimals = 3)
+  // {
+  //   T _time = time;
+  //   std::string unit;
+    
+  //   // Units of second
+  //   if (time < 1.)
+  //   {
+  //          if (time < 1e-6 ) { _time *= 1e9 ;  unit = " ns" ;}
+  //     else if (time < 1e-3 ) { _time *= 1e6 ;  unit = " us" ;}
+  //     else { _time *= 1e3 ;  unit = " ms" ;}
+  //     std::stringstream ss;
+  //     ss << std::fixed << std::setprecision(nb_decimals) << _time << unit;
+  //     return ss.str();
+  //   }
+         
+  //   // Mixing seconds, minutes, hours and days
+  //   else
+  //   {
+  //     std::stringstream ss;
+  //     ss << std::fixed;
+  //     int temp = time/86400.;
+  //     ss << temp << " j";
+  //     temp = time-temp*86400./3600.;
+  //     ss << time/ 3600. << " h";
+  //     ss << time/   60. << " min";
+  //     return ss.str();
+  //   }
+  // }
+  template <typename T>
+std::string nicer_seconds(T time, int nb_decimals = 3)
+{
+    static_assert(std::is_floating_point_v<T>, "nicer_seconds expects floating-point type");
+
+    if (time < 0.0) {
+        return "-" + nicer_seconds(-time, nb_decimals);
+    }
+
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(nb_decimals);
+
+    // Small durations ────────────────
+    if (time < 1.0)
+    {
+        if (time < 1e-6) {
+            ss << (time * 1e9) << " ns";
+        }
+        else if (time < 1e-3) {
+            ss << (time * 1e6) << " µs";   // proper micro symbol
+        }
+        else {
+            ss << (time * 1e3) << " ms";
+        }
+        return ss.str();
+    }
+
+    // Larger durations ────────────────
+    int days    = static_cast<int>(std::floor(time / 86400.0));
+    double rem  = time - days * 86400.0;
+
+    int hours   = static_cast<int>(std::floor(rem / 3600.0));
+    rem        -= hours * 3600.0;
+
+    int minutes = static_cast<int>(std::floor(rem / 60.0));
+    rem        -= minutes * 60.0;
+
+    double seconds = rem;
+
+    ss.str("");  // clear stream
+    ss.clear();
+
+    bool need_space = false;
+
+    if (days > 0) {
+        ss << days << "d";
+        need_space = true;
+    }
+
+    if (hours > 0 || days > 0) {
+        if (need_space) ss << " ";
+        ss << hours << "h";
+        need_space = true;
+    }
+
+    if (minutes > 0 || hours > 0 || days > 0) {
+        if (need_space) ss << " ";
+        ss << minutes << "min";
+        need_space = true;
+    }
+
+    // Always show seconds when < 60 s or when higher units exist
+    if (need_space) ss << " ";
+    ss << seconds << "s";
+
+    return ss.str();
+}
+
+  template <typename T>
+  std::string nicer_milliseconds(T time, int nb_decimals = 3)
+  {
+    return nicer_seconds(static_cast<T>(time*1e-3), nb_decimals);
+  }
+
   /// @brief Returns a string in the format mm_hh_dd_mm_yy
   std::string time_string()
   {
@@ -307,7 +428,7 @@ namespace Colib
     pause();
   }
   template <class... T>
-  void printAndPause(T const & ... t)
+  constexpr void printAndPause(T const & ... t)
   {
     print(t...);
     pause();
@@ -334,31 +455,31 @@ namespace Colib
 
 /// @brief Casts a any type into an bool
 template<typename T>
-constexpr inline bool bool_cast(T const & t) {return static_cast<bool>(t);}
+constexpr inline bool bool_cast(T t) {return static_cast<bool>(t);}
 
 /// @brief Casts a number into an char
 template<typename T,  typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
-constexpr inline char char_cast(T const & t) {return static_cast<char>(t);}
+constexpr inline char char_cast(T t) {return static_cast<char>(t);}
 
 /// @brief Casts a number into an short
 template<typename T,  typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
-constexpr inline short short_cast(T const & t) {return static_cast<short>(t);}
+constexpr inline short short_cast(T t) {return static_cast<short>(t);}
 
 /// @brief Casts a number into an int
 template<typename T,  typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
-constexpr inline int int_cast(T const & t) {return static_cast<int>(t);}
+constexpr inline int int_cast(T t) {return static_cast<int>(t);}
 
 /// @brief Casts a number into an long
 template<typename T,  typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
-constexpr inline long long_cast(T const & t) {return static_cast<long>(t);}
+constexpr inline long long_cast(T t) {return static_cast<long>(t);}
 
 /// @brief Casts a number into a float
 template<typename T,  typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
-constexpr inline float float_cast(T const & t) {return static_cast<float>(t);}
+constexpr inline float float_cast(T t) {return static_cast<float>(t);}
 
 /// @brief Casts a number into an double
 template<typename T,  typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
-constexpr inline double double_cast(T const & t) {return static_cast<double>(t);}
+constexpr inline double double_cast(T t) {return static_cast<double>(t);}
 
 
 // Type short names :
@@ -372,7 +493,7 @@ using size_t = std::size_t;
 // using abs = std::abs;
 
 // Print specialization for uchar : 
-std::ostream& operator<<(std::ostream& cout, uchar const & uc)
+std::ostream& operator<<(std::ostream& cout, uchar uc)
 {
   std::cout << static_cast<int>(uc);
   return cout;
@@ -380,31 +501,31 @@ std::ostream& operator<<(std::ostream& cout, uchar const & uc)
 
 /// @brief Casts a number into unsigned char (uchar)
 template<typename T,  typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
-constexpr inline uchar uchar_cast(T const & t) {return static_cast<uchar>(t);}
+constexpr inline uchar uchar_cast(T t) {return static_cast<uchar>(t);}
 
 /// @brief Casts a number into unsigned short (ushort)
 template<typename T,  typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
-constexpr inline ushort ushort_cast(T const & t) {return static_cast<ushort>(t);}
+constexpr inline ushort ushort_cast(T t) {return static_cast<ushort>(t);}
 
 /// @brief Casts a number into unsigned int (uint)
 template<typename T,  typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
-constexpr inline uint  uint_cast(T const & t) {return static_cast<uint>(t);}
+constexpr inline uint  uint_cast(T t) {return static_cast<uint>(t);}
 
 /// @brief Casts a number into unsigned long (ulong)
 template<typename T,  typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
-constexpr inline ulong ulong_cast(T const & t) {return static_cast<ulong>(t);}
+constexpr inline ulong ulong_cast(T t) {return static_cast<ulong>(t);}
 
 /// @brief Casts a number into unsigned long long (ulonglong)
 template<typename T,  typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
-constexpr inline ulonglong ulonglong_cast(T const & t) {return static_cast<ulonglong>(t);}
+constexpr inline ulonglong ulonglong_cast(T t) {return static_cast<ulonglong>(t);}
 
 /// @brief Casts a number into long long (longlong)
 template<typename T,  typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
-constexpr inline longlong longlong_cast(T const & t) {return static_cast<longlong>(t);}
+constexpr inline longlong longlong_cast(T t) {return static_cast<longlong>(t);}
 
 /// @brief Casts a number into std::size_t
 template<typename T,  typename = typename std::enable_if<std::is_arithmetic<T>::value>::type>
-constexpr inline size_t size_cast(T const & t) {return static_cast<size_t>(t);}
+constexpr inline size_t size_cast(T t) {return static_cast<size_t>(t);}
 
 
 ////////////////
@@ -414,7 +535,7 @@ constexpr inline size_t size_cast(T const & t) {return static_cast<size_t>(t);}
 namespace Colib
 {
   ///@brief Check if the given double has integer precision
-  bool is_int (double const & x) {return std::trunc(x) == x;}
+  bool is_int (double x) {return std::trunc(x) == x;}
   
   // Function template that checks if T is a floating-point type
   template <typename T, typename std::enable_if<std::is_floating_point<T>::value, bool>::type = true>
@@ -422,7 +543,7 @@ namespace Colib
     return true;
   }
   template <typename T, typename std::enable_if<std::is_floating_point<T>::value, bool>::type = true>
-  inline bool is_floating(T const &) noexcept {
+  inline bool is_floating(T) noexcept {
     return true;
   }
   
@@ -432,7 +553,7 @@ namespace Colib
     return false;
   }
   template <typename T, typename std::enable_if<!std::is_floating_point<T>::value, bool>::type = true>
-  inline bool is_floating(T const &) noexcept {
+  inline bool is_floating(T) noexcept {
     return false;
   }
   
@@ -442,7 +563,7 @@ namespace Colib
     return true;
   }
   template <typename T, typename std::enable_if<std::is_signed<T>::value, bool>::type = true>
-  inline bool is_signed(T const &) noexcept {
+  inline bool is_signed(T) noexcept {
     return true;
   }
   
@@ -452,7 +573,7 @@ namespace Colib
     return false;
   }
   template <typename T, typename std::enable_if<std::is_unsigned<T>::value, bool>::type = true>
-  inline bool is_signed(T const &) noexcept {
+  inline bool is_signed(T) noexcept {
     return false;
   }
   
@@ -462,7 +583,7 @@ namespace Colib
     return true;
   }
   template <typename T, typename std::enable_if<std::is_unsigned<T>::value, bool>::type = true>
-  inline bool is_unsigned(T const &) noexcept {
+  inline bool is_unsigned(T) noexcept {
     return true;
   }
   
@@ -472,7 +593,7 @@ namespace Colib
     return false;
   }
   template <typename T, typename std::enable_if<std::is_signed<T>::value, bool>::type = true>
-  inline bool is_unsigned(T const &) noexcept {
+  inline bool is_unsigned(T) noexcept {
     return false;
   }
   
@@ -481,7 +602,7 @@ namespace Colib
     return true;
   }
   template <typename Ttest, typename T, typename std::enable_if<std::is_same<T, Ttest>::value, bool>::type = true>
-  inline bool is_type_of(T const &) noexcept {
+  inline bool is_type_of(T) noexcept {
     return true;
   }
   
@@ -490,7 +611,7 @@ namespace Colib
     return false;
   }
   template <typename Ttest, typename T, typename std::enable_if<!std::is_same<T, Ttest>::value, bool>::type = true>
-  inline bool is_type_of(T const &) noexcept {
+  inline bool is_type_of(T) noexcept {
     return false;
   }
 }
@@ -511,7 +632,7 @@ namespace Colib
 
   public:
     Bools() noexcept = default;
-    Bools(size_t size, bool const & value = false) noexcept : m_size(size), m_reserved_size(2*size) {
+    Bools(size_t size, bool value = false) noexcept : m_size(size), m_reserved_size(2*size) {
       m_data = new bool[m_reserved_size];
       memset(m_data, value ? 1 : 0, m_size * sizeof(bool));
     }
@@ -553,7 +674,7 @@ namespace Colib
       return *this;
     }
 
-    void push_back(bool const & value)
+    void push_back(bool value)
     {
       this -> resize(m_size+1);
       m_data[m_size++] = value;
@@ -563,11 +684,11 @@ namespace Colib
       delete[] m_data;
     }
 
-    bool       & operator[](size_t const & index)       {
+    bool       & operator[](size_t index)       {
       return m_data[index];
     }
 
-    bool const & operator[](size_t const & index) const {
+    bool const & operator[](size_t index) const {
       return m_data[index];
     }
 
@@ -588,7 +709,7 @@ namespace Colib
       for (;m_size<size;++m_size) m_data[m_size] = false;
     }
 
-    void resize(size_t size, bool const & value) 
+    void resize(size_t size, bool value) 
     {
       if (size>m_reserved_size)
       {
@@ -693,20 +814,19 @@ namespace Colib
 
   /// @brief Gives the biggest number of the given type
   template <typename T>
-  inline constexpr T big() {
-      // Calculate the number of bits in the type T
-      const int num_bits = sizeof(T) * CHAR_BIT;
+  inline constexpr T big() 
+  {
+    // // Calculate the number of bits in the type T
+    // const int num_bits = sizeof(T) * CHAR_BIT;
 
-      // For signed types, set all bits except the sign bit
-      // For unsigned types, set all bits
-      if (std::is_signed<T>::value) {
-          return ~(static_cast<T>(1) << (num_bits - 1));
-      } else {
-          return ~static_cast<T>(0);
-      }
+    // // For signed types, set all bits except the sign bit
+    // // For unsigned types, set all bits
+    // if (std::is_signed<T>::value) return ~(static_cast<T>(1) << (num_bits - 1));
+    // else                          return ~static_cast<T>(0);
+    return std::numeric_limits<T>::max();
   }
 
-  template<class T> T positive_modulo(T const & dividend, T const & divisor)
+  template<class T> T positive_modulo(T dividend, T divisor)
   {
     auto ret = dividend % divisor;
     if (ret<0) ret+=divisor;
@@ -721,11 +841,11 @@ namespace Colib
 
   using Point = std::pair<double, double>;
 
-  Point rotate(double const & x, double const & y, double const & angle) 
+  Point rotate(double x, double y, double angle) 
   {
     return Point(x * cos(angle) - y * sin(angle), x * sin(angle) + y * cos(angle));
   }
-   Point rotate(Point const & point, double const & angle) 
+   Point rotate(Point const & point, double angle) 
   {
     return Point(point.first * cos(angle) - point.second * sin(angle), point.first * sin(angle) + point.second * cos(angle));
   }
@@ -738,11 +858,11 @@ namespace Colib
 namespace Colib
 {
   template <typename T, std::size_t N>
-  constexpr int find_index(const std::array<T, N>& array, const T& value) 
+  constexpr std::size_t findIndex(const std::array<T, N>& array, const T& value) 
   {
     for (std::size_t i = 0; i < N; ++i) if (array[i] == value) return i;
-    return -1;  // Value not found
-  } 
+    return N;  // Value not found, test with findIndex(...) != array.size()
+  }
   
   template <typename T, std::size_t N>
   constexpr T found(const std::array<T, N>& array, const T& value) 
@@ -797,6 +917,7 @@ namespace Colib
     if (ordered) std::sort(ret.begin(), ret.end());
     return ret;
   }
+
 }
 
 
@@ -895,18 +1016,16 @@ namespace Colib
     })->first); 
   }
 
-  template<typename NewK, typename K, typename V>
-  inline auto convert(std::map<K,V> const & map) 
+  template<typename NewKey, typename Key, typename T>
+  std::map<NewKey, T> map_key_cast(const std::map<Key, T>& input)
   {
-      std::map<NewK, V> ret;
-      if (map.empty()) return ret;
-    
-      for (auto const & e : map) {
-          ret.emplace(static_cast<NewK>(e.first), e.second);
-      }
-    
-      return ret;
+    static_assert(std::is_convertible_v<Key, NewKey>, "Keys must be convertible");
+
+    std::map<NewKey, T> result;
+    for (const auto& [k, v] : input) result.emplace(static_cast<NewKey>(k), v);
+    return result;
   }
+
 }
 
 ////////////////////////////
@@ -942,6 +1061,34 @@ namespace Colib
 
 #endif //Cpp17
 
+}
+
+////////////////////////
+// Generic containers //
+////////////////////////
+
+namespace Colib
+{
+  template<typename Map>
+  auto unpack(const Map& input)
+  {
+    using K = typename Map::key_type;
+    using V = typename Map::mapped_type;
+
+    std::vector<K> keys;
+    std::vector<V> values;
+
+    keys.reserve(input.size());
+    values.reserve(input.size());
+
+    for (const auto& [k, v] : input)
+    {
+      keys.emplace_back(k);
+      values.emplace_back(v);
+    }
+
+    return std::pair{std::move(keys), std::move(values)};
+  }
 }
 
 
@@ -1002,7 +1149,7 @@ namespace Colib
 
 namespace Colib
 {
-  void progress_bar(float const & progress_percent, int width = 50)
+  void progress_bar(float progress_percent, int width = 50)
   {
     auto const & nb_chars = int_cast(progress_percent/100.*width);
 
@@ -1016,11 +1163,11 @@ namespace Colib
     std::cout.flush();
   }
 
-  void short_progress_bar(float const & progress_percent) {progress_bar(progress_percent, 10 );}
-  void long_progress_bar (float const & progress_percent) {progress_bar(progress_percent, 100);}
+  void short_progress_bar(float progress_percent) {progress_bar(progress_percent, 10 );}
+  void long_progress_bar (float progress_percent) {progress_bar(progress_percent, 100);}
   
   template <class T>
-  std::string nicer_double(T const & t, int const & nb_decimals = 0)
+  std::string nicer_double(T t, int nb_decimals = 0)
   {
     auto value = double_cast(t);
     std::string s;
@@ -1036,6 +1183,16 @@ namespace Colib
 
     std::stringstream ss;
     ss << std::fixed << std::setprecision(nb_decimals) << value << s;
+    return ss.str();
+  }
+
+  template <class T1, class T2>
+  std::string percent(T1 value, T2 ref, int nb_decimals = 0)
+  {
+    static_assert(std::is_same<T1, T2>::value, "Value and Ref must be of the same type!");
+    if (ref == 0) return Colib::Color::RED+std::string("Colib::percent(): Dividing by 0")+Colib::Color::RESET;
+    std::stringstream ss;
+    ss << std::fixed << std::setw(nb_decimals+4) << std::right << std::setprecision(nb_decimals) << (100.*value)/ref <<"%";
     return ss.str();
   }
 }
@@ -1054,18 +1211,106 @@ namespace Colib
    * constexpr auto squares = LUT<10> ([](int i) { return i*i; }); 
    * 
    */
-  template<std::size_t size, class Generator>
-  constexpr auto LUT(Generator&& g)
+#if defined(Cpp20)
+
+  template <std::size_t size, class Generator>
+  constexpr auto LUT(Generator g)
   {
-    // Deduce the return type of the lookup table :
-    using type = std::decay_t<decltype(g(std::size_t{0}))>;
-    // Instanciate the lookup table :
-    std::array<type, size> lut{};
-    // Fill the lookup table using the generator :
-    for (std::size_t i = 0; i<size; ++i) lut[i] = std::forward<Generator>(g)(i);
+    using type = std::remove_cvref_t<decltype(g(std::size_t{0}))>;
+    std::array<type, size> lut;
+    for (std::size_t i = 0; i < size; ++i) lut[i] = g(i);
     return lut;
   }
+
+  template<class T, class Generator>
+  constexpr auto computeList(size_t N_it, Generator g)
+  {
+    std::vector<T> vec{};
+    for (size_t i = 0; i < N_it; ++i) if (g(i)) vec.push_back(i);
+    return vec;
+  }
+
+#elif defined(Cpp17)
   
+  namespace detail 
+  {
+    template <class Generator, std::size_t... Is>
+    constexpr auto LUT_impl(Generator&& g, std::index_sequence<Is...>) 
+    {
+      using type = std::decay_t<decltype(g(std::size_t{0}))>;
+      // Direct initialization of the array (no default-init + assignment)
+      return std::array<type, sizeof...(Is)>{ g(Is)... };
+    }
+  }
+
+  template <std::size_t size, class Generator>
+  constexpr auto LUT(Generator&& g) {return detail::LUT_impl(std::forward<Generator>(g), std::make_index_sequence<size>{});}
+
+#endif // defined(Cpp20) || defined(Cpp17)
+
+#if defined(Cpp20) || defined(Cpp17)
+
+  template <class T, std::size_t size>
+  constexpr size_t lutEntries(std::array<T, size> const & lut) noexcept
+  {
+    size_t ret = 0;
+    for (auto const & entry : lut) if (entry != T{}) ++ret;
+    return ret;
+  }
+
+ template <class T, std::size_t size, class... Arrays>
+  constexpr size_t lutsEntries_sum(const std::array<T, size>& first, const Arrays&... rest) noexcept
+  {
+    static_assert((std::is_same_v<Arrays, std::array<T, size>> && ...), "All LUTs must have same type and size");
+    return lutEntries(first) + (lutEntries(rest) + ... + size_t{0});
+  }
+
+  template <class T, std::size_t size, class... Arrays>
+  constexpr size_t lutsEntries_OR(const std::array<T, size>& first, const Arrays&... rest) noexcept
+  {
+    static_assert((std::is_same_v<Arrays, std::array<T, size>> && ...), "All LUTs must have same type and size");
+    size_t ret = 0;
+    for (std::size_t i = 0; i < size; ++i) if ((first[i] != T{}) || ((rest[i] != T{}) || ...)) ++ret;
+    return ret;
+  }
+
+  template <class T, std::size_t size, class... Arrays>
+  constexpr size_t lutsEntries_AND(const std::array<T, size>& first, const Arrays&... rest) noexcept
+  {
+    static_assert((std::is_same_v<Arrays, std::array<T, size>> && ...), "All LUTs must have same type and size");
+    size_t ret = 0;
+    for (std::size_t i = 0; i < size; ++i) if ((first[i] != T{}) && ((rest[i] != T{}) && ...)) ++ret;
+    return ret;
+  }
+
+  template <std::size_t size, class... Arrays>
+  constexpr bool lut_OR(std::size_t index, const std::array<bool, size>& first, const Arrays&... rest) noexcept
+  {
+    static_assert((std::is_same_v<Arrays, std::array<bool, size>> && ...), "All LUTs must be std::array<bool, size>");
+    if (index >= size) return false;
+    return first[index] || (rest[index] || ...);
+  }
+
+  template <std::size_t size, class... Arrays>
+  constexpr bool lut_AND(std::size_t index, const std::array<bool, size>& first, const Arrays&... rest) noexcept
+  {
+    static_assert((std::is_same_v<Arrays, std::array<bool, size>> && ...), "All LUTs must be std::array<bool, size>");
+    if (index >= size) return false;
+    return first[index] && (rest[index] && ...);
+  }
+
+  template<size_t N, class Generator>
+  constexpr auto precompute(Generator g)
+  {
+    std::array<int, N> arr{};
+    for (size_t i = 0; i < N; ++i)
+        arr[i] = g(i);
+    return arr;
+  }
+
+
+#endif // defined(Cpp20) || defined(Cpp17)
+
   /// @brief faster binary_search than std::binary_search, works only in ordered arrays
   /// @attention Works only in ordered arrays
   template <typename T, std::size_t N>
@@ -1096,7 +1341,7 @@ namespace Colib
   template <typename T>
   typename std::enable_if_t<std::is_arithmetic_v<T>, T>
   /// @brief Returns the absolute value of t (can be used at compiled time)
-  constexpr abs_const(T const & t) {return (t>=0) ? t : -t;}
+  constexpr abs_const(T t) {return (t>=0) ? t : -t;}
 
 #endif //Cpp17
 }
@@ -1153,14 +1398,17 @@ namespace Colib
   
 namespace Colib
 {
-  std::string execTerminal(std::string cmd) 
+  namespace Terminal
   {
-    std::array<char, 128> buffer;
-    std::string result;
-    std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe) throw std::runtime_error("in Colib::execTerminal : popen() failed!");
-    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) result += buffer.data();
-    return result;
+    std::string execTerminal(std::string cmd) 
+    {
+      std::array<char, 128> buffer;
+      std::string result;
+      auto pipe = std::unique_ptr<FILE, int (*)(FILE*)>(popen(cmd.c_str(), "r"), [](FILE* f) { return pclose(f); });
+      if (!pipe) throw std::runtime_error("in Colib::execTerminal : popen() failed!");
+      while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) result += buffer.data();
+      return result;
+    }
   }
 
   std::vector<std::string> match_regex(std::vector<std::string> list, std::string pattern) 

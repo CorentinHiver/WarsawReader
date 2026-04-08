@@ -155,6 +155,4 @@ namespace Caen1725
   };
 };
 
-/// @brief Alias to class Caen1725::RootInterface : reads a .caendat file written by a 1725 board and provides an interface to write in a root files
-using Caen1725RootInterface = Caen1725::RootInterface;
 #endif //CAENROOTREADER_HPP

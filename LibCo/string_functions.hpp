@@ -18,13 +18,30 @@ namespace Colib
   std::string removeLastPart  (std::string const & string, std::string const & sep) { return (string.substr(0, string.find_last_of(sep)  ));  }
 
   /// @brief Returns the string to the left of the first occurrence of sep in the string
-  std::string firstPart       (std::string const & string, char const & sep) { return (string.substr(0, string.find_first_of(sep) ));  }
+  std::string firstPart       (std::string const & string, char sep) { return (string.substr(0, string.find_first_of(sep) ));  }
   /// @brief Returns the string to the right of the last occurrence of sep in the string
-  std::string lastPart        (std::string const & string, char const & sep) { return (string.substr(   string.find_last_of(sep)+1));  }
+  std::string lastPart        (std::string const & string, char sep) { return (string.substr(   string.find_last_of(sep)+1));  }
   /// @brief Returns the string to the right of the first occurrence of sep in the string
-  std::string removeFirstPart (std::string const & string, char const & sep) { return (string.substr(   string.find_first_of(sep) ));  }
+  std::string removeFirstPart (std::string const & string, char sep) { return (string.substr(   string.find_first_of(sep) ));  }
   /// @brief Returns the string to the left of the last occurrence of sep in the string
-  std::string removeLastPart  (std::string const & string, char const & sep) { return (string.substr(0, string.find_last_of(sep)  ));  }
+  std::string removeLastPart  (std::string const & string, char sep) { return (string.substr(0, string.find_last_of(sep)  ));  }
+
+  /// @brief Returns the string without the first character
+  std::string popFront(std::string const & string) { return (string.substr(1, string.size()-1));}
+  std::string popBack(std::string const & string) { return (string.substr(string.size()-1));}
+
+  std::string removeAll(std::string string, std::string const & other) 
+  {
+    size_t pos;
+    while ((pos = string.find(other)) != std::string::npos) string.erase(pos, other.size());
+    return string;
+  }
+
+  std::string removeLast(std::string string, std::string const & other) 
+  {
+    string.erase(string.find_last_of(other), other.size());
+    return string;
+  }
 
   /**
    * @brief Cuts a string into pieces separated by the given separator like ';' or ' ' or ','
@@ -101,13 +118,17 @@ namespace Colib
     return ostring;
   }
 
-  /**
-   * @brief Removes the first character of a string
-   * 
-   * @attention Careful, time complexity makes it really heavy on big string
-   */
-  std::string & pop_front(std::string & string) {if (string.size() > 0) string.erase(0,1); return string;}
+  /// @brief Removes the first character of a string
+  std::string pop_front(std::string const & string) {return string.substr(1);}
+  
+  /// @brief Removes the first character of a string
+  std::string pop_back(std::string const & string) {return string.substr(0,string.size()-1);}
 
+  /// @brief Removes the first character of a string
+  std::string & pop_front(std::string & string) {if (0 < string.size()) string.erase(0,1); return string;}
+  
+  /// @brief Removes the first character of a string
+  std::string & pop_back(std::string & string) {if (0 < string.size()) string.erase(string.size()-1,1); return string;}
 
   /// @brief Replace all the commas of a std::string with dots
   std::string rpCommaWDots(std::string str)
@@ -293,6 +314,11 @@ namespace Colib
     (oss << ... << my_to_string(std::forward<ARGS>(args)));
     return oss.str();
   }
+
+  template<class... ARGS>
+  std::string concat(ARGS&&... args) {return concatenate(std::forward<ARGS>(args)...);}
+
+
   
   // /// @brief Concatenate a series of arguments into a big string (alias)
   // template<class... ARGS>
@@ -303,10 +329,6 @@ namespace Colib
   // template<class... ARGS>
   // auto concatenate_c(ARGS&&... args){return concatenate(std::forward<ARGS>(args)...).c_str();}
   
-  /// @brief concatenate string, returns a c_str (char**)
-  template<class... ARGS>
-  std::string ctcstr(ARGS&&... args) {return concatenate(std::forward<ARGS>(args)...);}
-
 }  
 
 #endif //STRING_FUNCTIONS_HPP

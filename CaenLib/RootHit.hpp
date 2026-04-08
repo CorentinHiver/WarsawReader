@@ -20,10 +20,10 @@ namespace Caen1725
     {}
     
     /// @brief Resets outTree and creates the TBranches with the Hit attributes. Sets RootHit in writting mode.
-    inline TTree * writeTo(TTree * outTree) noexcept
+    inline TTree * writeTo(TTree * outTree, bool reset = true) noexcept
     {
       ioMode = IOmode::Writting;
-      outTree->ResetBranchAddresses();
+      if (reset) outTree->ResetBranchAddresses();
       outTree->Branch("label"        , &label        );
       outTree->Branch("board_ID"     , &board_ID     );
       outTree->Branch("channel_ID"   , &channel_ID   );

@@ -16,11 +16,12 @@ namespace Caen1725
     {
     }
 
-    void writeTo(TTree* tree)
+    void writeTo(TTree* tree, bool reset = true)
     {
-      tree->ResetBranchAddresses();
-      tree->Branch("evtNb"        , &evtNb        );
-      tree->Branch("mult"         , &mult         );
+      if (reset) tree->ResetBranchAddresses();
+
+      tree->Branch("eventID", &eventID);
+      tree->Branch("mult"   , &mult   );
 
       createBranchArray(tree, "label"        , &label        , "mult");
       createBranchArray(tree, "board_ID"     , &board_ID     , "mult");
@@ -34,10 +35,11 @@ namespace Caen1725
       createBranchArray(tree, "wfa_success"  , &wfa_success  , "mult");
     }
 
-    TTree * readFrom(TTree* tree)
+    TTree * readFrom(TTree* tree, bool reset = true)
     {
-      tree->ResetBranchAddresses();
-      tree->SetBranchAddress("evtNb"        , &evtNb        );
+      if (reset) tree->ResetBranchAddresses();
+      
+      tree->SetBranchAddress("eventID"      , &eventID      );
       tree->SetBranchAddress("mult"         , &mult         );
       tree->SetBranchAddress("label"        , &label        );
       tree->SetBranchAddress("board_ID"     , &board_ID     );
@@ -49,6 +51,7 @@ namespace Caen1725
       tree->SetBranchAddress("time"         , &time         );
       tree->SetBranchAddress("rel_time"     , &rel_time     );
       tree->SetBranchAddress("wfa_success"  , &wfa_success  );
+
       return tree;
     }
 

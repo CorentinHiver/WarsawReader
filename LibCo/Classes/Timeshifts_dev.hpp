@@ -35,7 +35,7 @@ public:
   auto const & operator[] (int const & label) const {return m_timeshifts[label];}
 
   /// @brief Returns the timeshift of the detector with the given label
-  auto get(size_t const & i) const {return (i<m_timeshifts.size()) ? m_timeshifts[i] : Timeshift_t{0};}
+  auto const & get(int const & i) const {return m_timeshifts[i];}
 
   #ifdef HIT_HPP // If Hit.hpp is included (Nuball2)
     /// @brief Returns the timeshift of the detector with the label of the given hit
@@ -45,10 +45,10 @@ public:
   /// @brief Multiplies each element of the timeshift vector by a given factor f
   Timeshifts & operator*= (double const & f) {for (auto & dT : m_timeshifts) dT*=f; return *this;}
 
-  /// @brief Returns the timeshift vector (std::vector<int64_t>)
-  Timeshifts_t const & get() const {return m_timeshifts;}
+  /// @brief Returns a reference to the timeshift vector (std::vector<int64_t>)
+  Timeshifts_t & get() {return m_timeshifts;}
 
-  /// @brief Returns the timeshift vector (std::vector<int64_t>)
+  /// @brief Returns a read-only access to the timeshift vector (std::vector<int64_t>)
   Timeshifts_t const & data() const {return m_timeshifts;}
   
   /// @brief Returns weither the timestamp vector has been filled correctly
@@ -63,6 +63,14 @@ public:
   /// @brief Returns the size of the timestamp vector
   auto size() const {return m_timeshifts.size();}
 
+  void resize(size_t size) {m_timeshifts.resize(size);}
+
+  void set(size_t label, Timeshift_t ts) 
+  {
+    if (m_timeshifts.size() < label) m_timeshifts.resize(label*2);
+    m_timeshifts[label] = ts;
+  }
+
   auto const & nbDetectors() const {return m_nb_detectors;}
 
 private:
@@ -70,9 +78,9 @@ private:
   Timeshifts_t m_timeshifts;
   bool m_ok = false;
   int m_nb_detectors = 0;
-  Colib::Path m_outPath;
+  std::string m_outPath;
   
-public:
+  public:
   class NotFoundError
   {
   public:
@@ -111,13 +119,13 @@ bool Timeshifts::load(std::string const & filename, bool ns)
 
 void Timeshifts::write(std::string const & fullpath, std::string const & name)
 {
-  m_outPath = Colib::Path (fullpath, true);
-  if (!m_outPath) {m_ok = false; return;}
+  m_outPath = fullpath;
+  Colib::mkdir(m_outPath);
 
-  Colib::File outData (m_outPath+name);
-  outData.setExtension(".dT");
+  std::string outData = m_outPath + name;
+  Colib::setExtension(outData, ".dT");
 
-  std::ofstream outTimeshiftsFile(outData, std::ios::out);
+  std::ofstream outTimeshiftsFile(outData);
   
   for (size_t label = 0; label<m_timeshifts.size(); label++)
   {
