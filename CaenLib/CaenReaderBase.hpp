@@ -20,6 +20,7 @@ namespace Caen1725
     virtual void open(std::string const & filename)
     {
       caenFile = CaenDat(m_filename = filename);
+      if (!caenFile) return;
       p_datafile.open(m_filename, std::ios::binary | std::ios::in);
       if (!p_datafile.is_open())
       {

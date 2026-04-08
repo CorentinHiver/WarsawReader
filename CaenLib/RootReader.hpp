@@ -7,13 +7,13 @@ namespace Caen1725
   class RootReader
   {
   public:
-    RootReader(size_t hits_nb = Colib::big<int>()) : m_size(hits_nb) {};
+    RootReader(size_t hits_nb = Colib::max<int>()) : m_size(hits_nb) {};
     
-    RootReader(TTree * tree, size_t hits_nb = Colib::big<int>()) : RootReader(hits_nb) 
+    RootReader(TTree * tree, size_t hits_nb = Colib::max<int>()) : RootReader(hits_nb) 
       {connectTree(tree);}  
-    RootReader(TFile * file, size_t hits_nb = Colib::big<int>()) : RootReader(hits_nb) 
+    RootReader(TFile * file, size_t hits_nb = Colib::max<int>()) : RootReader(hits_nb) 
       {connectFile(file);}  
-    RootReader(std::string const & filename, size_t hits_nb = Colib::big<int>()) : RootReader(hits_nb) 
+    RootReader(std::string const & filename, size_t hits_nb = Colib::max<int>()) : RootReader(hits_nb) 
       {connectFile(filename);}
 
     ~RootReader() {if (m_file && !m_file->IsZombie()) m_file->Close();}

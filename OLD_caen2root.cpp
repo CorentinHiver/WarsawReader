@@ -6,9 +6,9 @@
 #include "CaenLib/CaenRootInterface.hpp"
 #include "CaenLib/CaenRootEventBuilder.hpp"
 #include "CaenLib/RootHit.hpp"
-#include "LibCo/Classes/Timer.hpp"
-#include "LibCo/Classes/Timeshifts.hpp"
-#include "LibCo/libCo.hpp"
+#include "Colib/lib/Classes/Timer.hpp"
+#include "Colib/lib/Classes/Timeshifts.hpp"
+#include "Colib/lib/libCo.hpp"
 
 constexpr int reader_version = 110;
 constexpr size_t LUT_size = 10000;

@@ -1,0 +1,36 @@
+STDLIB= -std=c++17
+GCC_OPTIONS= -Wall -Wextra
+OPTIONS=
+OPT= -O3 -march=native
+TRIGGER=
+OUTPUT=
+
+all: clean
+all:
+all: writeTraces studyCFD caen2root rootReaderExample
+
+writeTraces: writeTraces.cpp 
+	g++ -o $(OUTPUT)writeTraces writeTraces.cpp `root-config --cflags` `root-config --glibs` $(OPT) $(STDLIB) $(TRIGGER) $(OPTIONS) $(GCC_OPTIONS)
+
+studyCFD: studyCFD.cpp 
+	g++ -o $(OUTPUT)studyCFD studyCFD.cpp `root-config --cflags` `root-config --glibs` $(OPT) $(STDLIB) $(TRIGGER) $(OPTIONS) $(GCC_OPTIONS)
+
+caen2root: caen2root.cpp 
+	g++ -o $(OUTPUT)caen2root caen2root.cpp `root-config --cflags` `root-config --glibs` $(OPT) $(STDLIB) $(TRIGGER) $(OPTIONS) $(GCC_OPTIONS)
+
+rootReaderExample: rootReaderExample.cpp 
+	g++ -o $(OUTPUT)rootReaderExample rootReaderExample.cpp `root-config --cflags` `root-config --glibs` $(OPT) $(STDLIB) $(TRIGGER) $(OPTIONS) $(GCC_OPTIONS)
+
+debug: OPT= -g
+debug: clean
+debug: all
+
+dev: OUTPUT=build-dev/
+dev: clean
+dev: all
+
+clean:
+	rm -fr writeTraces
+	rm -fr studyCFD
+	rm -fr caen2root
+	rm -fr rootReaderExample

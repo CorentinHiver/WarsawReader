@@ -1,30 +1,39 @@
-STDLIB= -std=c++17
-GCC_OPTIONS= -Wall -Wextra
-OPTIONS=
-OPT= -O3 -march=native
-TRIGGER=
+CXX := g++
+STD := -std=c++17
+CXXFLAGS := -Wall -Wextra $(STD)
+OPT := -O3 -march=native
+DEPFLAGS := -MD -MP
 
-all: clean
-all: writeTraces studyCFD caen2root rootReaderExample
+ROOTCFLAGS := $(shell root-config --cflags)
+ROOTLIBS := $(shell root-config --glibs)
 
-writeTraces: writeTraces.cpp 
-	g++ -o writeTraces writeTraces.cpp $(GCC_OPTIONS) `root-config --cflags` `root-config --glibs` $(OPT) $(STDLIB) $(TRIGGER) $(OPTIONS)
+BUILD_DIR := build
+TARGETS := writeTraces studyCFD caen2root rootReaderExample
 
-studyCFD: studyCFD.cpp 
-	g++ -o studyCFD studyCFD.cpp $(GCC_OPTIONS) `root-config --cflags` `root-config --glibs` $(OPT) $(STDLIB) $(TRIGGER) $(OPTIONS)
+OBJS := $(addprefix $(BUILD_DIR)/,$(addsuffix .o,$(TARGETS)))
+DEPS := $(OBJS:.o=.d)
 
-caen2root: caen2root.cpp 
-	g++ -o caen2root caen2root.cpp $(GCC_OPTIONS) `root-config --cflags` `root-config --glibs` $(OPT) $(STDLIB) $(TRIGGER) $(OPTIONS)
+all: $(TARGETS)
 
-rootReaderExample: rootReaderExample.cpp 
-	g++ -o rootReaderExample rootReaderExample.cpp $(GCC_OPTIONS) `root-config --cflags` `root-config --glibs` $(OPT) $(STDLIB) $(TRIGGER) $(OPTIONS)
+# Link
+$(TARGETS): %: $(BUILD_DIR)/%.o
+	$(CXX) -o $@ $< $(ROOTLIBS)
 
-debug: OPT= -g
-debug: clean
-debug: all
+# Compile with explicit dependency file location
+$(BUILD_DIR)/%.o: %.cpp | $(BUILD_DIR)
+	$(CXX) -c $< -o $@ $(CXXFLAGS) $(OPT) $(ROOTCFLAGS) \
+	$(DEPFLAGS) -MF $(BUILD_DIR)/$*.d -MT $@
+
+# Ensure directory exists
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
+# Include dependencies if they exist
+-include $(DEPS)
+
+debug: OPT := -Og
+debug: CXXFLAGS += -g -fno-omit-frame-pointer
+debug: clean all
 
 clean:
-	rm -fr writeTraces
-	rm -fr studyCFD
-	rm -fr caen2root
-	rm -fr rootReaderExample
+	rm -rf $(BUILD_DIR) $(TARGETS)

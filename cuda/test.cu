@@ -1,9 +1,9 @@
 #include "../AnalysisLib/CFD.hpp"
 #include <cuda_runtime.h>
 #include <memory>
-#include "../LibCo/print.hpp"
-#include "../LibCo/Timer.hpp"
-#include "../LibCo/randomCo.hpp"
+#include "../Colib/lib/print.hpp"
+#include "../Colib/lib/Timer.hpp"
+#include "../Colib/lib/randomCo.hpp"
 
 /*
 So, overall it works. However the process is only sped up if the resources are correcly managed.

@@ -1,14 +1,15 @@
 #!/bin/bash
 
-# use it in root folder like $ ./LibCo/updateLibCo.sh
+# use it in root folder like $ ./Colib/lib/updateColib.sh
 
-cd LibCo
+cd Colib
 
-base_url="https://raw.githubusercontent.com/CorentinHiver/Nuball2/master/lib"
+# base_url="https://raw.githubusercontent.com/CorentinHiver/Colib/lib/master/lib"
+base_url="https://gitlab.com/username/Colib/lib/-/raw/main/lib"
 files=(
     errors.hpp
     files_functions.hpp
-    libCo.hpp
+    Colib.hpp
     libRootHeader.hpp
     libRoot.hpp
     print.hpp

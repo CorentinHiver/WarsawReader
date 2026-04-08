@@ -6,9 +6,9 @@
 #include "CaenLib/CaenRootInterface.hpp"
 #include "CaenLib/CaenRootEventBuilder.hpp"
 #include "CaenLib/RootHit.hpp"
-#include "LibCo/Classes/Timer.hpp"
-#include "LibCo/Classes/Timeshifts.hpp"
-#include "LibCo/libCo.hpp"
+#include "Colib/lib/Classes/Timer.hpp"
+#include "Colib/lib/Classes/Timeshifts.hpp"
+#include "Colib/lib/libCo.hpp"
 
 constexpr int reader_version = 110;
 constexpr size_t LUT_size = 10000;
@@ -138,7 +138,7 @@ int main(int argc, char** argv)
     else if (temp == "-f" || temp ==  "--files")
     {
       iss >> temp;
-      for (auto const & file : Colib::findFilesWildcard(temp)) {filenames.push_back(file);}
+      for (auto const & file : Colib::findFilesWildcard(temp)) {filenames.push_back(nicerPath(file));}
     }
     else if (temp == "-F" || temp == "--files-nb")
     {
@@ -147,7 +147,7 @@ int main(int argc, char** argv)
       size_t nb_i = static_cast<size_t>(temp_nb); // cast to size_t (). if nb<0 -> overflow -> nb_i is very very big
       if (nb_i == 0) continue;
       auto const & files = Colib::findFilesWildcard(temp);
-      for (size_t file_i = 0; file_i < (files.size() && file_i<nb_i); ++file_i) filenames.push_back(files[file_i]);
+      for (size_t file_i = 0; file_i < (files.size() && file_i<nb_i); ++file_i) filenames.push_back(nicerPath(files[file_i]));
     }
     else if (temp == "-h" || temp == "--help")
     {

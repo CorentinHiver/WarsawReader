@@ -1,7 +1,7 @@
 #ifndef TIMESHIFTS_HPP
 #define TIMESHIFTS_HPP
 
-#include "../libCo.hpp"
+#include "../Colib.hpp"
 
 class Timeshifts
 {
@@ -70,7 +70,7 @@ private:
   Timeshifts_t m_timeshifts;
   bool m_ok = false;
   int m_nb_detectors = 0;
-  Colib::Path m_outPath;
+  std::string m_outPath;
   
 public:
   class NotFoundError
@@ -111,11 +111,12 @@ bool Timeshifts::load(std::string const & filename, bool ns)
 
 void Timeshifts::write(std::string const & fullpath, std::string const & name)
 {
-  m_outPath = Colib::Path (fullpath, true);
-  if (!m_outPath) {m_ok = false; return;}
+  m_outPath = fullpath;
+  Colib::mkdir(m_outPath);
+  if (!Colib::fileExists(m_outPath)) {m_ok = false; return;}
 
-  Colib::File outData (m_outPath+name);
-  outData.setExtension(".dT");
+  std::string outData (m_outPath+name);
+  Colib::setExtension(outData, ".dT");
 
   std::ofstream outTimeshiftsFile(outData, std::ios::out);
   

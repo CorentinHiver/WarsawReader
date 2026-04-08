@@ -1,7 +1,7 @@
 #ifndef CaenDataReader1725_UTILS_HPP
 #define CaenDataReader1725_UTILS_HPP
 
-#include "../LibCo/libCo.hpp"
+#include "../Colib/lib/libCo.hpp"
 
 namespace Caen1725
 {

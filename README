@@ -1,9 +1,25 @@
-Compile lines at the end of the .cpp files
-If none (.C files), call them with root because they are pure ROOT macros
+Compilation:
 
 To compile with make:
 > make clean
 > make -j4
+
+Three executables are compiled by make:
+
+caen2root   Main purpose of WarsawReader, converts data in .caendat to .root format, with possible event building, time synchronization, and various other options
+writeTraces Reads the traces of the data in .caendat and writes in a .root file
+studyCFD    After event-building, checks the time correlations between detectors
+
+
+macros/Miscellaneous.C      Collection of tree analysis created by caen2root (examples, timeshifts, spectra, special requests ...)
+
+
+
+
+
+
+
+
 
 make options:
 TRIGGER="-DTRIGGER=[TriggerName]" (Read Triggers/)
@@ -13,12 +29,10 @@ Update using:
 
 - General purpose tools : 
 
-caen2root                   Converts .caendat raw datafile into time-ordered and event-built root file
+
 Tools/caendatInspect        Dumps raw data from .caendat datafile in the terminal
 Tools/caendatIntegrityCheck Checks if the raw .caendat datafile is not corrupted
-macros/Miscellaneous.C      Collection of tree analysis created by caen2root (examples, timeshifts, spectra, special requests ...)
 
 - Special tools :
 
 writeTraces    Writes the traces in TGraphs with CFD
-studyCFD       After event-building, checks the time correlations between detectors

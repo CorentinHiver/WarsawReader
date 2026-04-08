@@ -1,7 +1,7 @@
 // g++ -o rootReaderExample rootReaderExample.cpp -Wall -Wextra `root-config --cflags` `root-config --glibs` -g
 
 #include "CaenLib/RootReader.hpp" // You can simply source CaenLib folder for a global access , no installation required
-#include "LibCo/libCo.hpp"
+#include "Colib/lib/libCo.hpp"
 
 // using namespace Colib // This is recommended if you want to keep a code easier to read, although use it only in .cpp or .C files
 

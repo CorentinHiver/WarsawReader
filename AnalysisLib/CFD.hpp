@@ -14,7 +14,7 @@ class CFD
 {
 protected:
   /////////////////////////////////////////
-  // Some helper functions (from libCo): //
+  // Some helper functions (from Colib): //
   /////////////////////////////////////////
 
   template <typename T>

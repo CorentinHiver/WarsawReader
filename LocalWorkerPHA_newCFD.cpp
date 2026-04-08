@@ -24,7 +24,7 @@ constexpr bool verboseCFD = true;
 class CFD
 {
 protected:
-  // Some helper functions (from libCo):
+  // Some helper functions (from Colib):
   using size_t = std::size_t;
 
   template <typename T, typename std::enable_if<std::is_floating_point<T>::value, bool>::type = true>
