@@ -1,5 +1,4 @@
-#ifndef CFD_HPP
-#define CFD_HPP
+#pragma once
 
 #include <algorithm>
 #include <iostream>
@@ -36,8 +35,11 @@ protected:
   inline static constexpr bool is_floating() noexcept { return false;}
 
   // Console colors
-  static constexpr const char* RED   = "\u001b[31m";
-  static constexpr const char* RESET = "\u001b[0m" ;
+  namespace Color
+  {
+    static constexpr const char* RED   = "\u001b[31m";
+    static constexpr const char* RESET = "\u001b[0m" ;
+  }
   
 public:
   /// @brief Default constructor
@@ -123,7 +125,7 @@ public:
   /// @brief Calculates the last zero crossing before the calculated cfd signal goes above the given threshold
   double findZero(double threshold)
   {
-    if (threshold < 0) std::cout << RED << "in CFD::findZero(threshold) : threshold < 0 !" << RESET << std::endl;
+    if (threshold < 0) std::cout << Color::RED << "in CFD::findZero(threshold) : threshold < 0 !" << Color::RESET << std::endl;
     for (size_t bin_i = 0; bin_i < cfd.size(); ++bin_i){  // Loop through the cfd values
       if (threshold < cfd[bin_i]){                        // The cfd value crossed the threshold
         for (size_t bin_j = bin_i; bin_j>0; --bin_j){     // Looping back for looking for the zero crossing
@@ -171,7 +173,7 @@ public:
     // or detector per detector with the label the global label (BOARD_ID*16 + Channel_ID*2 + subchannel_ID)
          if (line.find("BOARDS") != std::string::npos) Param::sType = Param::BOARD;
     else if (line.find("LABELS") != std::string::npos) Param::sType = Param::LABEL;
-    else std::cout << CFD::RED << "CFD::loadParameters " << filename << " : format issue. Should begin with LABELS or BOARDS" << RESET << std::endl; 
+    else std::cout << CFD::Color::RED << "CFD::loadParameters " << filename << " : format issue. Should begin with LABELS or BOARDS" << Color::RESET << std::endl; 
 
     while(std::getline(paramFile, line))
     {
@@ -218,7 +220,6 @@ public:
 
 
 
-#endif //CFD_HPP
 
 
     // if (0 < minimum(cfd)) return noSignal;            // If never crosses zero, returns noSignal
@@ -234,11 +235,11 @@ public:
 
   // virtual void calculate(size_t shift, double fraction)
   // {
-  //   if (fraction>1.) {std::cout << RED << "in CFD(trace, shift, fraction): fraction>1 !!" << RESET << std::endl; return;}
+  //   if (fraction>1.) {std::cout << Color::RED << "in CFD(trace, shift, fraction): fraction>1 !!" << Color::RESET << std::endl; return;}
 
   //   cfd.clear();
 
-  //   if (m_size < 2*shift) {std::cout << RED << "in CFD(trace, shift, fraction): m_size = " << m_size << " < 2*shift = " << 2*shift << " !!" << RESET << std::endl; return;}
+  //   if (m_size < 2*shift) {std::cout << Color::RED << "in CFD(trace, shift, fraction): m_size = " << m_size << " < 2*shift = " << 2*shift << " !!" << Color::RESET << std::endl; return;}
     
   //   cfd.reserve(m_size);
   //   for (size_t bin = 5*shift; bin<m_size - shift; ++bin)
@@ -264,7 +265,7 @@ public:
 
   //   cfd.clear();
 
-  //   if (m_size < 2*shift) {std::cout << RED << "in CFD(trace, shift, fraction): m_size = " << m_size << " < 2*shift = " << 2*shift << " !!" << RESET << std::endl; return;}
+  //   if (m_size < 2*shift) {std::cout << Color::RED << "in CFD(trace, shift, fraction): m_size = " << m_size << " < 2*shift = " << 2*shift << " !!" << Color::RESET << std::endl; return;}
     
   //   cfd.reserve(m_size);
   //   for (size_t bin = 5*shift; bin<m_size - shift; ++bin)

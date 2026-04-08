@@ -20,7 +20,7 @@ constexpr size_t LUT_size = 10000;
 using namespace Colib;
 
 /*
-  To learn how to create a user-defined trigger, read Triggers/TriggerExample.hpp
+  To know how to create a user-defined trigger, read Triggers/TriggerExample.hpp
   To know the format of the data, read CaenLib/Hit.hpp and CaenLib/Event.hpp
 */
 
@@ -102,15 +102,16 @@ int main(int argc, char** argv)
   auto printHelp = [](){
     print("caen2root usage");
     print("Note: if \"scientific format accepted\", it means that e.g. 1e3 is a valid shorthand for 1000)");
-    print("   --cfd               [0 or 1] (default 1). Use CFD timestamp correction (hard-coded parameters(shift, fraction, nb samples for baseline...). Parameter file incoming).");
-    print("-e --ts-evt-build      [0 or 1] (default 0). Perform event building based on : [0] the absolute time (usually corrected by cfd) [1] the raw timestamp.");
+    print("   --cfd               [0 or 1] (default 1) : Use CFD timestamp correction (hard-coded parameters(shift, fraction, nb samples for baseline...).");
+    print("   --cfd-param         [filename] : Use CFD timestamp correction (hard-coded parameters(shift, fraction, nb samples for baseline...).");
+    print("-e --ts-evt-build      [0 or 1] (default 0) : Perform event building based on : [0] the absolute time (usually corrected by cfd) [1] the raw timestamp.");
     print("-f --files             [caen_filename] : File to convert. Include wildcards * and ?, but ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\") ");
     print("-F --files-nb          [caen_filename] [nb_files] : Same as -f. Additionally, can select the number of files (-1 = all, scientific format accepted]");
     print("-g --group             [0 or 1] (default 1) : Sets the output format. 0 : plain tree with, each row represents a Caen1725::RootHit, with extra eventID and eventMult leaves. 1 : each row is a Caen1725::RootEvent. Caen1725::RootReader can read both.");
     print("-h --help              : print this help");
     print("-i --in-memory         [0 or 1] (default 1) : Choose weither the tree is built in memory (faster but RAM-consuming) or in file (may be much slower)");
     print("-n --hits-nb           [nb_hits (-1 = all, scientific format accepted)] : maximum number of hits to be read by the programm IN EACH FILE");
-    print("-N --hits-tot-nb       [nb_hits (-1 = all, scientific format accepted)] : maximum number of hits to be read by the programm");
+    print("-N --hits-nb-tot       [nb_hits (-1 = all, scientific format accepted)] : maximum number of hits to be read by the programm");
     print("-o --output            [output_path]");
     print("   --read-traces       [0 or 1] (default 1) : Read the traces for all boards. If false, skip trace for all boards and no trace analysis is performed.");
     print("   --board-skip-trace  [boardID] : Do not read the trace for this board ID, hence no trace analysis (e.g. CFD) is done. Used only if --read-traces is 1.");
@@ -158,19 +159,19 @@ int main(int argc, char** argv)
       iss >> inMemory;
       print("tree built", (inMemory) ? "in memory" : "in file");
     }
-    else if (temp == "-n")
+    else if (temp == "-n" || temp == "--hits-nb")
     {
       double tmp_d = 0; iss >> tmp_d;
       nbHitsMax = static_cast<size_t>(tmp_d);
       print("Maximum hits per file =", nicer_double(nbHitsMax));
     }
-    else if (temp == "-N")
+    else if (temp == "-N" || temp == "--hits-nb-tot")
     {
       double tmp_d = 0; iss >> tmp_d;
       nbHitsMaxTot = static_cast<size_t>(tmp_d);
       print("Maximum hits total", nicer_double(nbHitsMaxTot));
     }
-    else if (temp == "-o")
+    else if (temp == "-o" || temp == "--output")
     {
       iss >> outpath;
     }
