@@ -1,5 +1,7 @@
 *.root
 *.caendat
+*.o
+*.d
 build
 caen2root
 studyCFD
