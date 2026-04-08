@@ -21,6 +21,7 @@ using namespace Colib;
 
 /*
   To learn how to create a user-defined trigger, read Triggers/TriggerExample.hpp
+  To know the format of the data, read CaenLib/Hit.hpp and CaenLib/Event.hpp
 */
 
 class Profiler : public Timer
@@ -44,7 +45,6 @@ public:
   #endif //PROFILE
   }
 };
-
 
 constexpr size_t   reserved_buffer_size = 500000ul;
 

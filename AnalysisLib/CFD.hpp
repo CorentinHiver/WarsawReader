@@ -35,62 +35,7 @@ protected:
   template <typename T, typename std::enable_if<!std::is_floating_point<T>::value, bool>::type = true>
   inline static constexpr bool is_floating() noexcept { return false;}
 
-  // Random generation (to clean)
-  
-  // virtual inline double random_fast_uniform() noexcept {
-  //   static thread_local std::minstd_rand generator(std::random_device{}());
-  //   static thread_local std::uniform_real_distribution<double> distribution(0.0, 1.0);
-  //   return distribution(generator);
-  // }
-
-  // inline double random_fast_uniform() noexcept {
-  //   static thread_local std::mt19937_64 gen(123456789);
-  //   return std::generate_canonical<double, 53>(gen);
-  // }
-
-  // inline double random_fast_uniform() noexcept 
-  // {
-  //   // 1. Use a simple LCG (Knuth's MMIX constants).
-  //   // It has a state of just 8 bytes (fits in a register).
-  //   static thread_local uint64_t state = []{
-  //       // 2. Seed uniquely per thread!
-  //       // Combine time and thread ID to ensure threads have different streams.
-  //       auto seed = static_cast<uint64_t>(std::time(nullptr));
-  //       seed ^= std::hash<std::thread::id>{}(std::this_thread::get_id());
-  //       return seed;
-  //   }();
-
-  //   // 3. The LCG Algorithm: state = state * A + C
-  //   state = state * 6364136223846793005ULL + 1442695040888963407ULL;
-
-  //   // 4. Fast conversion to double [0, 1) without full division.
-  //   // We take the top 53 bits (for double precision) and multiply by 2^-53.
-  //   // 0x1.0p-53 is the hex literal for 1.0 / 2^53.
-  //   return (state >> 11) * 0x1.0p-53;
-  // }
-
-  template<class T>
-  inline double adc_to_double(T adc) noexcept
-  {
-      // // ------------------- Fast Lehmer64 (128-bit state) -------------------
-      // static thread_local __uint128_t state1 = [] {
-      //     uint64_t s = static_cast<uint64_t>(std::time(nullptr));
-      //     s ^= std::hash<std::thread::id>{}(std::this_thread::get_id());
-      //     return (__uint128_t)s << 64 | s;
-      // }();
-
-      // constexpr __uint128_t MUL = 0xda942042e4dd58b5ULL;   // passes BigCrush, very fast
-      // state1 *= MUL;
-
-      // uint64_t r1 = state1 >> 64;
-      
-      // constexpr double TO_DOUBLE = 0x1.0p-53; // Convert to [0,1) (top 53 bits)
-
-      // return (static_cast<double>(adc) + (r1 >> 11) * TO_DOUBLE);
-    return static_cast<double>(adc);
-  }
-
-  // Consol colors
+  // Console colors
   static constexpr const char* RED   = "\u001b[31m";
   static constexpr const char* RESET = "\u001b[0m" ;
   

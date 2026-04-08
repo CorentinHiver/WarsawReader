@@ -20,6 +20,7 @@ constexpr size_t LUT_size = 10000;
 using namespace Colib;
 
 /**
+ * LTS version 1.2.1_v3
  * Structure of the output tree :
  * 
     UInt_t    label         : Global label (=board_ID*16 + channel_ID*2 + subchannel_ID)
