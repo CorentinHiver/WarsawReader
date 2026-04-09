@@ -1,0 +1,106 @@
+#include "../libCo.hpp"
+#include "../Classes/Arguments.hpp"
+#include "../Classes/Timeshifts.hpp"
+#include "../Classes/Calibration.hpp"
+
+class RunReader
+{
+public:
+  RunReader() noexcept = default;
+  void printArgs()
+  {
+    print("Arguments of RunReader :");
+    print();  
+    print("-c [filename.calib]     : Loads the calibration file");
+    print("-n [hits_number]        : Choose the number of hits to read inside a file (default: all)");
+    print("-N [hits_number]        : Choose the total number of hits to read (default: all)");
+    print("-f [file_name.fast]     : add a new file. You can use wildcards (* or ?) to load all matching pattern, but you need to add \"\" around the name.");
+    print("-F [pattern] [nb_files] : add nb_files of new files matching the wildcard pattern.");
+    print("-i [ID_file]            : Load detector's ID file and set the name of the histograms accordingly");
+    print("-O [outputPath]         : Set the path of the output file");
+    print("-o                      : Overwrite the output");
+    print("-t [filename.dT]        : Loads the timeshifts (default : no timeshits)");
+    print();
+  }
+  bool processArg(Arguments & args)
+  {
+    if (args.size() == 0) {printArgs(); return false;}
+
+    if (args == "-c")
+    {
+      p_calib.load(args.load<std::string>());
+    }
+    else if (args == "-n")
+    {
+      p_nbMaxHits = static_cast<uint64_t>(args.load<double>());
+    }
+    else if (args == "-N")
+    {
+      p_nbTotMaxHits = static_cast<uint64_t>(args.load<double>());
+    }
+    else if (args == "-f")
+    {
+      addFiles(args.load<std::string>());
+    }
+    else if (args == "-F")
+    {
+      addFiles(args.load<std::string>(), args.load<int>());
+    }
+    else if (args == "-o")
+    {
+      setOverwrite(true);
+    }
+    else if (args == "-O")
+    {
+      if (!args.next()) error("Option -f needs an argument");
+      setOutputPath(args);
+    }
+    else if (args == "-t")
+    {
+      p_timeshift.load(args.load<std::string>());
+    }
+    else return false; // Not found
+    return true;      // Found
+  }
+  void addFiles(std::string const & files, int nb = -1)
+  {
+    auto const & filenames = Colib::findFilesWildcard(files);
+    if(filenames.empty()) return;
+    size_t const nbFiles = (nb<1) ? filenames.size() : std::min(filenames.size(), size_t(nb));
+    for (size_t file_i = 0; file_i < nbFiles; ++file_i) p_files.push_back(filenames[file_i]);
+  }
+  void setOverwrite(bool b = true) {p_overwrite = b;}
+  void setOutputPath(std::string const & path) 
+  {
+    p_outPath = Colib::getFullPath(path);
+    if (p_outPath.back() != '/') p_outPath.push_back('/');
+    Colib::mkdir(p_outPath, true);
+  }
+
+  bool checkOutput(std::string const & outFile)
+  {
+    if (Colib::fileExists(outFile))
+    {
+      if (p_overwrite) fs::remove(outFile);
+      else
+      {
+        error(outFile, "already exists ! Use -o mode or RunReader::setOverwrite()");
+        return false;
+      }
+    }
+    return true;
+  }
+
+  virtual bool loadConfig(std::string) noexcept = 0; 
+
+protected:
+  
+  std::vector<std::string> p_files;
+  std::string p_outPath = Colib::getPwdPath();
+  bool p_overwrite = false;
+  uint64_t p_nbMaxHits = -1;
+  uint64_t p_nbTotMaxHits = Colib::max<uint64_t>();
+  
+  Timeshifts p_timeshift;
+  Calibration p_calib;
+};

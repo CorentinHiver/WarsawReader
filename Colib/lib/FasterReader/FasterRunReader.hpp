@@ -1,0 +1,285 @@
+#pragma once
+
+#include "TFileMerger.h"
+#include "TSystem.h"
+
+#include "../Classes/RunReader.hpp"
+
+#include "FasterRootInterface.hpp"
+
+class FasterRunReader : public RunReader
+{
+public:
+  FasterRunReader() noexcept = default;
+
+  void printArgs()
+  {
+    print("Additionnal arguments of FasterRunReader :");
+    print();  
+    // print("-a [alignement_file]        : Loads the run-by-run calibration correction file");
+    // print("-n       [hits_number]        : Choose the number of hits to read inside a file (default: all)");
+    print("-i --in-memory                : [0;1], default 1: The ROOT file is written in memory then dumped, or written little by little.");
+    print("-nf      [nb_files_in_memory] : In merge mode : sets the maximum number of files to load at once");
+    print("--hits                        : Do not perform event building (skipped in --ref and --rf modes)");
+    print("--merge                       : merge the outputs");
+    print("--ref    [label]              : use a detector as time reference and build events around it (usefull for time shift calculations)");
+    print("--rf     [label]              : use a channel as downscaled pulse RF frequency, automatically extracted from the data");
+    // print("-m [threads_number]        : Choose the number of files to treat in multithread mode (default: 1)");
+    print("-T [time_window]              : Not used if --hits activated. Sets the event building time window in ns (default : 2000 ns). In RF mode : number of pulses (TODO!)");
+    print();
+  };
+  bool processArg(Arguments & args)
+  {
+    try{
+      if (args.size() == 0) 
+      {
+        RunReader::printArgs();
+        printArgs();
+        return false;
+      }
+  
+      else while(args.next()) if (!RunReader::processArg(args))
+      {
+             if (args == "-nf"       ) setMaxFilesMemory(args.load<int>());
+        else if (args == "--hits"    ) buildEvents(false);
+        else if (args == "--merge"   ) setMerge(true);
+        else if (args == "--rf"      ) setRF(args.load<Label>());
+        else if (args == "--ref"     ) setRef(args.load<Label>());
+        else if (args == "-T"        ) setTimeWindow(static_cast<Time>(args.load<double>()));
+        else if (args == "-i" || args == "in-memory") FasterRootInterface::setTreeInMemory(true);
+        else Colib::throw_error(args.getArg() + " unkown parameter");
+      }
+    }
+    catch(Arguments::MissingArg & error)
+    {
+      error.print();
+      _exit(43);
+    }
+    if (p_files.empty())
+    {
+      error("No files !");
+      return false;
+    }
+    setTimeShifts(std::move(RunReader::p_timeshift));
+    setCalibration(std::move(RunReader::p_calib));
+    setMaxHits(p_nbMaxHits);
+    setTotMaxHits(p_nbTotMaxHits);
+    return true;
+  }
+  
+  FasterRunReader(Arguments & args) : RunReader()
+  {
+    if (!processArg(args)) Colib::throw_error("Argument processing failed !");
+  }
+  
+  FasterRunReader(int argc, char** argv) : RunReader()
+  {
+    Arguments args(argc, argv);
+    if (!processArg(args)) Colib::throw_error("Argument processing failed !");
+  }
+
+  bool loadConfig(std::string config) noexcept override
+  {
+    config = "to_skip "+config;
+    auto argv = Colib::string_to_argv(config);
+    Arguments args(config.size()+1, argv);
+    auto const ret = processArg(args);
+    Colib::delete_argv(argv);
+    return ret;
+  }
+
+  // Interface with FasterRootInterface :
+  void setMaxHits       (int                 nb         ) {m_reader.setMaxHits     (nb)                ;}
+  void setTotMaxHits    (int                 nb         ) {m_reader.setTotMaxHits  (nb)                ;}
+  // void setHitTrigger    (HitTrigger          trigger    ) {m_reader.setHitTrigger  (trigger)           ;}
+  void setEventTrigger  (EventTrigger        trigger    ) {m_reader.setEventTrigger(trigger)           ;}
+  void setTimeWindow    (Time                time_window) {m_reader.setTimeWindow  (time_window)       ;}
+  void setTimeShifts    (std::string const & tsFile     ) {m_reader.loadTimeshifts (tsFile)            ;}
+  void setTimeShifts    (Timeshifts       && tshifts    ) {m_reader.loadTimeshifts (std::move(tshifts));}
+  void setCalibration   (Calibration      && calib      ) {m_reader.setCalibration (std::move(calib  ));}
+
+  // Other interface :
+  void setHitsBufferSize (size_t nbHits) {m_hitsBufferSize = nbHits;}
+  void setMaxFilesMemory(int nb) {m_maxFilesInMemory = nb;}
+  void setMerge(bool b = true) {m_merge = b;}
+  void setRef(Label refLabel)
+  {
+    m_useRef = true;
+    m_refLabel = refLabel;
+  }
+  void setRF(Label rfLabel)
+  {
+    m_useRF = true;
+    m_rfLabel = rfLabel;
+  }
+  void setNbRfPulses(int nb) {m_nbRFpulses = nb;}
+  void setRfShift(Time shift) {m_RFshift = shift;}
+  void buildEvents(bool b = true) {m_buildEvents = b;}
+
+  // Data processing :
+
+  static std::string renameOutputRef(std::string const & outputFile, Label m_refLabel) {
+    return Colib::removeExtension(outputFile)+"_ref_"+std::to_string(m_refLabel)+".root";
+  }
+
+  static std::string renameOutputRF(std::string const & outputFile) {
+    return Colib::removeExtension(outputFile)+"_rf.root";
+  }
+
+  void processData(std::string const & outFile)
+  {
+    try
+    {
+    #ifdef CoMT
+      if (Colib::MT::isKilled()) return;
+    #endif // CoMT
+      m_outputFile = outFile;
+      if (m_buildEvents)
+      {
+        printsln(Colib::removePath(m_reader.removePath()), Colib::nicer_double(m_reader.getTotHitsNb(), 1));
+      }
+           if (m_useRF)       m_reader.writeEventsWithRF (m_outputFile, m_rfLabel, m_RFshift, m_nbRFpulses);
+      else if (m_useRef)      m_reader.writeEventsWithRef(m_outputFile, m_refLabel);
+      else if (m_buildEvents) m_reader.writeEvents       (m_outputFile);
+      else                    m_reader.writeHits         (m_outputFile);
+    }
+    catch(const std::exception& e)
+    {
+      error("in", m_reader.getFilename(), ":");
+      error(e.what());
+    }
+    
+  }
+
+#if defined (CoMT) && defined (DEV)
+// Work in progress
+// Maintenant il faut inclure des pools de threads pour lire les données en serial mais traiter et écrire les données en parallèle
+  void processDataMT(std::string const & outFile)
+  {
+    if (!Colib::MT::isMasterThread()) return processData(outFile);
+
+    m_outputFile = outFile;
+    static thread_local RootInterface writer;
+    writer.setData(std::move(m_reader.data()));
+    if (m_useRF) 
+    {
+      m_outputFile = renameOutputRF(m_outputFile);
+      writer.writeEventsWithRF (m_outputFile, m_rfLabel);
+    }
+    else if (m_useRef) 
+    {
+      m_outputFile = renameOutputRef(m_outputFile, m_refLabel);
+      writer.writeEventsWithRef(m_outputFile, m_refLabel);
+    }
+    else if (m_buildEvents) writer.writeEvents       (m_outputFile);
+    else                    writer.writeHits         (m_outputFile);
+  }
+
+#endif // CoMT
+
+  std::string formatOutput(std::string const & rawOutput)
+  {
+         if (m_useRF ) return renameOutputRF (rawOutput);
+    else if (m_useRef) return renameOutputRef(rawOutput, m_refLabel);
+    else return rawOutput;
+  }
+
+  void run()
+  {
+    auto const & files   = RunReader::p_files;   // Aliasing for clarity
+    auto const & outPath = RunReader::p_outPath; // Aliasing for clarity
+
+    if (files.empty()) Colib::throw_error("No files");
+    std::string outFile;
+
+    if (m_merge)
+    {
+      outFile = Colib::removeLastPart(Colib::removePath(files[0]), '_')+".root";
+      
+      if (!checkOutput(formatOutput(outPath + outFile))) return;
+
+    #ifdef CoMT
+      if (Colib::MT::isKilled()) return;
+
+  #ifdef DEV
+      auto my_producer = [&]() mutable -> std::optional<std::vector<Hit>> {
+        if (m_reader.loadDatafiles(files, m_maxFilesInMemory)) return m_reader.data() ;
+        else return std::nullopt;
+      };
+      auto my_consumer = [&](std::vector<Hit> && data) {
+        static thread_local RootInterface writer;
+        auto thread_filename = outPath + Colib::removeExtension(outFile)+std::to_string(Colib::MT::getThreadIndex())+".root";
+        writer.setData(std::move(data));
+        if (m_useRF) 
+        {
+          thread_filename = renameOutputRF(thread_filename);
+          writer.writeEventsWithRF (thread_filename, m_rfLabel);
+        }
+        else if (m_useRef) 
+        {
+          thread_filename = renameOutputRef(thread_filename, m_refLabel);
+          writer.writeEventsWithRef(thread_filename, m_refLabel);
+        }
+        else if (m_buildEvents) writer.writeEvents       (thread_filename);
+        else                    writer.writeHits         (thread_filename);
+      };
+
+      Colib::MT::parallelise_stream(my_producer, my_consumer);
+  #endif // DEV
+    #endif // CoMT
+
+      if (m_hitsBufferSize < Colib::max<size_t>()) while(m_reader.loadDatafilesBuffer(files, 500_ki, m_maxFilesInMemory)) processData(formatOutput(outPath + "temp_" + outFile));
+      else while(m_reader.loadDatafiles(files, m_maxFilesInMemory)) processData(formatOutput(outPath + "temp_" + outFile));
+    #ifdef CoMT
+      if (Colib::MT::isKilled()) return;
+    #endif //CoMT
+      std::rename(formatOutput(outPath + "temp_" + outFile).c_str(), formatOutput(outPath + outFile).c_str());
+      m_outputFile = formatOutput(outPath + outFile);
+    }
+    else
+    {
+      for (auto const & dataFile : files)
+      {
+        outFile = outPath + Colib::removeLastPart(Colib::removePath(files[0]), '_')+".root";
+        if(!checkOutput(outFile)) return;
+        m_reader.loadDatafile(dataFile);
+        processData(outFile);
+      }
+    }
+  }
+
+  auto getOutputFilename() const {return (m_merge) ? m_outputFile : "No merged output";}
+  void addFileBlacklist(std::string const & file)
+  {
+    m_fileBlacklist.push_back(file);
+  }
+  void addDetectorBlacklist(Label label)
+  {
+    m_detectorBlacklist.push_back(label);
+  }
+
+  void setBlacklists()
+  {
+    if (0 < m_detectorBlacklist.size()) m_reader.setLabelBlacklist(m_detectorBlacklist);
+  }
+
+protected:
+
+  FasterRootInterface m_reader;
+
+  std::string m_outputFile;
+  
+  // Other convenience attributes:
+  std::vector<std::string> m_fileBlacklist;
+  std::vector<Label> m_detectorBlacklist;
+  size_t m_hitsBufferSize{Colib::max<size_t>()};
+  int m_maxFilesInMemory{1};
+  bool m_buildEvents = true;
+  bool m_merge = false;
+  bool m_useRef = false;
+  bool m_useRF = false;
+  int m_nbRFpulses = 1;
+  Time m_RFshift = 50_ns;
+  Label m_refLabel = 252;
+  Label m_rfLabel = 251;
+};
