@@ -121,6 +121,8 @@ namespace Caen1725
         if (Colib::Terminal::getRows()-2 < ++nbLinesWritten) 
         {
           nbLinesWritten = 0;
+        auto const & nbLines = Colib::Terminal::getRows()-2;
+        if (!stop && (m_cursor) % nbLines == 0) {
           println("Press enter for continuing, enter q for stopping (or Ctrl+C of course) ");
           std::getline(std::cin, user_input);
           if (user_input == "q") break;
@@ -133,6 +135,8 @@ namespace Caen1725
         if (Colib::Terminal::getRows()-2 < ++nbLinesWritten) 
         {
           nbLinesWritten = 0;
+        auto const & nbLines = Colib::Terminal::getRows()-2;
+        if (!stop && (m_cursor) % nbLines == 0) {
           println("Press enter for continuing, enter q for stopping (or Ctrl+C of course) ");
           std::getline(std::cin, user_input);
           if (user_input == "q") break;

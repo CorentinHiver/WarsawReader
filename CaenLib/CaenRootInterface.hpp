@@ -1,5 +1,4 @@
-#ifndef CAENROOTREADER_HPP
-#define CAENROOTREADER_HPP
+#pragma once
 
 #include "RootHit.hpp"
 #include "CaenReaderBase.hpp"
@@ -135,6 +134,7 @@ namespace Caen1725
     void handleTraces(bool b) {m_rootHit.handleTraces(b);}
 
     auto & getHit() {return m_rootHit;}
+    auto const & nbHits() const {return m_nb_hits;}
 
   private:
     void makePureVirtual(bool isVirtual = false) override {print(isVirtual);}; // To make this class real (printed to get rid of the warning)
@@ -154,5 +154,3 @@ namespace Caen1725
     // std::vector<bool> m_glabelReadTraces; // TODO if interesting
   };
 };
-
-#endif //CAENROOTREADER_HPP

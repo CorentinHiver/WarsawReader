@@ -70,9 +70,9 @@ namespace Caen1725
     
     ~Hit() {}
 
-    using Board1725 = Caen1725::BoardAggregate;
+    using Board1725   = Caen1725::BoardAggregate;
     using Channel1725 = Caen1725::ChannelAggregate;
-    using Event1725 = Caen1725::CaenEvent;
+    using Event1725   = Caen1725::CaenEvent;
 
     /**
      * @brief Loads the buffer in the hit. You can use skipTrace to choose hit-by-hit if trace analysis is needed (usefull to skip trace analysis only for some detectors)

@@ -33,8 +33,8 @@ namespace Caen1725
       outTree->Branch("rel_time"     , &rel_time     );
       outTree->Branch("adc"          , &adc          );
       outTree->Branch("qlong"        , &qlong        );
-      if (Hit::handle_traces) outTree->Branch("trace", &trace);
       outTree->Branch("wfa_success"  , &wfa_success  );
+      if (Hit::handle_traces) outTree->Branch("trace", &trace);
       
       return outTree;
     }
@@ -53,8 +53,8 @@ namespace Caen1725
       inTree->SetBranchAddress("rel_time"      , &rel_time     );
       inTree->SetBranchAddress("adc"           , &adc          );
       inTree->SetBranchAddress("qlong"         , &qlong        );
-      if (Hit::handle_traces) inTree->SetBranchAddress("trace", &trace);
       inTree->SetBranchAddress("wfa_success"   , &wfa_success  );
+      if (Hit::handle_traces && tree->GetBranch("trace")) inTree->SetBranchAddress("trace", &trace);
       
       return inTree;
     }
