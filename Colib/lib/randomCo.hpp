@@ -6,7 +6,7 @@
 #include <thread>
 
 #ifndef Cpp20
-#define Cpp20 (__cplusplus >= 202002L)
+  #define Cpp20 (__cplusplus >= 202002L)
 #endif //Cpp20
 
 std::random_device rd;
@@ -79,7 +79,7 @@ namespace randomCo
     return distribution(generator);
   }
 
-#ifdef Cpp20
+#if Cpp20
   /// @brief This is NOT true pseudo-random generation, but works like a charm for ADC to float convertion
   /// @tparam n_pow_size MUST be < 20 to keep pleasant compilation time 
   template<size_t n_pow_size = 16>
@@ -130,5 +130,5 @@ namespace randomCo
   }
 #endif // Not in interactive ROOT session
 
-#endif //CPP20
+#endif // Cpp20
 }

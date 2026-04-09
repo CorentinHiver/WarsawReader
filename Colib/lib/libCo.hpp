@@ -1232,14 +1232,14 @@ namespace Colib
    * constexpr auto squares = LUT<10> ([](int i) { return i*i; }); 
    * 
    */
-#if defined(Cpp20)
+#if Cpp20
 
-  template< class T > using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+  // template< class T > using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 
   template <std::size_t size, class Generator>
   constexpr auto LUT(Generator g)
   {
-    using type = remove_cvref_t<decltype(g(std::size_t{0}))>;
+    using type = std::remove_cvref_t<decltype(g(std::size_t{0}))>;
     std::array<type, size> lut;
     for (std::size_t i = 0; i < size; ++i) lut[i] = g(i);
     return lut;
@@ -1253,7 +1253,7 @@ namespace Colib
     return vec;
   }
 
-#elif defined(Cpp17)
+#elif Cpp14
   
   namespace detail 
   {
@@ -1269,9 +1269,9 @@ namespace Colib
   template <std::size_t size, class Generator>
   constexpr auto LUT(Generator&& g) {return detail::LUT_impl(std::forward<Generator>(g), std::make_index_sequence<size>{});}
 
-#endif // defined(Cpp20) || defined(Cpp17)
+#endif // Cpp20 || Cpp17
 
-#if defined(Cpp20) //|| defined(Cpp17)
+#if Cpp20 || Cpp17
 
   template <class T, std::size_t size>
   constexpr size_t lutEntries(std::array<T, size> const & lut) noexcept
@@ -1332,7 +1332,7 @@ namespace Colib
   }
 
 
-#endif // defined(Cpp20) || defined(Cpp17)
+#endif // Cpp20 || Cpp17
 
   /// @brief faster binary_search than std::binary_search, works only in ordered arrays
   /// @attention Works only in ordered arrays

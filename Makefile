@@ -1,6 +1,6 @@
 CXX := g++
 STD := -std=c++17
-CXXFLAGS := -Wall -Wextra $(STD)
+CXXFLAGS := -Wall -Wextra
 OPT := -O3 -march=native
 DEPFLAGS := -MD -MP
 
@@ -23,7 +23,7 @@ $(TARGETS): %: $(BUILD_DIR)/%.o
 
 # Compile with explicit dependency file location
 $(BUILD_DIR)/%.o: %.cpp | $(BUILD_DIR)
-	$(CXX) -c $< -o $@ $(CXXFLAGS) $(OPT) $(ROOTCFLAGS) \
+	$(CXX) -c $< -o $@ $(ROOTCFLAGS) $(CXXFLAGS) $(STD) $(OPT) \
 	$(DEPFLAGS) -MF $(BUILD_DIR)/$*.d -MT $@
 
 # Ensure directory exists
