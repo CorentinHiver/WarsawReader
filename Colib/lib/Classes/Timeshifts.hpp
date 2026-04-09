@@ -121,11 +121,8 @@ void Timeshifts::write(std::string const & fullpath, std::string const & name)
 {
   m_outPath = fullpath;
   system(("mkdir -p "+m_outPath).c_str());
-  // Colib::mkdir(m_outPath);
 
-  std::string outData = m_outPath + name;
-  // Colib::setExtension(outData, ".dT");
-  Colib::removeExtension(outData)+".dT";
+  std::string outData = Colib::removeExtension(m_outPath + name)+".dT";
 
   std::ofstream outTimeshiftsFile(outData);
   

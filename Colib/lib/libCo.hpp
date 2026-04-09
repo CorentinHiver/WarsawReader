@@ -1267,7 +1267,7 @@ namespace Colib
 
 #endif // defined(Cpp20) || defined(Cpp17)
 
-#if defined(Cpp20) || defined(Cpp17)
+#if defined(Cpp20) //|| defined(Cpp17)
 
   template <class T, std::size_t size>
   constexpr size_t lutEntries(std::array<T, size> const & lut) noexcept
