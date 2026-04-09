@@ -1,5 +1,5 @@
 #pragma once
-#include "../Colib/libCo.hpp"
+#include "../Colib/lib/libCo.hpp"
 
 template <class Trace>
 Trace& getBaseline(Trace & trace, size_t nb_samples_baseline)
@@ -12,7 +12,7 @@ Trace& getBaseline(Trace & trace, size_t nb_samples_baseline)
 template <class Trace>
 Trace& removeBaseline(Trace & trace, size_t nb_samples_baseline)
 {
-  getBaseline(trace, nb_samples_baseline);
+  auto baseline = getBaseline(trace, nb_samples_baseline);
   for (auto & sample : trace) sample -= baseline;
 }
 
@@ -28,7 +28,7 @@ double getRiseTimeBins(Trace & trace, double start = 0.1, double stop = 0.9, dou
   auto [min, max] = minAndMax(trace);
   auto const start_threshold = min-baseline;
   auto const stop_threshold = max-baseline;
-  bool start{}, stop{};
+  bool start_bin{}, stop_bin{};
   size_t bin_start{}, bin_stop{};
   for (size_t bin = 0; bin<trace.size(); ++bin)
   {

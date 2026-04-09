@@ -33,14 +33,10 @@ namespace Caen1725
       createBranchArray(tree, "time"         , &time         , "mult");
       createBranchArray(tree, "rel_time"     , &rel_time     , "mult");
       createBranchArray(tree, "wfa_success"  , &wfa_success  , "mult");
-      if (Event::handle_traces) createBranchArray(tree, "trace"  , &traces  , "mult");
+      // if (Event::m_handle_traces) tree->Branch("trace", &traces);
     }
 
-<<<<<<< Updated upstream
     TTree * readFrom(TTree* tree, bool reset = true)
-=======
-    TTree * readFrom(TTree* tree,)
->>>>>>> Stashed changes
     {
       if (reset) tree->ResetBranchAddresses();
       
@@ -56,12 +52,12 @@ namespace Caen1725
       tree->SetBranchAddress("time"         , &time         );
       tree->SetBranchAddress("rel_time"     , &rel_time     );
       tree->SetBranchAddress("wfa_success"  , &wfa_success  );
-<<<<<<< Updated upstream
-
-=======
-      if (Event::handle_traces) tree->SetBranchAddress(tree, "trace"  , &traces  , "mult");
+      // if (tree->GetBranch("trace")) 
+      // {
+      //   Event::m_handle_traces = true;
+      //   tree->SetBranchAddress("trace", &traces);
+      // }
       
->>>>>>> Stashed changes
       return tree;
     }
 

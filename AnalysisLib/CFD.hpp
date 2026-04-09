@@ -35,11 +35,11 @@ protected:
   inline static constexpr bool is_floating() noexcept { return false;}
 
   // Console colors
-  namespace Color
+  struct Color
   {
     static constexpr const char* RED   = "\u001b[31m";
     static constexpr const char* RESET = "\u001b[0m" ;
-  }
+  };
   
 public:
   /// @brief Default constructor

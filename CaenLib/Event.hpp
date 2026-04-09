@@ -24,10 +24,11 @@ namespace Caen1725
     Timestamp time          [maxSize];
     Time_rel  rel_time      [maxSize];
     Bool_t    wfa_success   [maxSize];
+    Trace     traces        [maxSize];
         
-    Event(bool handle_traces = false)
+    Event(bool handle_traces = false) : m_handle_traces(handle_traces)
     {
-      if (handle_traces) Colib::throw_error("Caen1725::Event can't handle traces (TBD)");
+      // if (handle_traces) Colib::throw_error("Caen1725::Event can't handle traces (TBD)");
     }
 
     virtual ~Event()
@@ -49,14 +50,13 @@ namespace Caen1725
       time         [i] = hit.time          ;
       rel_time     [i] = ((i == 0) ? 0 : static_cast<Int_t>(hit.time - time[0]));
       wfa_success  [i] = hit.wfa_success;
-      traces       [i] = hit.trace;
-
+      if (!hit.trace.empty()) traces [i] = hit.trace;
       ++mult;
     }
 
-    void emplace_back(Hit && hit) noexcept
+    void push_back(Hit && hit) noexcept
     {
-      if (maxEvt <= mult) return;
+      if (maxSize <= static_cast<size_t>(mult)) return;
 
       const auto i = mult; // In principle, this helps the compiler optimize
       label        [i] = hit.label         ;
@@ -69,20 +69,57 @@ namespace Caen1725
       time         [i] = hit.time          ;
       rel_time     [i] = ((i == 0) ? 0 : static_cast<Int_t>(hit.time - time[0]));
       wfa_success  [i] = hit.wfa_success;
-      traces       [i] = std::move(hit.trace);
-
+      if (!hit.trace.empty()) traces [i] = std::move(hit.trace);
       ++mult;
-
-      hit.clear();
     }
 
-    void clear() {mult = 0;}
+    // void emplace_back(Hit && hit) noexcept
+    // {
+    //   if (maxSize <= static_cast<size_t>(mult)) return;
+
+    //   const auto i = mult; // In principle, this helps the compiler optimize
+    //   label        [i] = hit.label         ;
+    //   board_ID     [i] = hit.board_ID      ;
+    //   channel_ID   [i] = hit.channel_ID    ;
+    //   subchannel_ID[i] = hit.subchannel_ID ;
+    //   adc          [i] = hit.adc           ;
+    //   qlong        [i] = hit.qlong         ;
+    //   caen_time    [i] = hit.caen_time     ;
+    //   time         [i] = hit.time          ;
+    //   rel_time     [i] = ((i == 0) ? 0 : static_cast<Int_t>(hit.time - time[0]));
+    //   wfa_success  [i] = hit.wfa_success;
+    //   // traces       .emplace_back(std::move(hit.trace));
+
+    //   ++mult;
+
+    //   hit.clear();
+    // }
+
+    void clear() 
+    {
+      // for (int hit_i = 0; hit_i<mult; ++hit_i) delete (traces[hit_i]);
+      mult = 0;
+    }
     
     auto size () const {return static_cast<size_t>(mult);}
     auto const & multiplicity () const {return mult;}
 
     Hit getHit(size_t const i) const
     {
+      // if (traces[i]) return Hit(
+      //   label         [i],
+      //   board_ID      [i],
+      //   channel_ID    [i],
+      //   subchannel_ID [i],
+      //   adc           [i],
+      //   qlong         [i],
+      //   caen_time     [i],
+      //   time          [i],
+      //   rel_time      [i],
+      //   wfa_success   [i],
+        // traces[i]
+      // );
+      // else 
       return Hit(
         label         [i],
         board_ID      [i],
@@ -93,8 +130,7 @@ namespace Caen1725
         caen_time     [i],
         time          [i],
         rel_time      [i],
-        wfa_success   [i],
-        traces        [i]
+        wfa_success   [i]
       );
     }
 
@@ -106,30 +142,18 @@ namespace Caen1725
     /// @brief More user-friendly interface : copies the data inside a vector of hits.
     /// @details This method can be very expensive in tight loops, but can be afforded in case of heavy data analysis.
     /// You really should avoid it in case of trace handling
-    std::vector<Hit> getHits()
-    {
-      static thread_local std::vector<Hit> hits; // creating a static vector allows creating it only once per thread, avoiding systematic re-allocation
-      hits.clear();
-      hits.reserve(mult);
-      for (int hit_i = 0; hit_i<mult; ++hit_i) hits.push_back(getHit(hit_i));
-      return hits;
-    }
+    // std::vector<Hit> getHits()
+    // {
+    //   static thread_local std::vector<Hit> hits; // creating a static vector allows creating it only once per thread, avoiding systematic re-allocation
+    //   hits.clear();
+    //   hits.reserve(mult);
+    //   for (int hit_i = 0; hit_i<mult; ++hit_i) hits.emplace_back(getHit(hit_i));
+    //   return hits;
+    // }
 
     constexpr auto dT(int index1, int index2) const noexcept {return Long64_t(time[index1]-time[index2]);}
-
-    Long64_t evtNb = 0;
-    Int_t    mult  = 0;
-    constexpr static inline Int_t maxEvt = 1000;
-    UInt_t    label         [maxEvt];
-    UShort_t  board_ID      [maxEvt];
-    UChar_t   channel_ID    [maxEvt];
-    UChar_t   subchannel_ID [maxEvt];
-    Int_t     adc           [maxEvt];
-    Int_t     qlong         [maxEvt];
-    ULong64_t caen_time     [maxEvt];
-    ULong64_t time          [maxEvt];
-    Int_t     rel_time      [maxEvt];
-    Bool_t    wfa_success   [maxEvt];
-    Trace     traces        [maxEvt];
+    
+  protected:
+    bool m_handle_traces = false;
   };
 }

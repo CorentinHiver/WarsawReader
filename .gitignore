@@ -2,8 +2,9 @@
 *.caendat
 *.o
 *.d
-build
+build/*
 caen2root
 studyCFD
 writeTraces
 rootReaderExample
+optimizeCFD

@@ -20,6 +20,7 @@ namespace Caen1725
   template<typename T> using Trace_t = std::vector<T>;
 
   using Trace     = Trace_t<uint16_t> ;
+  using Traces    = std::vector<Trace>;
   using DP1_t     = Trace_t<bool>     ;
   using Label     = UInt_t            ;
   using BoardID   = UShort_t          ;
@@ -267,8 +268,8 @@ namespace Caen1725
       ULong64_t _timestamp,
       ULong64_t _time,
       Int_t     _rel_time,
-      Trace     && _trace,
-      Bool_t    _wfa_success
+      Bool_t    _wfa_success,
+      Trace     && _trace
     ) noexcept : 
       label         (_label        ),
       board_ID      (_board_ID     ),
@@ -281,6 +282,37 @@ namespace Caen1725
       rel_time      (_rel_time     ),
       wfa_success   (_wfa_success  ),
       trace         (std::move(_trace))
+    {
+      if (!_trace.empty())
+      {
+        handleTraces(true);
+      }
+    }
+
+    Hit (
+      UInt_t    _label,
+      UShort_t  _board_ID,
+      UShort_t  _channel_ID,
+      UShort_t  _subchannel_ID,
+      Int_t     _adc,
+      Int_t     _qlong,
+      ULong64_t _timestamp,
+      ULong64_t _time,
+      Int_t     _rel_time,
+      Bool_t    _wfa_success,
+      Trace     _trace
+    ) noexcept : 
+      label         (_label        ),
+      board_ID      (_board_ID     ),
+      channel_ID    (_channel_ID   ),
+      subchannel_ID (_subchannel_ID),
+      adc           (_adc          ),
+      qlong         (_qlong        ),
+      caen_time     (_timestamp    ),
+      time          (_time         ),
+      rel_time      (_rel_time     ),
+      wfa_success   (_wfa_success  ),
+      trace         (_trace)
     {
       if (!_trace.empty())
       {

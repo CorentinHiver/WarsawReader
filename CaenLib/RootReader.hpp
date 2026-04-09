@@ -54,7 +54,7 @@ namespace Caen1725
     TTree* connectFile(std::string const & filename)
     {
       m_file = TFile::Open(filename.c_str(), "READ");
-      if (!m_file)  {error("RootReader::RootReader(std::string filename) : Can't read m_file" + filename); return nullptr;}
+      if (!m_file)  {error("RootReader::RootReader(std::string filename) : Can't read file " + filename); return nullptr;}
       return connectFile(m_file);
     }
         
@@ -65,6 +65,7 @@ namespace Caen1725
       if (m_cursor < m_size)
       {
         m_tree->GetEntry(m_cursor++);
+        if (m_plain) m_hit.manageInputTrace();
         return true;
       }
       return false; 
@@ -74,13 +75,13 @@ namespace Caen1725
     /// @return false if last event
     bool readNextEvent()
     {
-      // In plain mode, a TTree entry is a single hit. This loop is therefor used to reconstruct the full event
+      // In plain mode, a TTree entry is a single hit. This loop is therefore used to reconstruct the full event
       if (m_plain)
       {
         m_event.clear();
         bool continuing = false;
         while((continuing = readNextEntry()) && m_event.size() < size_cast(m_evtMult))
-          m_event.push_back(m_hit);
+          m_event.push_back(std::move(m_hit));
         return continuing;
       }
       // In event mode, a TTree entry is already an event
@@ -115,12 +116,13 @@ namespace Caen1725
     void Scan(bool scanHits = false)
     {
       std::string user_input;
-      int nbLinesWritten = 0;
+      // int nbLinesWritten = 0;
+      bool stop = false;
       if (m_plain) while((scanHits) ? this->readNextEntry() : this -> readNextEvent())
       {
-        if (Colib::Terminal::getRows()-2 < ++nbLinesWritten) 
-        {
-          nbLinesWritten = 0;
+        // if (Colib::Terminal::getRows()-2 < ++nbLinesWritten) 
+        // {
+        //   nbLinesWritten = 0;
         auto const & nbLines = Colib::Terminal::getRows()-2;
         if (!stop && (m_cursor) % nbLines == 0) {
           println("Press enter for continuing, enter q for stopping (or Ctrl+C of course) ");
@@ -132,9 +134,9 @@ namespace Caen1725
       }
       else while(this -> readNextEvent())
       {
-        if (Colib::Terminal::getRows()-2 < ++nbLinesWritten) 
-        {
-          nbLinesWritten = 0;
+        // if (Colib::Terminal::getRows()-2 < ++nbLinesWritten) 
+        // {
+        //   nbLinesWritten = 0;
         auto const & nbLines = Colib::Terminal::getRows()-2;
         if (!stop && (m_cursor) % nbLines == 0) {
           println("Press enter for continuing, enter q for stopping (or Ctrl+C of course) ");

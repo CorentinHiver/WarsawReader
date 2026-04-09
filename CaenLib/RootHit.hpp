@@ -13,6 +13,7 @@ namespace Caen1725
   class RootHit : public Hit
   {
   public:
+    Trace* inTrace = nullptr; // This is used to read from the TTree
     
     /// @brief Inherit constructors from Hit
     template<class... ARGS>
@@ -54,9 +55,17 @@ namespace Caen1725
       inTree->SetBranchAddress("adc"           , &adc          );
       inTree->SetBranchAddress("qlong"         , &qlong        );
       inTree->SetBranchAddress("wfa_success"   , &wfa_success  );
-      if (Hit::handle_traces && tree->GetBranch("trace")) inTree->SetBranchAddress("trace", &trace);
-      
+      if (Hit::handle_traces && inTree->GetBranch("trace")) 
+      {
+        inTrace = new Trace;
+        inTree->SetBranchAddress("trace", &inTrace);
+      }
       return inTree;
+    }
+    
+    void manageInputTrace()
+    {
+      if (inTrace) trace = std::move(*(inTrace));
     }
 
     TTree * readFrom(TFile * file, std::string const & treename = "HIL")
@@ -67,18 +76,18 @@ namespace Caen1725
       return tree;
     }
     
-    /// @brief Returns three graphs : ret = {trace, DP1, Trigger}
+    /// @brief Used only when reading .caendat data !! Returns three graphs : ret = {trace, DP1, Trigger}
     std::vector<TGraph*> getTracesGraphs(size_t nb_samples_baseline = 0) const
     {
       std::vector<TGraph*> graphs;
       if (!handle_traces) {error("Trace not handled"); return graphs;}
       if (trace.empty()) {error("No trace"); return graphs;}
-      if (trace.size() == 0) {error("trace has no samples"); return graphs;}
+      if (trace.size() == 0) {error("Trace has no samples"); return graphs;}
 
       double baseline = 0;
       if (nb_samples_baseline != 0)
       {
-        if (trace.size() < nb_samples_baseline) {error("trace has not enough samples for baseline(",nb_samples_baseline," samples required)"); return graphs;}
+        if (trace.size() < nb_samples_baseline) {error("Trace has not enough samples for baseline(",nb_samples_baseline," samples required)"); return graphs;}
         for (size_t sample_i = 0; sample_i<nb_samples_baseline; ++sample_i) baseline += trace.at(sample_i);
         baseline /= nb_samples_baseline;
       }
@@ -108,17 +117,18 @@ namespace Caen1725
     }
 
     /// @brief Returns the graph of the trace
-    TGraph* getTraceGraph(size_t nb_samples_baseline = 0) const
+    TGraph* getTraceGraph(size_t nb_samples_baseline = 0)
     {
       if (!handle_traces) {error("Trace not handled"); return nullptr;}
+      manageInputTrace();
       if (trace.empty()) {error("No trace"); return nullptr;}
-      if (trace.size() == 0) {error("trace has no samples"); return nullptr;}
+      if (trace.size() == 0) {error("Trace has no samples"); return nullptr;}
 
       auto const & N = trace.size();
       double baseline = 0;
       if (0 < nb_samples_baseline)
       {
-        if (trace.size() < nb_samples_baseline) {error("trace has not enough samples for baseline(",nb_samples_baseline," samples required)"); return nullptr;}
+        if (trace.size() < nb_samples_baseline) {error("Trace has not enough samples for baseline(",nb_samples_baseline," samples required)"); return nullptr;}
         for (size_t sample_i = 0; sample_i<nb_samples_baseline; ++sample_i) baseline += trace.at(sample_i) - baseline;
         baseline /= nb_samples_baseline;
       }
@@ -130,7 +140,7 @@ namespace Caen1725
       return graph;
     }
 
-    /// @brief Draws and returns three graphs : ret = {trace, DP1, Trigger}
+    /// @brief DEPRECATED ?? Draws and returns three graphs : ret = {trace, DP1, Trigger}
     std::vector<TGraph*> drawTraces(std::string options = "") const
     {
       std::vector<TGraph*> graphs;
@@ -146,7 +156,7 @@ namespace Caen1725
     }
 
     /// @brief Draws and returns the graph of the trace
-    TGraph* drawTrace(std::string options = "") const
+    TGraph* drawTrace(std::string options = "")
     {
       TGraph* graph = nullptr;
       if (!handle_traces) {error("Trace not handled"); return graph;}
