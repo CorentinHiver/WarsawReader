@@ -73,31 +73,8 @@ namespace Caen1725
       ++mult;
     }
 
-    // void emplace_back(Hit && hit) noexcept
-    // {
-    //   if (maxSize <= static_cast<size_t>(mult)) return;
-
-    //   const auto i = mult; // In principle, this helps the compiler optimize
-    //   label        [i] = hit.label         ;
-    //   board_ID     [i] = hit.board_ID      ;
-    //   channel_ID   [i] = hit.channel_ID    ;
-    //   subchannel_ID[i] = hit.subchannel_ID ;
-    //   adc          [i] = hit.adc           ;
-    //   qlong        [i] = hit.qlong         ;
-    //   caen_time    [i] = hit.caen_time     ;
-    //   time         [i] = hit.time          ;
-    //   rel_time     [i] = ((i == 0) ? 0 : static_cast<Int_t>(hit.time - time[0]));
-    //   wfa_success  [i] = hit.wfa_success;
-    //   // traces       .emplace_back(std::move(hit.trace));
-
-    //   ++mult;
-
-    //   hit.clear();
-    // }
-
     void clear() 
     {
-      // for (int hit_i = 0; hit_i<mult; ++hit_i) delete (traces[hit_i]);
       mult = 0;
     }
     
