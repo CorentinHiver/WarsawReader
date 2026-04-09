@@ -206,7 +206,7 @@ namespace Colib
   template <typename T>
 std::string nicer_seconds(T time, int nb_decimals = 3)
 {
-    static_assert(std::is_floating_point_v<T>, "nicer_seconds expects floating-point type");
+    static_assert(std::is_floating_point<T>::vaLue, "nicer_seconds expects floating-point type");
 
     if (time < 0.0) {
         return "-" + nicer_seconds(-time, nb_decimals);
@@ -839,7 +839,7 @@ namespace Colib
   struct Point3D {double x, y, z;};
 
   double distance(Point const & p1, Point const & p2) {return std::hypot(p1.x - p2.x, p1.y - p2.y);}
-  double distance(Point3D const & p1, Point3D const & p2) {return std::hypot(p1.x - p2.x, p1.y - p2.y, p1.z - p2.z);}
+  double distance(Point3D const & p1, Point3D const & p2) {return std::hypot(std::hypot(p1.x - p2.x, p1.y - p2.y), p1.z - p2.z);}
 
   Point rotate(double x, double y, double angle) 
   {
@@ -1092,6 +1092,7 @@ namespace Colib
   template<typename Map>
   auto unpack(const Map& input)
   {
+    // On récupère les types de base proprement
     using K = typename Map::key_type;
     using V = typename Map::mapped_type;
 
@@ -1103,11 +1104,11 @@ namespace Colib
 
     for (const auto& [k, v] : input)
     {
-      keys.emplace_back(k);
-      values.emplace_back(v);
+        keys.push_back(k);
+        values.push_back(v);
     }
 
-    return std::pair{std::move(keys), std::move(values)};
+    return std::pair(keys, values); 
   }
 }
 
@@ -1233,6 +1234,8 @@ namespace Colib
    */
 #if defined(Cpp20)
 
+  template< class T > using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+
   template <std::size_t size, class Generator>
   constexpr auto LUT(Generator g)
   {
@@ -1281,14 +1284,14 @@ namespace Colib
  template <class T, std::size_t size, class... Arrays>
   constexpr size_t lutsEntries_sum(const std::array<T, size>& first, const Arrays&... rest) noexcept
   {
-    static_assert((std::is_same_v<Arrays, std::array<T, size>> && ...), "All LUTs must have same type and size");
+    static_assert((std::is_same<Arrays, std::array<T, size>>::value && ...), "All LUTs must have same type and size");
     return lutEntries(first) + (lutEntries(rest) + ... + size_t{0});
   }
 
   template <class T, std::size_t size, class... Arrays>
   constexpr size_t lutsEntries_OR(const std::array<T, size>& first, const Arrays&... rest) noexcept
   {
-    static_assert((std::is_same_v<Arrays, std::array<T, size>> && ...), "All LUTs must have same type and size");
+    static_assert((std::is_same<Arrays, std::array<T, size>>::value && ...), "All LUTs must have same type and size");
     size_t ret = 0;
     for (std::size_t i = 0; i < size; ++i) if ((first[i] != T{}) || ((rest[i] != T{}) || ...)) ++ret;
     return ret;
@@ -1297,7 +1300,7 @@ namespace Colib
   template <class T, std::size_t size, class... Arrays>
   constexpr size_t lutsEntries_AND(const std::array<T, size>& first, const Arrays&... rest) noexcept
   {
-    static_assert((std::is_same_v<Arrays, std::array<T, size>> && ...), "All LUTs must have same type and size");
+    static_assert((std::is_same<Arrays, std::array<T, size>>::value && ...), "All LUTs must have same type and size");
     size_t ret = 0;
     for (std::size_t i = 0; i < size; ++i) if ((first[i] != T{}) && ((rest[i] != T{}) && ...)) ++ret;
     return ret;
@@ -1306,7 +1309,7 @@ namespace Colib
   template <std::size_t size, class... Arrays>
   constexpr bool lut_OR(std::size_t index, const std::array<bool, size>& first, const Arrays&... rest) noexcept
   {
-    static_assert((std::is_same_v<Arrays, std::array<bool, size>> && ...), "All LUTs must be std::array<bool, size>");
+    static_assert((std::is_same<Arrays, std::array<bool, size>>::value && ...), "All LUTs must be std::array<bool, size>");
     if (index >= size) return false;
     return first[index] || (rest[index] || ...);
   }
@@ -1314,7 +1317,7 @@ namespace Colib
   template <std::size_t size, class... Arrays>
   constexpr bool lut_AND(std::size_t index, const std::array<bool, size>& first, const Arrays&... rest) noexcept
   {
-    static_assert((std::is_same_v<Arrays, std::array<bool, size>> && ...), "All LUTs must be std::array<bool, size>");
+    static_assert((std::is_same<Arrays, std::array<bool, size>>::value && ...), "All LUTs must be std::array<bool, size>");
     if (index >= size) return false;
     return first[index] && (rest[index] && ...);
   }

@@ -472,7 +472,7 @@ std::vector<T>& fillSorted(std::vector<T> & to_fill, std::vector<T> const & fill
   /// @brief Removes instances of blacklisted elements in a list. Elements must have a comparison operator ==.
   /// @return The number of removed entries
   template <class T>
-  bool removeBlacklist(std::vector<T> & list, std::vector<T> const & blacklist)
+  void removeBlacklist(std::vector<T> & list, std::vector<T> const & blacklist)
   {
     std::vector<int> ids;
     int offset = 0;
