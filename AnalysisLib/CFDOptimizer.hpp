@@ -1,8 +1,9 @@
 #pragma once
 
-#include "libCo.hpp"
+#include "../Colib/lib/libCo.hpp"
 #include "TH2F.h"
 #include "TH3F.h"
+#include "TF1.h"
 #include "../CaenLib/RootHit.hpp"
 #include "TraceAnalysis.hpp"
 #include "CFD.hpp"
@@ -147,10 +148,10 @@ namespace Caen1725
       }
     }
 
-    void calculateResolution(TH1* histo)
+    double calculateResolution(TH1* histo)
     {
       auto max = histo->GetMaximum();
-      auto maxBin = histo->GetMaximumBin();
+      // auto maxBin = histo->GetMaximumBin();
       auto leftBin = histo->FindFirstBinAbove(max*0.7);
       auto rightBin = histo->FindLastBinAbove(max*0.7);
       histo->GetXaxis()->SetRange(leftBin*2, rightBin*2);
@@ -171,8 +172,10 @@ namespace Caen1725
       // Fit
       histo->Fit(fit, "RQ");
       // Get this first estimate
-      double final_mean  = gFit->GetParameter(1);
-      double final_sigma = gFit->GetParameter(2);
+      // double final_mean  = fit->GetParameter(1);
+      double final_sigma = fit->GetParameter(2);
+
+      return final_sigma;
     }
 
     void calculateResolutions()
@@ -185,7 +188,7 @@ namespace Caen1725
         {
           std::string name = std::to_string(binx)+std::to_string(biny);
           auto dT = dTs->ProjectionZ(name.c_str(), binx, binx, biny, biny);
-          m_histograms[index].resolution_histos->SetBinContent(binx, biny, calculate_resolution(dT));
+          m_histograms[index].resolution_histos->SetBinContent(binx, biny, calculateResolution(dT));
         }
         m_histograms[index].resolution_histos;
       }

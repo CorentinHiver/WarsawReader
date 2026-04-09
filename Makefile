@@ -14,6 +14,8 @@ OBJS := $(addprefix $(BUILD_DIR)/,$(addsuffix .o,$(TARGETS)))
 DEPS := $(OBJS:.o=.d)
 
 all: $(TARGETS)
+	@echo "Cleanup: Removing build directory..."
+	rm -rf $(BUILD_DIR)
 
 # Link
 $(TARGETS): %: $(BUILD_DIR)/%.o
