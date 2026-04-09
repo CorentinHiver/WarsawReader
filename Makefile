@@ -8,7 +8,7 @@ ROOTCFLAGS := $(shell root-config --cflags)
 ROOTLIBS := $(shell root-config --glibs)
 
 BUILD_DIR := build
-TARGETS := optimizeCFD writeTraces studyCFD caen2root #rootReaderExample
+TARGETS := CFDoptimizations writeTraces studyCFD caen2root #rootReaderExample
 
 OBJS := $(addprefix $(BUILD_DIR)/,$(addsuffix .o,$(TARGETS)))
 DEPS := $(OBJS:.o=.d)
