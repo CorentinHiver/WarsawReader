@@ -1039,7 +1039,7 @@ namespace Colib
   template<typename NewKey, typename Key, typename T>
   std::map<NewKey, T> map_key_cast(const std::map<Key, T>& input)
   {
-    static_assert(std::is_convertible_v<Key, NewKey>, "Keys must be convertible");
+    static_assert(std::is_convertible<Key, NewKey>::value, "Keys must be convertible");
 
     std::map<NewKey, T> result;
     for (const auto& [k, v] : input) result.emplace(static_cast<NewKey>(k), v);
@@ -1108,7 +1108,7 @@ namespace Colib
         values.push_back(v);
     }
 
-    return std::pair(keys, values); 
+    return std::pair<K,V> (keys, values); 
   }
 }
 
@@ -1239,7 +1239,7 @@ namespace Colib
   template <std::size_t size, class Generator>
   constexpr auto LUT(Generator g)
   {
-    using type = std::remove_cvref_t<decltype(g(std::size_t{0}))>;
+    using type = remove_cvref_t<decltype(g(std::size_t{0}))>;
     std::array<type, size> lut;
     for (std::size_t i = 0; i < size; ++i) lut[i] = g(i);
     return lut;
