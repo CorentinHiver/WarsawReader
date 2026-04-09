@@ -42,6 +42,7 @@
 #include <sys/ioctl.h>
 #include <thread>
 #include <typeindex>
+#include <type_traits>
 #include <typeinfo>
 #include <unistd.h>
 #include <unordered_map>

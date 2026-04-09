@@ -5,9 +5,9 @@
 #include <random>
 #include <thread>
 
-#ifndef cpp20
-#define cpp20 (__cplusplus >= 202002L)
-#endif //cpp20
+#ifndef Cpp20
+#define Cpp20 (__cplusplus >= 202002L)
+#endif //Cpp20
 
 std::random_device rd;
 std::mt19937 gen(rd());
@@ -79,7 +79,7 @@ namespace randomCo
     return distribution(generator);
   }
 
-#ifdef cpp20
+#ifdef Cpp20
   /// @brief This is NOT true pseudo-random generation, but works like a charm for ADC to float convertion
   /// @tparam n_pow_size MUST be < 20 to keep pleasant compilation time 
   template<size_t n_pow_size = 16>
