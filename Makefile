@@ -35,7 +35,7 @@ $(BUILD_DIR):
 
 debug: OPT := -Og
 debug: CXXFLAGS += -g -fno-omit-frame-pointer
-debug: clean all
+debug: all
 
 clean:
 	rm -rf $(BUILD_DIR) $(TARGETS)

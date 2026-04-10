@@ -289,6 +289,7 @@ int main(int argc, char** argv)
 
   for (auto const & filename : filenames)
   {
+    if (hitsMaxTotSet && nbHitsMaxTot < nbHitsTot) break;
     std::string file(filename);
 
     if (!Colib::fileExists(file)) {error("can't find ", file); continue;}
@@ -473,11 +474,14 @@ int main(int argc, char** argv)
       if (bufferFull) dumpBufferInTree(); // If buffer is full, fill the tree and clear the buffer
     }
     
-    print();
-    print("nbNoSignal");
-    for (size_t label_i = 0; label_i<labelMax; ++label_i) if (nbNoSignal[label_i]>0) print(label_i, nbNoSignal[label_i], 100.*nbNoSignal[label_i]/double(nbHit[label_i]), "%");
-    print("nbNoZero");
-    for (size_t label_i = 0; label_i<labelMax; ++label_i) if (nbNoZero  [label_i]>0) print(label_i, nbNoZero  [label_i], 100.*nbNoZero  [label_i]/double(nbHit[label_i]), "%");
+    if (applyCFD)
+    {
+      print();
+      print("nbNoSignal");
+      for (size_t label_i = 0; label_i<labelMax; ++label_i) if (nbNoSignal[label_i]>0) print(label_i, nbNoSignal[label_i], (100.*nbNoSignal[label_i])/nbHit[label_i], "%");
+      print("nbNoZero");
+      for (size_t label_i = 0; label_i<labelMax; ++label_i) if (nbNoZero  [label_i]>0) print(label_i, nbNoZero  [label_i], (100.*nbNoZero  [label_i])/nbHit[label_i], "%");
+    }
 
     dumpBufferInTree(); // Fill the tree with the last event
 

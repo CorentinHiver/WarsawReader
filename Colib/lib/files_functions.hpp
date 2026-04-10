@@ -69,18 +69,14 @@ namespace Colib
   std::string getFullPath(std::string const & file)
   {
     auto path = getPath(file);
-    print(path);
     if (file[0] == '.' || file.substr(0, 2) == ".." ) path = getPwdPath() + path;
     else if (path[0] == '~') {path.erase(0,1); path = getHome() + path;}
     else if (path[0] != '/') path = getPwdPath() + path;
 
-    print(path);
     auto folders = getList(path, "/"); folders.pop_back(); // the last one is always
-    for (auto const & folder : folders) printcln("\'", folder, "\' ");
     std::vector<std::string> output;
     for (auto const & folder : folders)
     {
-      print(folder, output);
       if (folder == ".") continue;
       else if (folder == "..") 
       {

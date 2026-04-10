@@ -15,7 +15,7 @@ namespace Caen1725
     }
     void setup()
     {
-      if (Colib::extension(m_file) != ".caendat") error(m_file, "not a .caendat file !!");
+      if (Colib::extension(m_file) != "caendat") error(m_file, "not a .caendat file !!");
       auto temp = Colib::split(Colib::getShortname(m_file), '_');
       try {
         m_fileNumber = std::stoi(temp.back());
