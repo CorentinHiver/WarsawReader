@@ -20,11 +20,12 @@ void GeSpectrums(TFile* file, string const & calibName = "")
   print("GeSpectrumsH created, GeSpectrumsH->Draw() to see it");
 }
 
-void dT(TFile* file, int ref_label=81)
+TH2F* dT(TFile* file, int ref_label)
 {
   RootReader reader(file);
   auto & event = reader.getEvent();
   auto dT = new TH2F("hdT","dT;label;dT[ps]",200,0,200, 6000,-3000000,3000000);
+  dT->SetDirectory(gROOT);
   while(reader.readNextEvent())
   { // Looping through the events
     for (size_t trigger_i = 0; trigger_i < event.size(); ++trigger_i) if (event.label[trigger_i] == ref_label) 
@@ -33,15 +34,15 @@ void dT(TFile* file, int ref_label=81)
       {// Looping again through the hits of the event and calculate time diff between the reference and every other detector
         dT->Fill(event.label[hit_i], int(event.time[hit_i]-event.time[trigger_i]));
       }
-      break;
     }
   }
   print("hdT created, hdT->Draw() to see it");
+  return dT;
 }
 
-void dT(string const & filename, int ref_label = 81)
+TH2F* dT(string const & filename, int ref_label)
 {
-  dT(TFile::Open(filename.c_str(), "READ"), ref_label);
+  return dT(TFile::Open(filename.c_str(), "READ"), ref_label);
 }
 
 void coincMatrix(TFile* file)
