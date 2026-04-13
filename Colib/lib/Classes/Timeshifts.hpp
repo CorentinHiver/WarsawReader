@@ -89,14 +89,13 @@ private:
   private:
     std::string m_filename;
   };
-
 };
 
-bool Timeshifts::load(std::string const & filename, bool ns)
+bool Timeshifts::load(std::string const & filename, bool ns = false)
 {
   std::ifstream inputFile(filename, std::ifstream::in);
   if (!inputFile.good()) {throw NotFoundError(filename);}
-  else if (Colib::fileIsEmpty(inputFile)) {print("TIMESHIFT FILE", filename, "EMPTY !");return false;}
+  else if (Colib::fileIsEmpty(inputFile)) {print("TIMESHIFT FILE", filename, "EMPTY !"); return false;}
   std::string line = ""; // Reading buffer
   size_t label = 0; // Reading buffer
   while (getline(inputFile, line))

@@ -22,7 +22,7 @@ void dTcalculate(string file_name = "", int ref_label = 0, string outputName = "
       { // Looping through the hits of the event and proceed only if  a hit in the reference detector have been found
         for (size_t hit_i = 0; hit_i < event.size(); ++hit_i) if (hit_i !=trigger_i)
         {// Looping again through the hits of the event and calculate time diff between the reference and every other detector
-          dT->Fill(event.label[hit_i], int(event.time[hit_i]-event.time[trigger_i]));
+          dT->Fill(event.label[hit_i], int(event.time[trigger_i]-event.time[hit_i]));
         }
         // break;
       }
@@ -31,14 +31,15 @@ void dTcalculate(string file_name = "", int ref_label = 0, string outputName = "
   map<int, double> means; 
   for (int label = 0; label<maxLabel; ++label)
   {
+    if (label == ref_label) {means.emplace(label, 0); continue;}
     string label_str = to_string(label);
     auto histo = dT->ProjectionY(label_str.c_str(), label+1, label+1);
     auto const nbHits = histo->GetEntries();
     if (nbHits < 1) continue;
     if (nbHits < int(1e2)) 
     {
-      error("For label", label, "there are only", nbHits); 
-      means.emplace(label, histo -> GetMean());
+      error("For label", label, "there are only", nbHits, ", dT won't be precise..."); 
+      means.emplace(label, histo -> GetMean()/1000.);
       continue;
     }
     
@@ -56,7 +57,7 @@ void dTcalculate(string file_name = "", int ref_label = 0, string outputName = "
 
     histo->GetXaxis()->SetRange(dTmaxX-proto_sigma, dTmaxX+proto_sigma);
 
-    means.emplace(label, histo -> GetMean());
+    means.emplace(label, histo -> GetMean()/1000.);
     delete histo;
   }
   ofstream dTfile(outputName+".dT");
