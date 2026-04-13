@@ -33,7 +33,7 @@ $(BUILD_DIR):
 # Include dependencies if they exist
 -include $(DEPS)
 
-debug: OPT := -Og
+debug: OPT := 
 debug: CXXFLAGS += -g -fno-omit-frame-pointer
 debug: all
 

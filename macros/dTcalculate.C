@@ -5,21 +5,27 @@ using namespace Colib;
 using namespace Caen1725;
 using namespace std;
 
-void dTcalculate(std::string filename = "", int ref_label = 0)
+void dTcalculate(string file_name = "", int ref_label = 0, string outputName = "unname")
 {
   int maxLabel = 200;
-  RootReader reader(filename);
-  auto & event = reader.getEvent();
+  vector<string> filenames(findFilesWildcard(file_name));
   auto dT = new TH2F("hdT","dT;label;dT[ps]",maxLabel,0,maxLabel, 6000,-3000000,3000000);
-  while(reader.readNextEvent())
-  { // Looping through the events
-    for (size_t trigger_i = 0; trigger_i < event.size(); ++trigger_i) if (event.label[trigger_i] == ref_label) 
-    { // Looping through the hits of the event and proceed only if  a hit in the reference detector have been found
-      for (size_t hit_i = 0; hit_i < event.size(); ++hit_i) if (hit_i !=trigger_i)
-      {// Looping again through the hits of the event and calculate time diff between the reference and every other detector
-        dT->Fill(event.label[hit_i], int(event.time[hit_i]-event.time[trigger_i]));
+  dT->SetDirectory(gROOT);
+  for (auto const & filename : filenames)
+  {
+    RootReader reader(filename);
+    printsln(filename);
+    auto & event = reader.getEvent();
+    while(reader.readNextEvent())
+    { // Looping through the events
+      for (size_t trigger_i = 0; trigger_i < event.size(); ++trigger_i) if (event.label[trigger_i] == ref_label) 
+      { // Looping through the hits of the event and proceed only if  a hit in the reference detector have been found
+        for (size_t hit_i = 0; hit_i < event.size(); ++hit_i) if (hit_i !=trigger_i)
+        {// Looping again through the hits of the event and calculate time diff between the reference and every other detector
+          dT->Fill(event.label[hit_i], int(event.time[hit_i]-event.time[trigger_i]));
+        }
+        // break;
       }
-      break;
     }
   }
   map<int, double> means; 
@@ -29,7 +35,12 @@ void dTcalculate(std::string filename = "", int ref_label = 0)
     auto histo = dT->ProjectionY(label_str.c_str(), label+1, label+1);
     auto const nbHits = histo->GetEntries();
     if (nbHits < 1) continue;
-    if (nbHits < int(1e3)) {error("For label", label, "there are only", nbHits); continue;}
+    if (nbHits < int(1e2)) 
+    {
+      error("For label", label, "there are only", nbHits); 
+      means.emplace(label, histo -> GetMean());
+      continue;
+    }
     
     auto dTmaxY = histo->GetMaximum();
     auto dTmaxX = histo->GetMaximumBin();
@@ -46,8 +57,10 @@ void dTcalculate(std::string filename = "", int ref_label = 0)
     histo->GetXaxis()->SetRange(dTmaxX-proto_sigma, dTmaxX+proto_sigma);
 
     means.emplace(label, histo -> GetMean());
+    delete histo;
   }
-  ofstream dTfile("unname.dT");
+  ofstream dTfile(outputName+".dT");
   for (auto const & [label, mean] : means) dTfile << label << " " << mean << "\n";
   dTfile.close();
+  print(outputName+".dT", "created");
 }

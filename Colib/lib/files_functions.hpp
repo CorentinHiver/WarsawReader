@@ -34,17 +34,49 @@
 //----------------------------------------------------//
 namespace Colib 
 {
-  /// @brief "/path/to/file.ext" -> "/path/to/file"
-  std::string removeExtension (std::string const & file) { return (file.substr(0, file.find_last_of(".")  ));}
-  /// @brief "/path/to/file.ext" -> ".ext"
-  std::string extension       (std::string const & file) { return (file.substr(   file.find_last_of(".")+1));}
   /// @brief "/path/to/file.ext" -> "file.ext"
-  std::string removePath      (std::string const & file) { return (file.substr(   file.find_last_of("/")+1));}
-  /// @brief "/path/to/file.ext" -> "file"
-  std::string getShortname    (std::string const & file) { return            removePath(removeExtension(file));}
+  std::string removePath(std::string const & file) 
+  {
+    size_t pos = file.find_last_of("/");
+    return (pos == std::string::npos) ? file : file.substr(pos + 1);
+  }
+
   /// @brief "/path/to/file.ext" -> "/path/to/"
-  std::string getPath         (std::string const & file) { return (file.substr(0, file.find_last_of("/")+1));}
-  
+  std::string getPath(std::string const & file) 
+  { 
+    size_t pos = file.find_last_of("/");
+    return (pos == std::string::npos) ? "" : file.substr(0, pos + 1);
+  }
+
+  /// @brief "/path/to/file.ext" -> "/path/to/file"
+  std::string removeExtension(std::string const & file) 
+  {
+    std::string name = removePath(file);
+    size_t pos = name.find_last_of(".");
+    // If no dot, or dot is the first character (hidden file)
+    if (pos == std::string::npos || pos == 0) return file; 
+    return getPath(file) + name.substr(0, pos);
+  }
+
+  /// @brief "/path/to/file.ext" -> ".ext"
+  std::string extension(std::string const & file) 
+  { 
+    std::string name = removePath(file);
+    size_t pos = name.find_last_of(".");
+    if (pos == std::string::npos || pos == 0) return "";
+    return name.substr(pos + 1);
+  }
+
+
+  /// @brief "/path/to/file.ext" -> "file"
+  std::string getShortname(std::string const & file) 
+  { 
+    std::string name = removePath(file);
+    size_t pos = name.find_last_of(".");
+    if (pos == std::string::npos || pos == 0) return name;
+    return name.substr(0, pos);
+  }
+
   /// @brief Return /home/usr
   std::string getHome() {return std::getenv("HOME");}
   /// @brief Return /path/to/current/folder
@@ -68,25 +100,34 @@ namespace Colib
 
   std::string getFullPath(std::string const & file)
   {
-    auto path = getPath(file);
-    if (file[0] == '.' || file.substr(0, 2) == ".." ) path = getPwdPath() + path;
-    else if (path[0] == '~') {path.erase(0,1); path = getHome() + path;}
-    else if (path[0] != '/') path = getPwdPath() + path;
+    if (file.empty()) return "";
 
-    auto folders = getList(path, "/"); folders.pop_back(); // the last one is always
+    std::string path = getPath(file);
+
+    // Path anchoring
+    if (!path.empty()) 
+    {
+           if (path[0] == '~') path = getHome()    + "/" + path.substr(1);
+      else if (path[0] != '/') path = getPwdPath() + "/" + path;
+    } 
+    else path = getPwdPath() + "/";
+
+    // Path resolution
+    // Pass removeVoids = true to clean double slashes ("//") and prevent empty elements
+    auto folders = getList(path, "/", true); 
     std::vector<std::string> output;
+    
     for (auto const & folder : folders)
     {
       if (folder == ".") continue;
-      else if (folder == "..") 
-      {
-        if (output.size() == 0) continue;
-        output.pop_back();
-      }
+      else if (folder == "..") {
+        if (!output.empty()) output.pop_back();}
       else output.push_back(folder);
     }
-    std::string ret;
+
+    std::string ret = "/"; // Guaranteed absolute Unix path starts with root
     for (auto const & folder : output) ret += folder + "/";
+    
     return ret;
   }
 
@@ -171,6 +212,7 @@ namespace Colib
   {
     std::string path = getFullPath(fileName);
     std::string name = removePath(fileName);
+    print(path, name);
     struct dirent *file = nullptr;
     DIR *dp = nullptr;
     dp = opendir(path.c_str());

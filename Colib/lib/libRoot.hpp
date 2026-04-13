@@ -2641,7 +2641,7 @@ namespace Colib
       delete it;
       return ret;
     }
-  
+
     template<class THist = TH1>
     std::map<std::string, THist*> get_histos_map(TPad * pad = nullptr)
     {
@@ -2715,6 +2715,32 @@ namespace Colib
       auto histos = Colib::Pad::get_histos(pad);
       for (auto const & histo : histos) ret.push_back(histo->GetName());
       return ret;
+    }
+  
+    template<class THist = TH1>
+    std::pair<double, double> mark_minimum(Color_t color = kRed, Style_t style = 20, TPad * pad = nullptr)
+    {
+      if (!pad) 
+      {
+        pad = (TPad*)gPad;
+        if (!pad) {error("no pad"); return;}
+      }
+      auto histos = get_histos<THist>(pad);
+      if (histos.empty()) {error("There is no such histogram in requested pad..."); return;}
+      if (2 < histos.size()) {error("There is more than one histogram in requested pad..."); return;}
+
+      auto histo = histos[0];
+      Int_t bx, by, bz;
+      const Int_t globalMin = histo->GetMinimumBin();
+      histo->GetBinXYZ(globalMin, bx, by, bz);
+      const Double_t x = histo->GetXaxis()->GetBinCenter(bx);
+      const Double_t y = (histo->GetDimension() > 1) 
+                        ? histo->GetYaxis()->GetBinCenter(by) 
+                        : histo->GetBinContent(globalMin);
+      auto m = new TMarker(x, y, style);
+      m->SetMarkerColor(color);
+      m->Draw();
+      return {x, y};
     }
   
     /**

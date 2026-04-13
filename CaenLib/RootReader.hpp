@@ -29,7 +29,6 @@ namespace Caen1725
         m_tree->SetBranchAddress("mult"   , &m_evtMult);
       }
       m_size = std::min(m_size, static_cast<size_t>(m_tree->GetEntries()));
-      print(m_size);
       return tree;
     }
   
