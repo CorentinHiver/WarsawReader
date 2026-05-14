@@ -126,7 +126,7 @@ int main(int argc, char** argv)
   bool group = true;
   bool inMemory = true;
   bool applyCFD = true;
-  int ADCmin;
+  int ADCmin{};
   
   std::vector<std::string> filenames;
   Timeshifts timeshifts;
