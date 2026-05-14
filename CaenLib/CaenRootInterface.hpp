@@ -104,7 +104,8 @@ namespace Caen1725
       if (read_board_header)
       { // New board aggregate, reading its header
         m_board.clear();
-        if (!m_board.readHeader(data)) return false; // Returning false because the end of file has been reached
+        try{if (!m_board.readHeader(data)) return false;} // Returning false because the end of file has been reached
+        catch(CheckBinMissed const & e){error("in", m_filename); return false;} // Output when corrupted file is detected
         loadTrace = (m_board.BOARD_ID < m_boardsReadTraces.size()) ? m_boardsReadTraces[m_board.BOARD_ID] : true; // Determines if the traces of the detectors of this board are read
         read_board_header = false;
       }

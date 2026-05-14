@@ -33,18 +33,11 @@ using namespace Colib;
     // Int_t     rel_time      : Relative time in the event. Units : ps. This field must be filled by the user (i.e., the program using this class).
  */
 
-//////////////////////////////////////
-// Version 1.04                     //
-// Validated on real data           //
-//////////////////////////////////////
+////////////////////////
+// Version v1.2.1_p5: //
+// Added ADCmin       //
+////////////////////////
 
-//////////////////////////////////////
-// Version 1.03                     //
-// Is now included :                //
-//    - Writting events in .root    //
-//  Todo :                          //
-//    - Include traces in events    //
-//////////////////////////////////////
 
 /* Do not read the following, this trigger logic is stil TBD :
 How to use the trigger : 
@@ -133,6 +126,7 @@ int main(int argc, char** argv)
   bool group = true;
   bool inMemory = true;
   bool applyCFD = true;
+  int ADCmin;
   
   std::vector<std::string> filenames;
   Timeshifts timeshifts;
@@ -144,6 +138,7 @@ int main(int argc, char** argv)
   auto printHelp = [](){
     print("caen2root usage");
     print("Note: if \"scientific format accepted\", it means that e.g. 1e3 is a valid shorthand for 1000)");
+    print("   --ADCmin            (default 0). Sets an ADC threshold");
     print("   --cfd               [0 or 1] (default 1). Use CFD timestamp correction (hard-coded parameters(shift, fraction, nb samples for baseline...). Parameter file incoming).");
     print("-e --ts-evt-build      [0 or 1] (default 0). Perform event building based on : [0] the absolute time (usually corrected by cfd) [1] the raw timestamp.");
     print("-f --files             [caen_filename] : File to convert. Include wildcards * and ?, but ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\") ");
@@ -173,7 +168,11 @@ int main(int argc, char** argv)
   iss >> temp; // Skipping the first parameter because it is the name of the executable
   while(iss >> temp)
   {
-         if (temp ==  "--cfd")
+         if (temp ==  "--ADCmin")
+    {
+      iss >> ADCmin;
+    }
+    else if (temp ==  "--cfd")
     {
       iss >> applyCFD;
     }
@@ -476,6 +475,9 @@ int main(int argc, char** argv)
         if (group) printsln(nicer_double(reader.nbHits(), 1), "hits in .caendat", nicer_double(tree->GetEntries(), 1), "evts in .root       ");
         else       printsln(nicer_double(reader.nbHits(), 1), "hits in .caendat", nicer_double(tree->GetEntries(), 1), "hits in .root       ");
       }
+
+      // 0.3 Apply an ADC threshold:
+      if (inHit.adc < ADCmin) continue;
 
       // 1. Apply the cfd
         timerCFD.StartProfiling();
