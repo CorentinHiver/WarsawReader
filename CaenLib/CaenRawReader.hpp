@@ -5,6 +5,8 @@
 
 namespace Caen1725
 {
+  /// @brief Simple interface with the Caen1725 data.
+  /// @details 
   class RawReader : public CaenReaderBase
   {
   public:
@@ -37,6 +39,8 @@ namespace Caen1725
      * @brief Does exactly the same as RawReader::readBoardAggregate, 
      * but explicits each step instead of calling functions.
      * IS compatible with skipAll() == true
+     * 
+     * @return true while the end of the file is not reached
      */
     bool readBoardAggregatePlain()
     {

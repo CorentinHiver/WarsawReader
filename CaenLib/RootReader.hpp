@@ -36,7 +36,7 @@ namespace Caen1725
     {
       if (!file) {error("in connectFile(TFile * file) : file is nullptr"); return nullptr;}
       m_file = file;
-      auto const & listTrees = file_get_map_of<TTree>(m_file);
+      auto const & listTrees = Colib::file_get_map_of<TTree>(m_file);
            if (Colib::key_found(listTrees, std::string("HIL")     )) 
       {
         m_plain = false ; 

@@ -96,25 +96,18 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
   bool max_events = (nb_events_max>0);
   bool finished = false;
   int nb_evts = 0;
-  CFD::sShifts = { // BOARD_ID, SAMPLES
-    {0, 5},
-    {1, 5},
-    {6, 2},
-    {7, 2},
-    {8, 2}
-  };
 
-  CFD::sFractions = { // BOARD_ID, fraction
-    {0, 0.75},
-    {1, 0.75},
-    {6, 0.75},
-    {7, 0.75},
-    {8, 0.75}
-  };
+  CFDParametersMap<int> CFDparams ({
+    {0, {0.75, 5}},
+    {1, {0.75, 5}},
+    {6, {0.75, 2}},
+    {7, {0.75, 2}},
+    {8, {0.75, 2}}
+  });
 
   auto useCFD = Colib::LUT<10000>([&](int boardID)
   {
-    return Colib::key_found(CFD::sShifts, boardID);
+    return Colib::key_found(CFDparams.map, boardID);
   });
 
   Caen1725::RootInterface reader(file);
@@ -129,135 +122,128 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
 
   while(!finished && reader.readHit())
   {
-      ++nb_evts;
-      auto const & hit = reader.getHit();
-      if (nb_evts % int(1e3) == 0) printsln(nicer_double(nb_evts, 1), "        ");
-      if (max_events && nb_evts > nb_events_max) finished = true;
+    ++nb_evts;
+    auto const & hit = reader.getHit();
+    if (nb_evts % int(1e3) == 0) printsln(nicer_double(nb_evts, 1), "        ");
+    if (max_events && nb_evts > nb_events_max) finished = true;
 
-      if (!hit.hasTrace()) continue;
+    if (!hit.hasTrace()) continue;
 
-      if (hit.adc < adcMin) continue;
+    if (hit.adc < adcMin) continue;
 
-      if (0 < adcMax && adcMax < hit.adc) continue;
+    if (0 < adcMax && adcMax < hit.adc) continue;
 
-      // auto detectorName = getDetectorName(hit.board_ID, hit.channel_ID)+to_string(hit.label);
-      auto detectorName = names[hit.label]+"_"+to_string(hit.board_ID)+"_"+to_string(hit.label%16);
+    // auto detectorName = getDetectorName(hit.board_ID, hit.channel_ID)+to_string(hit.label);
+    auto detectorName = names[hit.label]+"_"+to_string(hit.board_ID)+"_"+to_string(hit.label%16);
 
-      TDirectory *dir = rootFile->GetDirectory(detectorName.c_str());
+    TDirectory *dir = rootFile->GetDirectory(detectorName.c_str());
 
-      if (!dir){
-        rootFile->mkdir(detectorName.c_str());
-        dir = rootFile->GetDirectory(detectorName.c_str());
-      }
-      dir->cd();
-      string name = detectorName + "_" + to_string(nb_evts);
+    if (!dir){
+      rootFile->mkdir(detectorName.c_str());
+      dir = rootFile->GetDirectory(detectorName.c_str());
+    }
+    dir->cd();
+    string name = detectorName + "_" + to_string(nb_evts);
 
 #ifdef LOW_PASS
 
-      auto canvas0 = std::make_unique<TCanvas>((name+"filter").c_str(), (name+"filter").c_str()); canvas0->cd();
-      
-      auto dataGraph = hit.getTraceBaselineRemoved(10);
+    auto canvas0 = std::make_unique<TCanvas>((name+"filter").c_str(), (name+"filter").c_str()); canvas0->cd();
+    
+    auto dataGraph = hit.getTraceBaselineRemoved(10);
 
-      auto graph1  = new TGraph(dataGraph  .size(), linspace<int>(dataGraph  .size(), 0, Caen1725::ticks_to_ns).data(), dataGraph  .data());
-      auto dataGraphs2 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.02);
-      auto dataGraphs3 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.03);
-      auto dataGraphs4 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.04);
-      auto dataGraphs45 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.045);
-      auto dataGraphs5 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.05);
-      auto dataGraphs6 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.06);
+    auto graph1  = new TGraph(dataGraph  .size(), linspace<int>(dataGraph  .size(), 0, Caen1725::ticks_to_ns).data(), dataGraph  .data());
+    auto dataGraphs2 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.02);
+    auto dataGraphs3 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.03);
+    auto dataGraphs4 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.04);
+    auto dataGraphs45 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.045);
+    auto dataGraphs5 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.05);
+    auto dataGraphs6 = lowpass_fft_root(hit.getTraceBaselineRemoved(10), 1., 0.06);
 
-      auto graphs2 = new TGraph(dataGraphs2.size(), linspace<int>(dataGraphs2.size(), 0, Caen1725::ticks_to_ns).data(), dataGraphs2.data());
-      auto graphs3 = new TGraph(dataGraphs3.size(), linspace<int>(dataGraphs3.size(), 0, Caen1725::ticks_to_ns).data(), dataGraphs3.data());
-      auto graphs4 = new TGraph(dataGraphs4.size(), linspace<int>(dataGraphs4.size(), 0, Caen1725::ticks_to_ns).data(), dataGraphs4.data());
-      auto graphs45 = new TGraph(dataGraphs45.size(), linspace<int>(dataGraphs45.size(), 0, Caen1725::ticks_to_ns).data(), dataGraphs45.data());
-      auto graphs5 = new TGraph(dataGraphs5.size(), linspace<int>(dataGraphs5.size(), 0, Caen1725::ticks_to_ns).data(), dataGraphs5.data());
-      auto graphs6 = new TGraph(dataGraphs6.size(), linspace<int>(dataGraphs6.size(), 0, Caen1725::ticks_to_ns).data(), dataGraphs6.data());
+    auto graphs2 = new TGraph(dataGraphs2.size(), linspace<int>(dataGraphs2.size(), 0, Caen1725::ticks_to_ns).data(), dataGraphs2.data());
+    auto graphs3 = new TGraph(dataGraphs3.size(), linspace<int>(dataGraphs3.size(), 0, Caen1725::ticks_to_ns).data(), dataGraphs3.data());
+    auto graphs4 = new TGraph(dataGraphs4.size(), linspace<int>(dataGraphs4.size(), 0, Caen1725::ticks_to_ns).data(), dataGraphs4.data());
+    auto graphs45 = new TGraph(dataGraphs45.size(), linspace<int>(dataGraphs45.size(), 0, Caen1725::ticks_to_ns).data(), dataGraphs45.data());
+    auto graphs5 = new TGraph(dataGraphs5.size(), linspace<int>(dataGraphs5.size(), 0, Caen1725::ticks_to_ns).data(), dataGraphs5.data());
+    auto graphs6 = new TGraph(dataGraphs6.size(), linspace<int>(dataGraphs6.size(), 0, Caen1725::ticks_to_ns).data(), dataGraphs6.data());
 
-      graph1 -> SetTitle("Trace");
-      graphs2 -> SetTitle("cutoff 0.02");
-      graphs3 -> SetTitle("cutoff 0.03");
-      graphs4 -> SetTitle("cutoff 0.04");
-      graphs45 -> SetTitle("cutoff 0.045");
-      graphs5 -> SetTitle("cutoff 0.05");
-      graphs6 -> SetTitle("cutoff 0.06");
-      
-      graph1-> SetLineColor (kBlack);
-      graphs2-> SetLineColor(kViolet);
-      graphs3-> SetLineColor(kPink);
-      graphs4-> SetLineColor(kBlue);
-      graphs45-> SetLineColor(12);
-      graphs5-> SetLineColor(kGreen);
-      graphs6-> SetLineColor(8);
+    graph1 -> SetTitle("Trace");
+    graphs2 -> SetTitle("cutoff 0.02");
+    graphs3 -> SetTitle("cutoff 0.03");
+    graphs4 -> SetTitle("cutoff 0.04");
+    graphs45 -> SetTitle("cutoff 0.045");
+    graphs5 -> SetTitle("cutoff 0.05");
+    graphs6 -> SetTitle("cutoff 0.06");
+    
+    graph1-> SetLineColor (kBlack);
+    graphs2-> SetLineColor(kViolet);
+    graphs3-> SetLineColor(kPink);
+    graphs4-> SetLineColor(kBlue);
+    graphs45-> SetLineColor(12);
+    graphs5-> SetLineColor(kGreen);
+    graphs6-> SetLineColor(8);
 
-      graph1 -> Draw();
-      graphs2 ->Draw("same");
-      graphs3 ->Draw("same"); 
-      graphs4 ->Draw("same"); 
-      graphs45 ->Draw("same"); 
-      graphs5 ->Draw("same"); 
-      graphs6 ->Draw("same"); 
-      
-      canvas0->Write();
+    graph1 -> Draw();
+    graphs2 ->Draw("same");
+    graphs3 ->Draw("same"); 
+    graphs4 ->Draw("same"); 
+    graphs45 ->Draw("same"); 
+    graphs5 ->Draw("same"); 
+    graphs6 ->Draw("same"); 
+    
+    canvas0->Write();
 
 #endif //LOW_PASS
 
-      auto canvas = std::make_unique<TCanvas>(name.c_str(), name.c_str()); canvas->cd();
+    auto canvas = std::make_unique<TCanvas>(name.c_str(), name.c_str()); canvas->cd();
 
-      auto graphs = hit.getTracesGraphs(10);
+    auto graphs = hit.getTracesGraphs(10);
 
-      graphs[0] -> SetLineColor(kBlack);
-      graphs[0] -> GetXaxis() -> SetTitle("time [ns]");
-      graphs[0] -> GetYaxis() -> SetTitle("pulse height [ADC]");
-      graphs[1] -> SetLineColor(kBlue );
-      graphs[2] -> SetLineColor(kGreen);
-      graphs[0] -> Draw();
-      graphs[1] -> Draw("same");
-      graphs[2] -> Draw("same");
+    graphs[0] -> SetLineColor(kBlack);
+    graphs[0] -> GetXaxis() -> SetTitle("time [ns]");
+    graphs[0] -> GetYaxis() -> SetTitle("pulse height [ADC]");
+    graphs[1] -> SetLineColor(kBlue );
+    graphs[2] -> SetLineColor(kGreen);
+    graphs[0] -> Draw();
+    graphs[1] -> Draw("same");
+    graphs[2] -> Draw("same");
 
-
-      // auto const & detectorType = getDetectorType(hit.board_ID, hit.channel_ID);
-
-      if (hit.hasTrace() && useCFD[hit.board_ID])
+    if (hit.hasTrace() && useCFD[hit.board_ID])
+    {
+      auto const & cfdparam = CFDparams.map.at(hit.board_ID);
+      CFD cfd(std::move(hit.trace), cfdparam.shift, cfdparam.fraction, cfdparam.nbBaseline);
+      double zero = cfd.findZero();
+      ++nbTot[hit.label];
+      if (zero == CFD::noSignal)
       {
-        // cfd.calculate();
-        cfd.generate(hit.trace, CFD::sShifts[hit.board_ID], CFD::sFractions[hit.board_ID], 10);
-        // if (key_found(thresholds, detectorType))
-        // {
-          double zero = cfd.findZero();
-          ++nbTot[hit.label];
-          if (zero == CFD::noSignal)
-          {
-            ++nbNoSignal[hit.label];
-            zero = 0;
-            TDirectory *dir = rootFile->GetDirectory(("noSignal"+detectorName).c_str());
-            if (!dir){
-              rootFile->mkdir(("noSignal"+detectorName).c_str());
-              dir = rootFile->GetDirectory(("noSignal"+detectorName).c_str());
-            }
-            dir->cd();
-          }
-          else if (zero == CFD::noZero)
-          {
-            ++nbNoZero[hit.label];
-            zero = 0;
-            TDirectory *dir = rootFile->GetDirectory(("noZero"+detectorName).c_str());
-            if (!dir){
-              rootFile->mkdir(("noZero"+detectorName).c_str());
-              dir = rootFile->GetDirectory(("noZero"+detectorName).c_str());
-            }
-            dir->cd();
-          }
+        ++nbNoSignal[hit.label];
+        zero = 0;
+        TDirectory *dir = rootFile->GetDirectory(("noSignal"+detectorName).c_str());
+        if (!dir){
+          rootFile->mkdir(("noSignal"+detectorName).c_str());
+          dir = rootFile->GetDirectory(("noSignal"+detectorName).c_str());
+        }
+        dir->cd();
+      }
+      else if (zero == CFD::noZero)
+      {
+        ++nbNoZero[hit.label];
+        zero = 0;
+        TDirectory *dir = rootFile->GetDirectory(("noZero"+detectorName).c_str());
+        if (!dir){
+          rootFile->mkdir(("noZero"+detectorName).c_str());
+          dir = rootFile->GetDirectory(("noZero"+detectorName).c_str());
+        }
+        dir->cd();
+      }
 
-          TMarker *zero_marker = new TMarker(zero*Caen1725::ticks_to_ns, 0, 20);
-          zero_marker->SetMarkerStyle(29);
-          zero_marker->SetMarkerColor(kGreen);
-          zero_marker->Draw("SAME");
-          
-          auto cfdGraph = new TGraph(cfd.cfd.size(), linspaceFor(cfd.cfd, 0., Caen1725::ticks_to_ns).data(), cfd.cfd.data());
-          cfdGraph->SetLineColor(kGray);
-          cfdGraph->Draw("same");
-        // }
-      // }
+      TMarker *zero_marker = new TMarker(zero*Caen1725::ticks_to_ns, 0, 20);
+      zero_marker->SetMarkerStyle(29);
+      zero_marker->SetMarkerColor(kGreen);
+      zero_marker->Draw("SAME");
+      
+      auto cfdGraph = new TGraph(cfd.cfd.size(), linspaceFor(cfd.cfd, 0., Caen1725::ticks_to_ns).data(), cfd.cfd.data());
+      cfdGraph->SetLineColor(kGray);
+      cfdGraph->Draw("same");
       canvas->Write();
     }
   }

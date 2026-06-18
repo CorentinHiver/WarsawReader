@@ -23,8 +23,7 @@ $(TARGETS): %: $(BUILD_DIR)/%.o
 
 # Compile with explicit dependency file location
 $(BUILD_DIR)/%.o: %.cpp | $(BUILD_DIR)
-	$(CXX) -c $< -o $@ $(ROOTCFLAGS) $(CXXFLAGS) $(STD) $(OPT) \
-	$(DEPFLAGS) -MF $(BUILD_DIR)/$*.d -MT $@
+	$(CXX) -c $< -o $@ $(ROOTCFLAGS) $(CXXFLAGS) $(STD) $(OPT) $(DEPFLAGS) -MF $(BUILD_DIR)/$*.d -MT $@
 
 # Ensure directory exists
 $(BUILD_DIR):

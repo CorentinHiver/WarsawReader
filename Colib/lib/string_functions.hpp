@@ -183,23 +183,29 @@ namespace Colib
   }
   
   /// @brief Remove all the substr to the string if found
-  void remove_all(std::string & string, std::string const & _substr)
+  int remove_all(std::string & string, std::string const & _substr)
   {
     size_t pos = 0;
+    int nb = 0;
     while((pos = string.find(_substr)) != std::string::npos)
     {
+      ++nb;
       string = string.substr(0, pos) + string.substr(pos+_substr.size());
     }
+    return nb;
   }
   
   /// @brief Remove all the char 'c' to the string if found
-  void remove_all(std::string & string, char const & c)
+  int remove_all(std::string & string, char const & c)
   {
     size_t pos = 0;
+    int nb = 0;
     while((pos = string.find(c)) != std::string::npos)
     {
+      ++nb;
       string = string.substr(0, pos) + string.substr(pos+1);
     }
+    return nb;
   }
   
   /// @brief Replace the first substr to the string if it exists

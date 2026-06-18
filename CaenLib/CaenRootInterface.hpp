@@ -89,13 +89,14 @@ namespace Caen1725
       // with the data collected from each logical channel written contiguously. 
       // Therefore, following the board header is the channel header,
       // containing the channel ID and the length of channel aggregate (in bytes).
-      // Finally, events are written one after the other. 
+      // Finally, events of each channel are written one after the other. 
       // Each logical channel hosts two physical channels, which are differenciated
       // via a bit in the first word (called CH in documentation and subchannel_ID in the code).
       // 
       // This is how this code works : the size of each board aggregate is loaded from the header, 
-      // and idem for the channel aggregate. An internal cursor is updated each time the buffer is read
-      // From all this information, it is possible to know if there are still events in the aggregate
+      // and idem for the channel aggregate. An internal cursor is updated each time a new event
+      // is loaded in memory. // From all this information, it is possible to know 
+      // if there are still events in the aggregate
 
       std::ifstream& data = CaenReaderBase::p_datafile; // Simple aliasing
       bool loadTrace = true;
@@ -103,7 +104,9 @@ namespace Caen1725
       if (read_board_header)
       { // New board aggregate, reading its header
         m_board.clear();
-        if (!m_board.readHeader(data)) return false; // Returning false because the end of file has been reached
+        try {if (!m_board.readHeader(data)) return false;} // Returning false because the end of file has been reached
+        catch(const CheckBinMissed& e) {error("in", m_filename);}
+        
         loadTrace = (m_board.BOARD_ID < m_boardsReadTraces.size()) ? m_boardsReadTraces[m_board.BOARD_ID] : true; // Determines if the traces of the detectors of this board are read
         read_board_header = false;
       }

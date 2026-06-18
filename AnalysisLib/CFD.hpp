@@ -9,6 +9,36 @@
 #include <sstream>
 #include <thread>
 
+struct CFDParameters
+{
+  double fraction = 0.5;
+  int shift = 1;
+  int nbBaseline = 10;
+};
+
+template<class T>
+class CFDParametersMap
+{
+public:
+  std::unordered_map<T, CFDParameters> map;
+  CFDParametersMap (std::unordered_map<T, CFDParameters> const & _map):
+    map(_map) {}
+
+  void load(std::string const & filename)
+  {
+    std::ifstream paramFile(filename);
+    std::string line;
+    while(std::getline(paramFile, line))
+    {
+      // Get the parameter of each board or each detector
+      std::istringstream iss(line);
+      T label; iss >> label;
+      auto & params = map[label];
+      iss >> params.fraction >> params.shift;
+    }
+  }
+};
+
 class CFD
 {
 protected:
@@ -46,20 +76,10 @@ public:
   CFD() noexcept = default; 
   
   /// @brief Constructs a CFD object from a trace
-  template<class T = double>
+  template<class T>
   CFD(std::vector<T> const & _trace, int shift, double fraction, size_t nbSamplesBaseline = 10)
   {
-    if (_trace.empty()) return;
-
-    for (size_t sample_i = 0; sample_i<nbSamplesBaseline; ++sample_i) m_baseline += _trace[sample_i];
-    m_baseline /= nbSamplesBaseline;
-
-    cfd.resize(_trace.size());
-    for (size_t bin = shift; bin < _trace.size(); ++bin)
-    {
-      auto const & value = (_trace[bin - shift] - m_baseline) - fraction * (_trace[bin]-m_baseline);
-      cfd[bin - shift] = value;
-    }
+    generate(_trace, shift, fraction, nbSamplesBaseline);
   }
 
   /** @brief Constructs a CFD object from a trace
@@ -70,13 +90,13 @@ public:
   * to actually generate the CFD of the trace 
   **/
   template<class T = double>
-  CFD(std::vector<T> const & _trace, size_t nbSamplesBaseline = 10) 
+  CFD(std::vector<T> const & _trace, size_t nbSamplesBaseline) 
   {
     setTrace(_trace, nbSamplesBaseline);
   }
 
   template<class T = double>
-  CFD& setTrace(std::vector<T> const & _trace, size_t nbSamplesBaseline = 10)
+  CFD& setTrace(std::vector<T> const & _trace, size_t nbSamplesBaseline)
   {    
     if (_trace.empty()) return *this;
 
@@ -95,32 +115,48 @@ public:
   }
 
   template<class T>
-  void generate(std::vector<T> const & _trace, int shift, double fraction, size_t nbSamplesBaseline)
+  void setBaseline(std::vector<T> const & _trace, int nbSamplesBaseline)
   {
-    m_baseline = 0;
-    for (size_t sample_i = 0; sample_i<nbSamplesBaseline; ++sample_i) m_baseline += _trace[sample_i];
-    m_baseline /= nbSamplesBaseline;
-    
+    if (_trace.empty()) return;
+    auto const nbl = std::min(static_cast<size_t>(nbSamplesBaseline), _trace.size()); // Number points in for baseline
+    m_baseline = std::accumulate(_trace.begin(), _trace.begin()+nbl, 0) / nbl;
+  }
+
+  template<class T>
+  void generate(std::vector<T> const & _trace, int shift, double fraction)
+  {
+    if (_trace.empty() || shift < 0 || _trace.size() <= static_cast<size_t>(shift) ) return;
+
     cfd.clear();
-    cfd.reserve(_trace.size());
-    for (size_t bin = shift; bin < (_trace.size() - shift); ++bin)
+    cfd.reserve(_trace.size()-shift);
+    for (size_t bin = shift; bin < _trace.size(); ++bin)
     {
-      auto const & value = (_trace[bin - shift]-m_baseline) - fraction * (_trace[bin]-m_baseline);
-      cfd.push_back(value);
+      double delayed = static_cast<double>(_trace[bin - shift]) - m_baseline;
+      double sample  = static_cast<double>(_trace[bin]        ) - m_baseline;
+      cfd.push_back(delayed - (fraction * sample));
     }
   }
 
   template<class T>
-  void generate(int shift, double fraction)
+  void generate(std::vector<T> const & _trace, int shift, double fraction, size_t nbSamplesBaseline)
   {
-    cfd.clear();
-    cfd.reserve(trace.size());
-    for (size_t bin = 5*shift; bin < (trace.size() - shift); ++bin)
-    {
-      auto const & value = trace[bin - shift] - fraction * trace[bin];
-      cfd.push_back(value);
-    }
+    setBaseline(_trace, nbSamplesBaseline);
+    return generate(_trace, shift, fraction);
   }
+
+  
+
+  // template<class T>
+  // void generate(int shift, double fraction)
+  // {
+  //   cfd.clear();
+  //   cfd.reserve(trace.size());
+  //   for (size_t bin = 5*shift; bin < (trace.size() - shift); ++bin)
+  //   {
+  //     auto const & value = trace[bin - shift] - fraction * trace[bin];
+  //     cfd.push_back(value);
+  //   }
+  // }
 
   /// @brief Calculates the last zero crossing before the calculated cfd signal goes above the given threshold
   double findZero(double threshold)
@@ -161,31 +197,6 @@ public:
   /////////////////////////
   // Parameters handling //
   /////////////////////////
-
-  static void loadParameters(std::string const & filename)
-  {
-    std::ifstream paramFile(filename);
-    std::string line;
-    std::getline(paramFile, line);
-
-    // Get the header. Anything can be written in it, but at least BOARD or LABELS
-    // in order to know if the parameters are board wide and the label the BOARD_ID,
-    // or detector per detector with the label the global label (BOARD_ID*16 + Channel_ID*2 + subchannel_ID)
-         if (line.find("BOARDS") != std::string::npos) Param::sType = Param::BOARD;
-    else if (line.find("LABELS") != std::string::npos) Param::sType = Param::LABEL;
-    else std::cout << CFD::Color::RED << "CFD::loadParameters " << filename << " : format issue. Should begin with LABELS or BOARDS" << Color::RESET << std::endl; 
-
-    while(std::getline(paramFile, line))
-    {
-      // Get the parameter of each board or each detector
-      std::istringstream iss(line);
-      int label; iss >> label;
-      double tmp_d;
-      iss >> tmp_d; sShifts    .emplace(label, tmp_d);
-      iss >> tmp_d; sThresholds.emplace(label, tmp_d);
-      iss >> tmp_d; sFractions .emplace(label, tmp_d);
-    }
-  }
   
 protected:
 
@@ -201,76 +212,4 @@ protected:
   }
   
 public:
-  using Shifts     = std::unordered_map<int, int   >;
-  using Thresholds = std::unordered_map<int, double>;
-  using Fractions  = std::unordered_map<int, double>;
-
-  static inline Shifts     sShifts     = {};
-  static inline Thresholds sThresholds = {};
-  static inline Fractions  sFractions  = {};
-  
-  class Param
-  {
-  public:
-    enum Type {BOARD, LABEL, UNDEFINED};
-    static inline int sType = UNDEFINED;
-    static inline constexpr void setType(int type) noexcept {sType = type;}
-  };
 };
-
-
-
-
-
-    // if (0 < minimum(cfd)) return noSignal;            // If never crosses zero, returns noSignal
-    // auto const & min_bin = minimum_index(cfd);        // Get the minimum bin number
-
-    
-
-  // template<class T = double>
-  // CFD(std::vector<T> const & _trace, int shift, double fraction, size_t nbSamplesBaseline = 10) : CFD(_trace, nbSamplesBaseline)
-  // {
-  //   this -> calculate(shift, fraction);
-  // }
-
-  // virtual void calculate(size_t shift, double fraction)
-  // {
-  //   if (fraction>1.) {std::cout << Color::RED << "in CFD(trace, shift, fraction): fraction>1 !!" << Color::RESET << std::endl; return;}
-
-  //   cfd.clear();
-
-  //   if (m_size < 2*shift) {std::cout << Color::RED << "in CFD(trace, shift, fraction): m_size = " << m_size << " < 2*shift = " << 2*shift << " !!" << Color::RESET << std::endl; return;}
-    
-  //   cfd.reserve(m_size);
-  //   for (size_t bin = 5*shift; bin<m_size - shift; ++bin)
-  //   {
-  //     auto const & value = fraction * trace[bin] - trace[bin - shift] ;
-  //     cfd.push_back(value);
-  //   }
-  // }
-
-
-
-    
-  // template<class T = double>
-  // CFD(std::vector<T> const & _trace, size_t shift, double fraction, size_t nbSamplesBaseline = 10) : 
-  //   m_size(_trace.size())
-  // {
-  //   m_baseline = _trace[0];
-  //   if (nbSamplesBaseline > 1)
-  //   {
-  //     for (size_t sample_i = 1; sample_i<nbSamplesBaseline; ++sample_i) m_baseline += _trace[sample_i];
-  //     m_baseline /= nbSamplesBaseline;
-  //   }
-
-  //   cfd.clear();
-
-  //   if (m_size < 2*shift) {std::cout << Color::RED << "in CFD(trace, shift, fraction): m_size = " << m_size << " < 2*shift = " << 2*shift << " !!" << Color::RESET << std::endl; return;}
-    
-  //   cfd.reserve(m_size);
-  //   for (size_t bin = 5*shift; bin<m_size - shift; ++bin)
-  //   {
-  //     auto const & value = fraction * static_cast<float>(_trace[bin]+random_fast_uniform() - _trace[bin - shift]);
-  //     cfd.push_back(value);
-  //   }
-  // }

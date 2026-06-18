@@ -10,20 +10,6 @@
 
 namespace Colib
 {
-  // //////////////////////
-  // // String functions //
-  // //////////////////////
-
-  // /// @brief Returns the list of strings that match the regex pattern
-  // std::vector<std::string> match_regex(std::vector<std::string> list, std::string pattern)
-  // {
-  //   TRegexp reg((TString(pattern.c_str()).ReplaceAll("*", ".*")).ReplaceAll("?", "."));
-  //   std::vector<TString> strings; for (auto const & e : list) strings.push_back(e.c_str());
-  //   std::vector<std::string> ret;
-  //   for (size_t i = 0; i < strings.size(); ++i) if (strings[i].Index(reg) != kNPOS) ret.push_back(list[i]);
-  //   return ret;
-  // }
-
   ///////////////////////
   // TObject functions //
   ///////////////////////
@@ -183,6 +169,11 @@ namespace Colib
       auto const & content_other = histo->Interpolate(X_value);
       histo_total->SetBinContent(bin, histo_total->GetBinContent(bin) + content_other);
     }
+  }
+
+  void Smooth(TH1* h, int n = 1, Option_t *option = "")
+  {
+    for (int i = 0; i<n; ++i) h->Smooth(1, option);
   }
 
   /// @brief Adds a TH1 in a TH2, as either a line or a column
@@ -352,14 +343,7 @@ namespace Colib
 
 namespace Colib
 {
-  /// @brief Checks that the histogram can be used
-  bool checkHisto(TH1* histo)
-  {
-    return !(
-        !histo
-    ||  histo->IsZombie()
-    );
-  }
+  /// @brief Checks that the histogram is reachable
   bool checkHisto(TH1 const * histo)
   {
     return !(
@@ -368,27 +352,99 @@ namespace Colib
     );
   }
 
+  /////////////
+  // ALIASES //
+  /////////////
+
   /// @brief Alias to histo->GetXaxis()->GetXmin())
-  auto getXmin(TH1* histo) {return histo->GetXaxis()->GetXmin();}
+  auto getXmin(TH1 const * histo)
+  {
+    if (!checkHisto(histo)) return -1e-42;
+    return histo->GetXaxis()->GetXmin();
+  }
   
   /// @brief Alias to histo->GetXaxis()->GetXmax())
-  auto getXmax(TH1* histo) {return histo->GetXaxis()->GetXmax();}
+  auto getXmax(TH1 const * histo)
+  {
+    if (!checkHisto(histo)) return -1e-42;
+    return histo->GetXaxis()->GetXmax();
+  }
   
   /// @brief Alias to histo->GetXaxis()->GetXmin())
-  auto getYmin(TH1* histo) {return histo->GetYaxis()->GetXmin();}
+  auto getYmin(TH1 const * histo)
+  {
+    if (!checkHisto(histo)) return -1e-42;
+    return histo->GetYaxis()->GetXmin();
+  }
   
   /// @brief Alias to histo->GetXaxis()->GetXmax())
-  auto getYmax(TH1* histo) {return histo->GetYaxis()->GetXmax();}
+  auto getYmax(TH1 const * histo) 
+  {
+    if (!checkHisto(histo)) return -1e-42;
+    return histo->GetYaxis()->GetXmax();
+  }
+
+  /// @brief Alias to histo->GetXaxis()->GetFirst())
+  auto getFirstX(TH1 const * histo)
+  {
+    if (!checkHisto(histo)) return -42;
+    return histo->GetXaxis()->GetFirst();
+  }
+  /// @brief Alias to histo->GetXaxis()->GetLast())
+  auto getLastX(TH1 const * histo)
+  {
+    if (!checkHisto(histo)) return -42;
+    return histo->GetXaxis()->GetLast();
+  }
+  /// @brief Alias to histo->GetYaxis()->GetFirst())
+  auto getFirstY(TH1 const * histo)
+  {
+    if (!checkHisto(histo)) return -42;
+    return histo->GetYaxis()->GetFirst();
+  }
+  /// @brief Alias to histo->GetYaxis()->GetLast())
+  auto getLastY(TH1 const * histo)
+  {
+    if (!checkHisto(histo)) return -42;
+    return histo->GetYaxis()->GetLast();
+  }
+
+    /// @brief Alias to histo->GetXaxis()->GetBinLowEdge())
+  auto GetBinLowEdgeX(TH1 const * histo, Int_t const bin)
+  {
+    if (!checkHisto(histo)) return -1e-42;
+    return histo->GetXaxis()->GetBinLowEdge(bin);
+  }
+  /// @brief Alias to histo->GetYaxis()->GetBinLowEdge())
+  auto GetBinLowEdgeY(TH1 const * histo, Int_t const bin)
+  {
+    if (!checkHisto(histo)) return -1e-42;
+    return histo->GetYaxis()->GetBinLowEdge(bin);
+  }
+
+  ///////////
+  // OTHER //
+  ///////////
+
+  std::pair<int   , int   > getZoomBins(TH1 const * histo) 
+  {
+    if (!checkHisto(histo)) return {-42, -42};
+    return std::make_pair(getFirstX(histo), getLastX(histo));
+  }
+  std::pair<double, double> getZoomUser(TH1 const * histo) 
+  {
+    if (!checkHisto(histo)) return {-1e-42, -1e-42};
+    return std::make_pair(GetBinLowEdgeX(histo, getFirstX(histo)), GetBinLowEdgeX(histo, getLastX(histo)));
+  }
   
   /// @brief Makes sure that a histo exists and has at least 1 bin filled
   /// @details First check wether the pointer exists, then wether the histo is a zombie, and finally if the integral is > 1
-  bool isHistoFilled(TH1* histo) {return (histo && !histo->IsZombie() && histo->Integral()>1);}
+  bool isFilled(TH1* histo) {return (checkHisto(histo) && histo->Integral()>1);}
 
   /// @brief Integral bewteen x values instead of bins
   double getIntegralUser(TH1 * histo, double x_min, double x_max)
   {
-    double integral = 0.0;
-    if (!checkHisto(histo)) {error("Colib::getIntegralUser(TH1 * histo) : histo does not exists"); return integral;}
+    if (!checkHisto(histo)) {error("Colib::getIntegralUser(TH1 * histo) : histo does not exists"); return 1e-42;}
     
     // Invert if x_min < x_max
     if (x_max<x_min) 
@@ -433,6 +489,9 @@ namespace Colib
     }
   }
 
+  /////////////////////////
+  // INTERACTIVE SESSION //
+  /////////////////////////
   
   Colib::Point selectPoint(TH1* histo, std::string const & instructions)
   {
@@ -1546,6 +1605,7 @@ namespace Colib
   }
   
   /// @brief Clone an empty histogram with the same binning
+  /// @details 
   template<class THist>
   THist* clone(const THist* histo, const std::string& name = "", const std::string& title = "")
   {
@@ -1561,11 +1621,7 @@ namespace Colib
   template<class THist>
   THist* cloneEmpty(const THist* histo, const std::string& name = "", const std::string& title = "")
   {
-    if (!histo) throw std::invalid_argument("Input histogram is null!");
-    std::string new_name = name.empty() ? std::string(histo->GetName()) + "_Clone" : name;
-    std::string new_title = title.empty() ? histo->GetTitle() : title;
-    auto ret = static_cast<THist*>(histo->Clone(name.c_str()));
-    ret->SetTitle(new_title.c_str());
+    auto ret = clone(histo, name, title);
     ret->Reset();
     return ret;
   }
@@ -1628,6 +1684,56 @@ namespace Colib
     return ret;
   }
   
+  double findPeakRawFWHM(TH1 * histo, double mean, double ratio = 0.5)
+  {
+    auto const meanBin = histo -> GetXaxis() -> FindBin(mean);
+    auto const meanContent = histo -> GetBinContent( meanBin);
+    auto const first = histo -> FindLastBinAbove(meanContent*ratio, 1, 1, meanBin);
+    auto const last = findNextBinBelow(histo, meanBin, meanContent*ratio);
+    return histo->GetBinLowEdge(last+1) - histo->GetBinLowEdge(first);
+  }
+
+  double resolution(TH1 * histo)
+  {
+    auto maxi = histo->GetMaximum();
+    auto lowEdge_bin = histo->FindFirstBinAbove(maxi*0.5);
+    auto highEdge_bin = histo->FindLastBinAbove(maxi*0.5);
+    auto lowEdge = histo->GetBinLowEdge(lowEdge_bin);
+    auto highEdge = histo->GetBinLowEdge(highEdge_bin+1);
+    auto firstFWHM = highEdge-lowEdge;
+    
+    static thread_local auto gaus = std::make_unique<TF1>("fitResolutionColib_gaus", "gaus");
+    static thread_local auto gaus_bckg = std::make_unique<TF1>("fitResolutionColib_gaus_bckg", "gaus(0)+pol1(3)");
+
+    auto center = histo->GetXaxis()->GetBinLowEdge(histo->GetMaximumBin());
+    // histo->GetXaxis()->SetRangeUser(center - 5*firstFWHM, center + 5*firstFWHM);
+    gaus->SetRange(center - 5*firstFWHM, center + 5*firstFWHM);
+    gaus->SetParameters(histo->GetMaximum(), center, fwhmtosig(firstFWHM));
+    histo->Fit(gaus.get(), "RQ0");
+    gaus_bckg->SetParameters(gaus->GetParameters());
+    histo->Fit(gaus_bckg.get(), "RQ0");
+
+    return sigtofwhm(gaus_bckg->GetParameter(2));
+  }
+
+  std::vector<double> resolution(TH1 * histo, std::vector<double> const & means, double ratio = 0.5)
+  {
+    std::vector<double> ret;
+    auto xaxis = histo->GetXaxis();
+    auto initZoom = getZoomBins(histo);
+
+    for (auto const & mean : means)
+    {
+      xaxis->UnZoom();
+      auto rawFWHM = findPeakRawFWHM(histo, mean, ratio);
+      histo->GetXaxis()->SetRangeUser(mean-3*rawFWHM, mean+3*rawFWHM);
+      ret.push_back(resolution(histo));
+    }
+
+    histo->GetXaxis()->SetRangeUser(initZoom.first, initZoom.second);
+
+    return ret;
+  }
 }
 
 ///////////////////////////
@@ -2050,6 +2156,139 @@ namespace Colib
   template<class... Args> TH2F* myProjectionZXb(TH3F* histo, Args... args) {return myProjection2Db(histo, "ZX", std::forward<Args>(args)...);}
   template<class... Args> TH2F* myProjectionYZb(TH3F* histo, Args... args) {return myProjection2Db(histo, "YZ", std::forward<Args>(args)...);}
   template<class... Args> TH2F* myProjectionZYb(TH3F* histo, Args... args) {return myProjection2Db(histo, "ZY", std::forward<Args>(args)...);}
+
+  Point minimumFit(TH2* bidim, double xmin, double xmax, double ymin, double ymax)
+  {
+    static std::unique_ptr<TF2> f2 (new TF2("f2", "[0]*x*x + [1]*y*y + [2]*x*y + [3]*x + [4]*y + [5]"));
+    f2 -> SetParameters(0,0,0);
+    f2->SetRange(xmin, xmax, ymin, ymax);
+    bidim->Fit(f2.get(), "RQ0");
+    Point ret;
+    f2->GetMinimumXY(ret.x, ret.y);
+    return ret;
+  }
+
+  Point minimumBarycentre(TH2* bidim, double threshold)
+  {
+    double sumWeight = 0.0;
+    double weightedX = 0.0;
+    double weightedY = 0.0;
+
+    for (int binx = 1; binx <= bidim->GetNbinsX(); ++binx) 
+    {
+      double posX = bidim->GetXaxis()->GetBinCenter(binx);
+      for (int biny = 1; biny <= bidim->GetNbinsY(); ++biny) 
+      {
+        double content = bidim->GetBinContent(binx, biny);
+        
+        if (content < threshold) 
+        {
+          double weight = threshold - content; 
+          
+          sumWeight += weight;
+          weightedX += weight * posX;
+          weightedY += weight * bidim->GetYaxis()->GetBinCenter(biny);
+        }
+      }
+    }
+
+    if (sumWeight > 0) return {weightedX / sumWeight, weightedY / sumWeight};
+    
+    // Si aucun bin n'est sous le seuil, retourner le minimum absolu discret
+    throw_error("No bin found below threshold !!");
+    return 
+    {
+      bidim->GetXaxis()->GetBinCenter(bidim->GetMinimumBin()), 
+      bidim->GetXaxis()->GetBinCenter(bidim->GetMinimumBin())
+    };
+  }
+
+  std::pair<int, int> minimumProjectionsXYBins(TH2* bidim)
+  {
+    std::vector<double> Xmins;
+    for (int biny = 1; biny <= bidim->GetNbinsX(); ++biny)
+    {
+      auto proj = bidim->ProjectionX("projX", biny, biny);
+      proj->SetDirectory(nullptr);
+      auto const bin = proj->GetMinimumBin();
+      Xmins.push_back(proj->GetBinCenter(bin));
+      delete proj;
+    }
+
+    std::vector<double> Ymins;
+    for (int binx = 1; binx <= bidim->GetNbinsX(); ++binx)
+    {
+      auto proj = bidim->ProjectionY("projY", binx, binx);
+      proj->SetDirectory(nullptr);
+      auto const bin = proj->GetMinimumBin();
+      Ymins.push_back(proj->GetBinCenter(bin));
+      delete proj;
+    }
+    
+    auto x = bidim->GetXaxis()->FindBin(Colib::mean(Xmins));
+    auto y = bidim->GetYaxis()->FindBin(Colib::mean(Ymins));
+
+    return std::make_pair(x, y);
+  } 
+
+  std::pair<int, int> minimumProjectionsXYFitBins(TH2* bidim)
+  {
+    auto xaxis = bidim->GetXaxis();
+    auto yaxis = bidim->GetYaxis();
+
+    // 1. Création des profils "Fond de la vallée"
+    TH1F* xProfile(new TH1F("xProfile", "Min Z vs X", xaxis->GetNbins(), xaxis->GetXmin(), xaxis->GetXmax()));
+    TH1F* yProfile(new TH1F("yProfile", "Min Z vs Y", yaxis->GetNbins(), yaxis->GetXmin(), yaxis->GetXmax()));
+
+    for (int binx = 1; binx <= xaxis->GetNbins(); ++binx) 
+    {
+      auto proj = bidim->ProjectionY("projY_temp", binx, binx);
+      proj->SetDirectory(nullptr); // Évite la fuite mémoire dans l'arbre ROOT
+      xProfile->SetBinContent(binx, proj->GetMinimum());
+      delete proj;
+    }
+
+    for (int biny = 1; biny <= yaxis->GetNbins(); ++biny) 
+    {
+      auto proj = bidim->ProjectionX("projX_temp", biny, biny);
+      proj->SetDirectory(nullptr);
+      yProfile->SetBinContent(biny, proj->GetMinimum());
+      delete proj;
+    }
+    double bestX, bestY;
+    
+    if (false)
+    {
+      static std::unique_ptr<TF1> fit(new TF1("fitProjMin", "pol10"));
+      fit->SetRange(xaxis->GetXmin(), xaxis->GetXmax());
+  
+      fit->SetParameters(0,0,0,0,0,0,0,0,0,0,0);
+      new TCanvas();
+      xProfile->Fit(fit.get(), "R");
+      bestX = fit->GetMinimumX();
+      gPad->WaitPrimitive();
+  
+      fit->SetParameters(0,0,0,0,0,0,0,0,0,0,0);
+      fit->SetRange(yaxis->GetXmin(), yaxis->GetXmax());
+      new TCanvas();
+      yProfile->Fit(fit.get(), "R");
+      bestY = fit->GetMinimumX();
+      gPad->WaitPrimitive();
+      return {xaxis->FindBin(bestX), yaxis->FindBin(bestY)};
+    }
+    else
+    {
+      return {xProfile->GetMinimumBin(), yProfile->GetMinimumBin()};
+    }
+  }
+
+  std::pair<double, double> minimumProjectionsXY(TH2* bidim, bool fit = false)
+  {
+    auto [xbin, ybin] = (fit) ? minimumProjectionsXYFitBins(bidim) : minimumProjectionsXYBins(bidim);
+    auto x = bidim->GetXaxis()->GetBinLowEdge(xbin);
+    auto y = bidim->GetYaxis()->GetBinLowEdge(ybin);
+    return std::make_pair(x, y);
+  }
 }
 
 ///////////////////
@@ -2718,7 +2957,74 @@ namespace Colib
     }
   
     template<class THist = TH1>
-    std::pair<double, double> mark_minimum(Color_t color = kRed, Style_t style = 20, TPad * pad = nullptr)
+    void mark_minimum(int smooth = 0, Color_t color = kRed, Style_t style = 20, TPad * pad = nullptr)
+    {
+      if (!pad) 
+      {
+        pad = (TPad*)gPad;
+        if (!pad) {error("no pad"); return;}
+      }
+      auto histos = get_histos<THist>(pad);
+      if (histos.empty()) {error("There is no such histogram in requested pad..."); return;}
+      if (2 < histos.size()) {error("There is more than one histogram in requested pad..."); return;}
+
+      auto histo = (smooth < 1) ? histos[0] : clone(histos[0]);
+      if (0 < smooth) Colib::Smooth(histo, smooth);
+      Int_t bx, by, bz;
+      const Int_t globalMin = histo->GetMinimumBin();
+      if (smooth<1) delete histo;
+      pad->cd();
+      histo->GetBinXYZ(globalMin, bx, by, bz);
+      const Double_t x = histo->GetXaxis()->GetBinCenter(bx);
+      const Double_t y = (histo->GetDimension() > 1) 
+                        ? histo->GetYaxis()->GetBinCenter(by) 
+                        : histo->GetBinContent(globalMin);
+      auto m = new TMarker(x, y, style);
+      m->SetMarkerColor(color);
+      m->Draw();
+    }
+
+    void mark_minimum_proj(int fit = false, int nsmooth = 0, Color_t color = kRed, Style_t style = 20, TPad * pad = nullptr)
+    {
+      if (!pad) 
+      {
+        pad = (TPad*)gPad;
+        if (!pad) {error("no pad"); return;}
+      }
+      auto histos = get_histos<TH2>(pad);
+      if (histos.empty()) {error("There is no such histogram in requested pad..."); return;}
+      if (2 < histos.size()) {error("There is more than one histogram in requested pad..."); return;}
+
+      auto histo = histos[0];
+      Smooth(histo, nsmooth);
+      auto [x, y] = minimumProjectionsXY(histo, fit);
+      pad->cd();
+      auto m = new TMarker(x, y, style);
+      m->SetMarkerColor(color);
+      m->Draw();
+    }
+
+    void mark_minimum_barycentre(double threshold, Color_t color = kRed, Style_t style = 20, TPad * pad = nullptr)
+    {
+      if (!pad) 
+      {
+        pad = (TPad*)gPad;
+        if (!pad) {error("no pad"); return;}
+      }
+      auto histos = get_histos<TH2>(pad);
+      if (histos.empty()) {error("There is no such histogram in requested pad..."); return;}
+      if (2 < histos.size()) {error("There is more than one histogram in requested pad..."); return;}
+
+      auto histo = histos[0];
+      auto min = minimumBarycentre(histo, threshold);
+      pad->cd();
+      auto m = new TMarker(min.x, min.y, style);
+      m->SetMarkerColor(color);
+      m->Draw();
+    }
+
+    template<class THist = TH2>
+    void mark_barycentre(bool const inverse = false, Color_t color = kRed, Style_t style = 20, TPad * pad = nullptr)
     {
       if (!pad) 
       {
@@ -2730,17 +3036,41 @@ namespace Colib
       if (2 < histos.size()) {error("There is more than one histogram in requested pad..."); return;}
 
       auto histo = histos[0];
-      Int_t bx, by, bz;
-      const Int_t globalMin = histo->GetMinimumBin();
-      histo->GetBinXYZ(globalMin, bx, by, bz);
-      const Double_t x = histo->GetXaxis()->GetBinCenter(bx);
-      const Double_t y = (histo->GetDimension() > 1) 
-                        ? histo->GetYaxis()->GetBinCenter(by) 
-                        : histo->GetBinContent(globalMin);
-      auto m = new TMarker(x, y, style);
-      m->SetMarkerColor(color);
-      m->Draw();
-      return {x, y};
+
+      double sumW = 0;
+      double sumWX = 0;
+      double sumWY = 0;
+      double max = histo->GetMaximum();
+
+      // Itération sur les axes (excluant les under/overflow : 1 à GetNbins)
+      for (int i = 1; i <= histo->GetNbinsX(); ++i) {
+          for (int j = 1; j <= histo->GetNbinsY(); ++j) {
+              double w = histo->GetBinContent(i, j);
+              if (w <= 0 || !std::isfinite(w)) continue; // Optionnel : ignorer les poids nuls/négatifs
+              sumW  += w;
+              if (inverse) 
+              {
+                sumWX += (max-w) * histo->GetXaxis()->GetBinCenter(i);
+                sumWY += (max-w) * histo->GetYaxis()->GetBinCenter(j);
+              }
+              else
+              {
+                sumWX += w * histo->GetXaxis()->GetBinCenter(i);
+                sumWY += w * histo->GetYaxis()->GetBinCenter(j);
+              }
+          }
+      }
+
+      if (sumW > 0) 
+      {
+        double x = sumWX / sumW;
+        double y = sumWY / sumW;
+          
+        auto m = new TMarker(x, y, style);
+        m->SetMarkerColor(color);
+        m->Draw();
+      }
+      
     }
   
     /**
@@ -3206,12 +3536,12 @@ std::vector<std::string> file_get_names_of(TFile* file = nullptr)
           std::unique_ptr<TObject> obj (key->ReadObj());
           auto histo = dynamic_cast<TH1*>(obj.get());
           std::string name = histo->GetName();
-          if (first_file) all_TH1F.emplace_back(std::unique_ptr<TH1>(dynamic_cast<TH1*>(histo->Clone((name).c_str()))));
+          if (first_file) all_TH1F.emplace_back(std::unique_ptr<TH1>(clone(histo)));
           else
           {
             if (nb_histos >= all_TH1F.size()) 
             {
-              all_TH1F.emplace(all_TH1F.begin()+nb_histos, std::unique_ptr<TH1>(dynamic_cast<TH1*>(histo->Clone((name).c_str()))));
+              all_TH1F.emplace(all_TH1F.begin()+nb_histos, std::unique_ptr<TH1>(clone(histo)));
               nb_histos++;
               continue;
             }
@@ -3225,7 +3555,7 @@ std::vector<std::string> file_get_names_of(TFile* file = nullptr)
               if (nb_histos == all_TH1F.size())
               {
                 auto const & it = all_TH1F.begin()+checkpoint;
-                all_TH1F.emplace(it, std::unique_ptr<TH1>(dynamic_cast<TH1*>(histo->Clone((name).c_str()))));
+                all_TH1F.emplace(it, std::unique_ptr<TH1>(clone(histo)));
                 nb_histos = checkpoint+1;
                 print(all_TH1F[checkpoint]->GetName(), "created");
                 continue;
@@ -3457,7 +3787,7 @@ namespace Colib
   template<class THist>
   THist* AddNorm(THist* h1, THist* h2, double min_range, double max_range)
   {
-    auto ret = (THist*) h1->Clone(TString(h1->GetName())+"_plus_norm_"+TString(h2->GetName()));
+    auto ret = clone(h1, (TString(h1->GetName())+"_plus_norm_"+TString(h2->GetName())));
     ret->SetTitle(TString(h1->GetName())+"+"+TString(h2->GetName()));
 
     auto canvas = new TCanvas("temp_canvas", "temp_canvas");
@@ -3758,7 +4088,6 @@ namespace Colib
     TF1* final_fit = nullptr;
   };
   
-  
   /**
    * @brief Allows one to find the most significant peak in the range [low_edge, high_edge]
    * @details 
@@ -3934,561 +4263,3 @@ void libRoot()
 }
 
 #endif //LIBROOT_HPP
-
-
-/////////////////
-// Legacy code //
-/////////////////
-
- // unique_TFile file(TFile::Open(filename.c_str(), "READ"));
-  // file -> cd();
-  // if (!file.get()->IsOpen()) Colib::throw_error("Can't open"+filename);
-  // print("Reading", filename);
-  
-  // TIter nextKey(file->GetListOfKeys());
-  // TKey* key = nullptr;
-
-  // int histo_nb = 0;
-  // while (histo_nb<10 && (key = dynamic_cast<TKey*>(nextKey()))) 
-  // {
-  //   TObject* obj = key->ReadObj();
-  //   if (obj->IsA()->InheritsFrom(TH1::Class())) 
-  //   {
-  //     if (obj->IsA()->InheritsFrom(TH1F::Class())) 
-  //     {
-  //       auto histo = dynamic_cast<TH1F*>(obj);
-  //       std::string name = histo->GetName();
-  //       print(name, histo_nb);
-  //       if (first_file) all_TH1F.emplace_back(dynamic_cast<TH1F*>(histo->Clone((name+"_manip").c_str())));
-  //       // if (first_file) all_TH1F.emplace_back(std::unique_ptr<TH1F>(static_cast<TH1F*>(histo->Clone())));
-  //       else 
-  //       {
-  //         print(all_TH1F[histo_nb]->GetName());
-  //         if (name == all_TH1F[histo_nb]->GetName()) all_TH1F[histo_nb]->Add(histo);
-  //         else Colib::throw_error("Root files not identical !!!");
-  //       }
-  //       histo_nb++;
-  //     }
-  //     delete obj;
-  //   }
-  //   // delete obj;
-  // }
-  // delete key;
-  // file->Close();
-  // first_file = false; // Usefull only at the first iteration
-
-
-
-  //  0;
-  // int end_peak_bin = 0;
-  // for (int bin_i = maxbin; bin_i<high_edge_bin; ++bin_i)
-  // {
-  //   print(histo->GetBinContent(bin_i), max*0.7);
-  //   if (histo->GetBinContent(bin_i)<max*0.7) {end_peak_bin = bin_i; break;}
-  // }
-  // for (int bin_i = maxbin; bin_i>low_edge_bin; --bin_i)
-  // {
-  //   print(histo->GetBinContent(bin_i), max*0.7);
-  //   if (histo->GetBinContent(bin_i)<max*0.7) {begin_peak_bin = bin_i; break;}
-  // }
-
-  // // Try again to find the edges. If found too far away, this means we had to peak the first time.
-  // auto const & first_left_displacement = maxbin-begin_peak_bin;
-  // auto const & first_right_displacement = maxbin+end_peak_bin;
-  // int begin_peak_bin_bis = 0;
-  // int end_peak_bin_bis = 0;
-  // for (int bin_i = maxbin; bin_i<first_left_displacement; ++bin_i)
-  // {
-  //   if (histo->GetBinContent(bin_i)<max*0.7) {end_peak_bin = bin_i; break;}
-  // }
-  // for (int bin_i = maxbin; bin_i>low_edge_bin; --bin_i)
-  // {
-  //   if (histo->GetBinContent(bin_i)<max*0.7) {begin_peak_bin = bin_i; break;}
-  // }
-
-  // /*
-  //  * @brief Not functionnal yet
-  //  * @todo maybe
-  //  * 
-  //  * 1: Add all the files
-  //  * TheTChain chain("Nuball", "/path/to/data/files*.root");
-  //  * chain.Add("/other_path/to/data/files*.root")
-  //  *
-  //  * 2: Setup the chain :
-  //  * chain.set();
-  //  *
-  //  * 3: Links all the variables
-  //  * chain.SetBranchAddress("branch", &variable);
-  // */
-  // class TheTChain
-  // {
-  // public:
-  //   TheTChain(std::string const & name, std::string const & expression = "", std::string const & readMode = "READ") : m_name(name), m_read_mode(readMode)
-  //   {
-  //     if (expression!="") this -> Add(expression);
-  //   }
-  
-  //   // TTree wrapping :
-  //   void Add(std::string const & expression)
-  //   {
-  //     m_input_files_expressions.push_back(expression);
-  //   }
-  
-  //   template<class... ARGS>
-  //   void SetBranchAddress(ARGS &&... args) {for (auto & tree : m_trees) tree -> SetBranchAddress(std::forward<ARGS>(args)...);}
-  
-  //   // template <class Func, class... ARGS> // Attempt to create a generic wrapping method
-  //   // operator-> ()
-  
-  
-  //   // Class own methods :
-  //   void set();
-  //   bool read(){return true;}
-  
-  //   TTree* operator[] (int const & i) {return m_trees[i];}
-  
-  //   auto begin() {return m_trees.begin();}
-  //   auto end()   {return m_trees.end()  ;}
-  
-  // private:
-  //   std::string m_name = "";
-  //   std::string m_read_mode = "READ";
-  
-  //   void set(std::string const & expression);
-  //   void newTTree(std::string const & fileName)
-  //   {
-  //     m_files.push_back( TFile::Open(fileName.c_str()) );
-  //     m_trees.push_back( m_files.back() -> Get<TTree>(m_name.c_str()) );
-  //   }
-  
-  //   std::vector<std::string> m_input_files_expressions;
-  //   std::vector<std::string> m_files_vec;
-  
-  //   UInt_t    m_tree_cursor = 0;
-  //   ULong64_t m_evt_cursor = 0;
-  //   ULong64_t m_size = 0;
-  
-  //   std::vector<TTree*> m_trees;
-  //   std::vector<TFile*> m_files;
-  // };
-  
-  // void TheTChain::set()
-  // {
-  //   // for (auto const & expression : m_input_files_expressions)
-  //   // {
-  //   //   if (!folder_exists(expression)) {print("folder",getFullPath(expression),"empty !");return;}
-  //   //   if (expression.back() == '/')
-  //   //   {// If a folder is given then search the whole folder for .root files
-  //   //     findFilesWildcard(expression+"*.root", m_files_vec);
-  //   //   }
-  //   //   else findFilesWildcard(expression, m_files_vec);
-  //   // }
-  //   // print(m_files_vec);
-  //   // for (auto const & filename : m_files_vec) newTTree(filename);
-  // }
-
-      
-  // /// @brief LEGACY
-  // void removeRandomY(TH2* matrix, int _stopX = -1, int _stopY = -1, bool writeIntermediate = false, ProjectionsBins projections = {{}})
-  // {
-  //   int const & bins_x = matrix->GetNbinsX();
-  //   int const & bins_y = matrix->GetNbinsY();
-  //   int startX = 0;
-  //   int stopX = (_stopX<0) ? bins_x+1 : _stopX;
-  //   int startY = 0;
-  //   int stopY = (_stopY<0) ? bins_y+1 : _stopY;;
-
-  //   // print("Normalizing...");
-  //   // normalizeY(matrix, 1);// This is in order to have floating points in the z axis
-  //   // normalizeBidim(matrix, 1);// This is in order to have floating points in the z axis
-
-  //   print("Cloning...");
-  //   auto clone = static_cast<TH2*>(matrix->Clone());
-  //   clone->SetDirectory(nullptr);
-
-  //   print("Projecting on both axis...");
-  //   std::vector<double> totProjX(bins_x+1);
-  //   std::vector<double> totProjY(bins_y+1);
-  //   for (int x = startX; x<bins_x+1; x++) for (int y = startY; y<bins_y+1; y++) 
-  //   {
-  //     auto const & value = matrix->GetBinContent(x,y);
-  //     totProjX[x] += value;
-  //     totProjY[y] += value;
-  //   }
-
-  //   print("Subtracting...");
-  //   std::vector<TH2*> intermediate;
-  //   std::vector<std::vector<TH1*>> intermediate_proj(projections.size());
-  //   auto const & total = matrix->Integral();
-  //   for (int x = startX; x<stopX; x++)
-  //   {
-  //     if (x%(stopX/100) == 0) 
-  //     {
-  //       auto advancement = int_cast(100*x/stopX);
-  //       print(advancement, "%");
-  //       if (writeIntermediate && advancement%10 == 0)
-  //       {
-  //         print("Saving at", advancement, "% process");
-  //         std::string matrix_name = matrix->GetName()+std::to_string(advancement);
-  //         intermediate.emplace_back(dynamic_cast<TH2*>(clone->Clone(matrix_name.c_str())));
-  //         for (size_t proj_i = 0; proj_i<projections.size(); proj_i++)
-  //         {
-  //           auto histo = new TH1F();
-  //           auto const & gate = projections[proj_i];
-  //           projectY(intermediate.back(), histo, gate.first, gate.second);
-  //           auto const & histo_name = matrix_name+"_"+std::to_string(gate.first)+"_"+std::to_string(gate.second);
-  //           intermediate_proj[proj_i].emplace_back(dynamic_cast<TH1F*>(histo->Clone(histo_name.c_str())));
-  //         }
-  //       }
-  //     }
-  //     // w = totProjX[x]/total; // Weight of the y spectra at bin x
-  //     for (int y = startY; y<stopY; y++) 
-  //     {
-  //       auto const & sub = totProjY[y] * totProjX[x];
-  //       // auto const & sub = totProjY[y] * w * matrix->GetBinContent(x, y);
-  //       // if (sub>0) for (int x2 = startX; x2<stopX; x2++) 
-  //       // {
-  //         // auto const & global_bin = matrix->GetBin(x2, y);
-  //         // auto const & new_value = clone->GetBinContent(global_bin)-sub;
-  //         // if (new_value>0) clone -> SetBinContent(global_bin, new_value);
-  //         auto const & new_value = clone->GetBinContent(x, y)-sub/total;
-  //         clone -> SetBinContent(x, y, new_value);
-  //         // clone -> SetBinContent(x, y, (new_value>0) ? new_value : 0);
-  //       // }
-  //     }
-  //   }
-
-  //   print("Subtraction done, copying back...");
-  //   delete matrix;
-  //   matrix = static_cast<TH2*>(clone->Clone());
-
-  //   // print("Renormalising...");
-  //   // normalizeBidim(matrix, 1);
-
-  //   print("RemoveRandomY done.");
-  //   if (writeIntermediate)
-  //   {
-  //     print("Writing intermediate steps...");
-  //     std::string filename = std::string("Intermediate_")+matrix->GetName()+".root";
-  //     auto file = TFile::Open(filename.c_str(), "recreate");
-  //     file->cd();
-  //     matrix->Write();
-  //     // for (auto & histo : intermediate) if (histo!=nullptr) histo -> Write();
-  //     for (auto & projections : intermediate_proj) for (auto & histo : projections) if (histo!=nullptr) histo -> Write();
-  //     file->Write();
-  //     file->Close();
-  //     print(filename, "written");
-  //   }
-  // }
-
-
-  // /// @brief Vector of pairs of min and max bins 
-  // using ProjectionsBins = std::vector<std::pair<double,double>>;
-
-  // /// @deprecated
-  // void removeRandomBidim(TH2* matrix, int iterations = 1, bool save_intermediate = false, 
-  //                       ProjectionsBins projectionsY = {{}}, ProjectionsBins projectionsX = {{}})
-  // {
-  //   // matrix->Rebin2D(2);
-  //   int const & bins_x = matrix->GetNbinsX();
-  //   int const & bins_y = matrix->GetNbinsY();
-  //   int startX = 0;
-  //   int stopX = bins_x+1;
-  //   int startY = 0;
-  //   int stopY = bins_y+1;
-  //   std::string matrix_name = matrix->GetName();
-  //   auto const & iterations_sqr = iterations*iterations;
-  //   auto const & proportions = 2;
-  //   // auto const & iterations_pow4 = iterations*iterations*iterations*iterations;
-  //   // auto const maximum = matrix->GetMaximum();
-
-  //   std::vector<std::vector<TH1*>> intermediate_projX(projectionsX.size());
-  //   std::vector<std::vector<TH1*>> intermediate_projY(projectionsY.size());
-  //   std::vector<TH1D*> save_totProjX;
-  //   std::vector<TH1D*> save_totProjY;
-  //   // std::vector<TH2*> clones;
-  //   std::vector<double> integrals(iterations_sqr,0.);
-
-  //   // std::vector<std::vector<std::vector<double>>> save_sub(iterations_sqr);
-  //   // std::vector<std::vector<double>> sub_moyX(iterations_sqr);
-  //   // std::vector<std::vector<double>> sub_moyY(iterations_sqr);
-
-  //   std::vector<TH1D*> save_sub_projX;
-  //   std::vector<TH1D*> save_sub_projY;
-  //   for (int it = 0; it<iterations; it++) 
-  //   {
-  //     // save_sub[it].resize(bins_x+1);
-  //     // sub_moyX[it].resize(bins_x+1);
-  //     for (int x = 0; x<bins_x+1; x++) 
-  //     {
-  //       // sub_moyX[it][x] = 0.0;
-        
-  //       // save_sub[it][x].resize(bins_y+1);
-  //       // for (int y = 0; y<bins_y+1; y++) save_sub [it][x][y] = 0.0;
-  //     }
-
-  //     // sub_moyY[it].resize(bins_y+1);
-  //     // for (int y = 0; y<bins_y+1; y++) sub_moyY[it][y] = 0.0;
-  //   }
-
-  //   std::vector<double> totProjX(bins_x+1);
-  //   std::vector<double> totProjY(bins_y+1);
-  //   std::vector<double> totProjX_buf(bins_x+1);
-  //   std::vector<double> totProjY_buf(bins_y+1);
-  //   for (int x = startX; x<bins_x+1; x++) 
-  //   {
-  //     for (int y = startY; y<bins_y+1; y++) 
-  //     {
-  //       auto const & value = matrix->GetBinContent(x,y);
-  //       totProjX[x] += value;
-  //       totProjY[y] += value;
-  //       totProjX_buf[x] += value;
-  //       totProjY_buf[y] += value;
-  //     }
-  //   }
-
-  //   // Remove the extremal lines to avoid edge effects :
-  //   for (int x = 0; x<stopX; x++) 
-  //   {
-  //     matrix->SetBinContent(x,0,0);
-  //     matrix->SetBinContent(x,bins_x,0);
-  //   }
-  //   for (int y = 0; y<stopX; y++) matrix->SetBinContent(0,y,0);
-
-  //   auto firstTotProjX = matrix->ProjectionX("firstTotProjX");
-  //   auto firstTotProjY = matrix->ProjectionY("firstTotProjY");
-
-  //   std::vector<std::vector<double>> sub_array;
-  //   fill2D(sub_array, stopX, stopY, 0.0);
-  //   std::vector<std::vector<double>> speed_array;
-  //   fill2D(speed_array, stopX, stopY, 0.0);
-  //   // std::vector<std::vector<double>> real_sub_array;
-  //   // fill2D(real_sub_array, stopX, stopY, 0.0);
-
-  //   if (save_intermediate)
-  //   {
-  //     save_totProjX.emplace_back(dynamic_cast<TH1D*>(firstTotProjX->Clone("totProjX_init")));
-  //     save_totProjY.emplace_back(dynamic_cast<TH1D*>(firstTotProjY->Clone("totProjY_init")));
-  //     for (size_t proj_i = 0; proj_i<projectionsY.size(); proj_i++)
-  //     {
-  //       auto histo = new TH1F();
-  //       auto const & gate = projectionsY[proj_i];
-  //       if (gate.first == gate.second) continue;
-  //       projectY(matrix, histo, gate.first, gate.second);
-  //       auto const & histo_name = matrix_name+"_projY_"+std::to_string(int(gate.first))+"_"+std::to_string(int(gate.second))+"_init";
-  //       intermediate_projY[proj_i].emplace_back(dynamic_cast<TH1F*>(histo->Clone(histo_name.c_str())));
-  //     }
-  //     for (size_t proj_i = 0; proj_i<projectionsX.size(); proj_i++)
-  //     {
-  //       auto histo = new TH1F();
-  //       auto const & gate = projectionsX[proj_i];
-  //       if (gate.first == gate.second) continue;
-  //       projectX(matrix, histo, gate.first, gate.second);
-  //       auto const & histo_name = matrix_name+"_projX_"+std::to_string(gate.first)+"_"+std::to_string(gate.second)+"_init";
-  //       intermediate_projX[proj_i].emplace_back(dynamic_cast<TH1F*>(histo->Clone(histo_name.c_str())));
-  //     }
-  //   }
-
-  //   print("Subtracting", matrix_name, "with", iterations, "iterations...");
-  //   for (int it = 0; it<iterations; it++)
-  //   {
-  //     print("Iteration", it);
-  //     if(save_intermediate)
-  //     {
-  //       save_totProjX.emplace_back(dynamic_cast<TH1D*>(firstTotProjX->Clone(("totProjX_"+std::to_string(int_cast(it))).c_str())));
-  //       save_totProjY.emplace_back(dynamic_cast<TH1D*>(firstTotProjY->Clone(("totProjY_"+std::to_string(int_cast(it))).c_str())));
-  //       // if (it>0) save_sub_projX.emplace_back(dynamic_cast<TH1D*>(firstTotProjX->Clone(("sub_projX_"+std::to_string((int)(it-1))).c_str())));
-  //       // if (it>0) save_sub_projY.emplace_back(dynamic_cast<TH1D*>(firstTotProjY->Clone(("sub_projY_"+std::to_string((int)(it-1))).c_str())));
-
-  //       for (int x = 0; x<bins_x+1; x++) 
-  //       {
-  //         save_totProjX[it]->SetBinContent(x, totProjX[x]);
-  //         // if (it>0) save_sub_projX[it-1]->SetBinContent(x, sub_moyX[it-1][x]);
-  //       }
-  //       for (int y = 0; y<bins_y+1; y++) 
-  //       {
-  //         save_totProjY[it]->SetBinContent(y, totProjY[y]);
-  //         // if (it>0) save_sub_projY[it-1]->SetBinContent(y, sub_moyY[it-1][y]);
-  //       }
-  //     }
-
-  //     auto const total = matrix->Integral();
-  //     // auto const & prev_total = (it>0) ? clones[it-1]->Integral() : total;
-  //     // auto const & prev_total2 = (it>0) ? clones[it-1]->Integral() : total;
-
-  //     for (int x = startX; x<stopX; x++)
-  //     {
-  //       for (int y = startY; y<stopY; y++) 
-  //       {
-  //         double value = matrix->GetBinContent(x, y);
-  //         if (value == 0) continue;
-
-  //         // V1 :
-  //         // auto diff = (it>0) ? clones[it-1]->GetBinContent(x,y)*total/prev_total - value : 0;
-  //         // auto const & sub = (totProjY[y] * totProjX[x])/(iterations*total);
-  //         // auto const & new_value = value - sub - sqrt(diff)/iterations;
-
-  //         // V2 :
-  //         // save_sub[it][x][y] = (totProjX[x] * totProjY[y])/(iterations*total);
-  //         // auto const new_value = value - save_sub[it][x][y];
-  //         // totProjX_buf[x] -= save_sub[it][x][y];
-  //         // totProjY_buf[y] -= save_sub[it][x][y];
-
-  //         // V3 :
-  //         double sub = (totProjX[x] * totProjY[y])/(proportions*total);
-  //         if (iterations>1) sub *= ( 1. - (sub/(proportions*value)));
-  //         else sub *= proportions;
-
-  //         matrix -> SetBinContent(x, y, value - sub);
-
-  //         totProjX_buf[x] -= sub;
-  //         totProjY_buf[y] -= sub;
-
-  //         // V4 :
-  //         // sub_array[x][y] = (totProjX[x] * totProjY[y])/(proportions*total);
-  //         // speed_array[x][y] = sub_array[x][y]/value;
-  //       }
-  //     }
-
-  //     // V4 : (the iterations are done excluding the extrema lines to avoid edge effect :)
-  //     // for (int x = 1; x<bins_x; x++)
-  //     // {
-  //     //   for (int y = 1; y<bins_y; y++) 
-  //     //   {
-  //     //     // Do an average of the speed around the bin :
-  //     //     auto const & mean_speed = speed_array[x][y];
-  //     //       // speed_array[x-1][y-1]*0.0313 + speed_array[x][y-1]*0.0938 + speed_array[x+1][y-1]*0.0313 + 
-  //     //       // speed_array[x-1][y]  *0.0938 + speed_array[x][y]  *0.5    + speed_array[x+1][y]  *0.0938 + 
-  //     //       // speed_array[x-1][y+1]*0.0313 + speed_array[x][y+1]*0.0938 + speed_array[x+1][y+1]*0.0313 ;
-  //     //     auto const & sub = sub_array[x][y] * ( 1 - mean_speed);
-  //     //     matrix -> SetBinContent(x, y, matrix->GetBinContent(x,y) - sub);
-  //     //     totProjX_buf[x] -= sub;
-  //     //     totProjY_buf[y] -= sub;
-  //     //   }
-  //     // }
-
-  //     if (save_intermediate) 
-  //     {
-  //       // Project on the axis :
-  //       for (size_t proj_i = 0; proj_i<projectionsY.size(); proj_i++)
-  //       {
-  //         auto histo = new TH1F();
-  //         auto const & gate = projectionsY[proj_i];
-  //         if (gate.first == gate.second) continue;
-  //         projectY(matrix, histo, gate.first, gate.second);
-  //         auto const & histo_name = matrix_name+"_projY_"+std::to_string(int(gate.first))+"_"+std::to_string(int(gate.second))+"_"+std::to_string(it);
-  //         intermediate_projY[proj_i].emplace_back(dynamic_cast<TH1F*>(histo->Clone(histo_name.c_str())));
-  //       }
-  //       for (size_t proj_i = 0; proj_i<projectionsX.size(); proj_i++)
-  //       {
-  //         auto histo = new TH1F();
-  //         auto const & gate = projectionsX[proj_i];
-  //         if (gate.first == gate.second) continue;
-  //         projectX(matrix, histo, gate.first, gate.second);
-  //         auto const & histo_name = matrix_name+"_projX_"+std::to_string(gate.first)+"_"+std::to_string(gate.second)+"_"+std::to_string(it);
-  //         intermediate_projX[proj_i].emplace_back(dynamic_cast<TH1F*>(histo->Clone(histo_name.c_str())));
-  //       }
-  //     }
-
-  //     // Update the total projections :
-  //     totProjX = totProjX_buf;
-  //     totProjY = totProjY_buf;
-
-  //     // normalizeBidim(matrix, maximum);
-  //   }
-
-  //   if (save_intermediate)
-  //   {
-  //     print("Writing intermediate steps...");
-  //     std::string filename = "Background_removed_"+matrix_name+".root";
-  //     auto file = TFile::Open(filename.c_str(), "recreate");
-  //     file->cd();
-  //     matrix->Write();
-  //     for (auto & histo : save_totProjX) if (histo!=nullptr) histo -> Write();
-  //     for (auto & histo : save_totProjY) if (histo!=nullptr) histo -> Write();
-  //     for (auto & histo : save_sub_projX) if (histo!=nullptr) histo -> Write();
-  //     for (auto & histo : save_sub_projY) if (histo!=nullptr) histo -> Write();
-  //     for (auto & projections : intermediate_projX) for (auto & histo : projections) if (histo!=nullptr) histo -> Write();
-  //     for (auto & projections : intermediate_projY) for (auto & histo : projections) if (histo!=nullptr) histo -> Write();
-  //     file->Write();
-  //     file->Close();
-  //     print(filename, "written");
-  //   }
-  // }
-
-  // /// @deprecated
-  // std::vector<double> extractBackgroundArray(std::vector<double> & source, int const & nsmooth = 10)
-  // {
-  //   print("deprecated (", nsmooth, ")");
-  //   // auto s = new TSpectrum();
-  //   // s->Background(source.data(),source.size(),nsmooth,TSpectrum::kBackDecreasingWindow,TSpectrum::kBackOrder2,kTRUE,TSpectrum::kBackSmoothing3,kFALSE);
-  //   // s->Delete();
-  //   return source;
-  // }
-
-  // /// @deprecated
-  // std::vector<double> extractBackgroundArray(TH1F * histo, int const & nsmooth = 10)
-  // {
-  //   print("deprecated (", histo->GetName(), nsmooth, ")");
-  //   // auto const & nbins = histo->GetNbinsX();
-  //   // std::vector<double> source(nbins);
-  //   // for (int bin=0;bin<nbins;bin++) source[bin]=histo->GetBinContent(bin+1);
-  //   // return extractBackgroundArray(source, nsmooth);
-  //   return std::vector<double>(0);
-  // }
-
-
-  
-  // static const std::unordered_map<std::type_index, std::string> typeRootMap = 
-  // {
-  //   // Bool :
-  //   {static_cast<std::type_index>(typeid(          true)), "O"},
-
-  //   // Integers :
-  //   {static_cast<std::type_index>(typeid(  char_cast(1))), "B"}, {static_cast<std::type_index>(typeid( uchar_cast(1))), "b"},
-  //   {static_cast<std::type_index>(typeid( short_cast(1))), "S"}, {static_cast<std::type_index>(typeid(ushort_cast(1))), "s"},
-  //   {static_cast<std::type_index>(typeid(   int_cast(1))), "I"}, {static_cast<std::type_index>(typeid(  uint_cast(1))), "i"},
-  //   {static_cast<std::type_index>(typeid(  long_cast(1))), "G"}, {static_cast<std::type_index>(typeid( ulong_cast(1))), "g"},
-
-  //   // Floating point :
-  //   {static_cast<std::type_index>(typeid(double_cast(1))), "D"}, {static_cast<std::type_index>(typeid( float_cast(1))), "F"},
-
-  //   // ROOT types :
-  //   {static_cast<std::type_index>(typeid(Long64_cast(1))), "L"}, {static_cast<std::type_index>(typeid(ULong64_cast(1))), "l"}
-  // };
-
-  // template<class T>
-  // std::string typeRoot(T const & t)
-  // {
-  //   auto const & typeIndex = static_cast<std::type_index>(typeid(t));
-  //   auto it = typeRootMap.find(typeIndex);
-  //   if (it != typeRootMap.end()) return it->second;
-  //   else                         return "Unknown";
-  // }
-
-  // template<class T>
-  // std::string typeRoot()
-  // {
-  //   T t;
-  //   auto const & typeIndex = static_cast<std::type_index>(typeid(t));
-  //   auto it = typeRootMap.find(typeIndex);
-  //   if (it != typeRootMap.end()) return it->second;
-  //   else                         return "Unknown";
-  // }
-
-  // /// @brief Create a branch for a given value and name
-  // template<class T>
-  // auto createBranch(TTree* tree, T * value, std::string const & name, int buffsize = 64000)
-  // {
-  //   auto const & type_root_format = name+"/"+typeRoot<T>();
-  //   return (tree -> Branch(name.c_str(), value, type_root_format.c_str(), buffsize));
-  // }
-
-  // /// @brief Create a branch for a given array and name
-  // /// @param name_size: The name of the leaf that holds the size of the array
-  // template<class T>
-  // auto createBranchArray(TTree* tree, T * array, std::string const & name, std::string const & name_size, int buffsize = 64000)
-  // {
-  //   auto const & type_root_format = name+"["+name_size+"]/"+typeRoot(**array);
-  //   return (tree -> Branch(name.c_str(), array, type_root_format.c_str(), buffsize));
-  // }

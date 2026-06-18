@@ -57,25 +57,24 @@ constexpr size_t   reserved_buffer_size = 500000ul;
 
 int main(int argc, char** argv)
 {
-  CFD::sShifts = { // BOARD_ID, SAMPLES
-    {0, 5},
-    {1, 5},
-    {6, 2},
-    {7, 2},
-    {8, 2}
-  };
+  CFDParametersMap<int> CFDparams = CFDParametersMap<int>({
+    {0, {0.75, 5}},
+    {1, {0.75, 5}},
+    {6, {0.75, 2}},
+    {7, {0.75, 2}},
+    {8, {0.75, 2}}
+  });
 
-  CFD::sFractions = { // BOARD_ID, fraction
-    {0, 0.75},
-    {1, 0.75},
-    {6, 0.75},
-    {7, 0.75},
-    {8, 0.75}
-  };
+  // CFDParametersMap<int> CFDparams; 
+  // CFDparams.map.emplace(0, 5, 0.75);
+  // CFDparams.map.emplace(1, 5, 0.75);
+  // CFDparams.map.emplace(6, 2, 0.75);
+  // CFDparams.map.emplace(7, 2, 0.75);
+  // CFDparams.map.emplace(8, 2, 0.75);
 
   auto useCFD = LUT<LUT_size>([&](int boardID)
   {
-    return key_found(CFD::sShifts, boardID);
+    return key_found(CFDparams.map, boardID);
   });
 
   Timer timer;
@@ -91,6 +90,7 @@ int main(int argc, char** argv)
   bool group = true;
   bool inMemory = true;
   bool applyCFD = true;
+  int ADCmin{};
   
   std::vector<std::string> filenames;
   Timeshifts timeshifts;
@@ -102,6 +102,7 @@ int main(int argc, char** argv)
   auto printHelp = [](){
     print("caen2root usage");
     print("Note: if \"scientific format accepted\", it means that e.g. 1e3 is a valid shorthand for 1000)");
+    print("   --ADCmin            (default 1) : Use CFD timestamp correction (hard-coded parameters(shift, fraction, nb samples for baseline...).");
     print("   --cfd               [0 or 1] (default 1) : Use CFD timestamp correction (hard-coded parameters(shift, fraction, nb samples for baseline...).");
     print("   --cfd-param         [filename] : Use CFD timestamp correction (hard-coded parameters(shift, fraction, nb samples for baseline...).");
     print("-e --ts-evt-build      [0 or 1] (default 0) : Perform event building based on : [0] the absolute time (usually corrected by cfd) [1] the raw timestamp.");
@@ -443,12 +444,17 @@ int main(int argc, char** argv)
         else       printsln(nicer_double(reader.nbHits(), 1), "hits in .caendat", nicer_double(tree->GetEntries(), 1), "hits in .root       ");
       }
 
+      // 0.3 ADC threshold
+
+      if (inHit.adc < ADCmin) continue;
+
       // 1. Apply the cfd
         timerCFD.StartProfiling();
       if (applyCFD && inHit.hasTrace() && useCFD[inHit.board_ID])
       {
         ++nbHit[inHit.label];
-        cfd.generate(inHit.trace, CFD::sShifts[inHit.board_ID], CFD::sFractions[inHit.board_ID], 10);
+        auto const & cfdparam = CFDparams.map.at(inHit.board_ID);
+        cfd.generate(inHit.trace, cfdparam.shift, cfdparam.fraction, cfdparam.nbBaseline);
         auto zero = cfd.findZero();
              if (zero==CFD::noSignal) {inHit.time = inHit.precise_ts; ++nbNoSignal[inHit.label];}
         else if (zero==CFD::noZero  ) {inHit.time = inHit.precise_ts; ++nbNoZero  [inHit.label];}

@@ -79,6 +79,30 @@
 #define ROOTCpp17 defined(__CLING__) && defined(__CLING__CXX17__)
 #define ROOTCpp14 defined(__CLING__) && defined(__CLING__CXX14__)
 
+// Some constants
+
+namespace Colib
+{
+  constexpr double sigtofwhm(double sigma) {return sigma * 2*sqrt(2*log(2));}
+  constexpr double sigtofwqm(double sigma) {return sigma * 4*sqrt(2*log(2));}
+  constexpr double sigtofwtm(double sigma) {return sigma * 10*sqrt(2*log(2));}
+  /// @brief Returns the Full Width at Ration Maximum from the standard deviation sigma
+  // E.g. FWHM for half hence ratio = 2, FHQM for quarter hence ratio = 4, FWTM for tenth hence ratio = 10
+  constexpr double sigtofwrm(double sigma, double ratio) {return sigma * ratio*sqrt(2*log(2));}
+
+  constexpr double fwhmtosig(double fwhm) {return fwhm / 2*sqrt(2*log(2));}
+  constexpr double fwqmtosig(double fwqm) {return fwqm / 4*sqrt(2*log(2));}
+  constexpr double fwtmtosig(double fwtm) {return fwtm / 10*sqrt(2*log(2));}
+  /// @brief Returns standard deviation sigma from the Full Width at Ration Maximum
+  // E.g. FWHM for half hence ratio = 2, FHQM for quarter hence ratio = 4, FWTM for tenth hence ratio = 10
+  constexpr double fwrmtosig(double fwrm, double ratio) {return fwrm * ratio*sqrt(2*log(2));}
+
+  /// @brief Returns a Full Width at Ration Maximum to another Full Width at Ration Maximum
+  // E.g. FWHM to FWTM : fwrmtofwrm(fwhm, 2, 10)
+  constexpr double fwrmtofwrm(double fwrm, double ratio1, double ratio2) {return sigtofwrm(fwrmtosig(fwrm, ratio1), ratio2);}
+}
+
+
 // System //
 
 bool is_SSD(const std::string& device_name = "sda") 
@@ -109,15 +133,6 @@ std::ostream& operator<<(std::ostream& cout, std::map<K,V> const & m)
   cout << "}\n";
   return cout;
 }
-
-// template <class K, class V> 
-// std::ostream& operator<<(std::ostream& cout, std::unordered_map<K,V> const & m)
-// {
-//   cout << "{";
-//   for (auto const & pair : m) cout << pair << std::endl;
-//   cout << "}\n";
-//   return cout;
-// }
 
 template<class E, size_t size> 
 std::ostream& operator<<(std::ostream& cout, std::array<E,size> const & a)
@@ -173,39 +188,9 @@ namespace Colib
 
 namespace Colib
 {
-  // template <typename T>
-  // std::string nicer_seconds(T const & time, int nb_decimals = 3)
-  // {
-  //   T _time = time;
-  //   std::string unit;
-    
-  //   // Units of second
-  //   if (time < 1.)
-  //   {
-  //          if (time < 1e-6 ) { _time *= 1e9 ;  unit = " ns" ;}
-  //     else if (time < 1e-3 ) { _time *= 1e6 ;  unit = " us" ;}
-  //     else { _time *= 1e3 ;  unit = " ms" ;}
-  //     std::stringstream ss;
-  //     ss << std::fixed << std::setprecision(nb_decimals) << _time << unit;
-  //     return ss.str();
-  //   }
-         
-  //   // Mixing seconds, minutes, hours and days
-  //   else
-  //   {
-  //     std::stringstream ss;
-  //     ss << std::fixed;
-  //     int temp = time/86400.;
-  //     ss << temp << " j";
-  //     temp = time-temp*86400./3600.;
-  //     ss << time/ 3600. << " h";
-  //     ss << time/   60. << " min";
-  //     return ss.str();
-  //   }
-  // }
   template <typename T>
-std::string nicer_seconds(T time, int nb_decimals = 3)
-{
+  std::string nicer_seconds(T time, int nb_decimals = 3)
+  {
     static_assert(std::is_floating_point<T>::vaLue, "nicer_seconds expects floating-point type");
 
     if (time < 0.0) {
@@ -269,7 +254,7 @@ std::string nicer_seconds(T time, int nb_decimals = 3)
     ss << seconds << "s";
 
     return ss.str();
-}
+  }
 
   template <typename T>
   std::string nicer_milliseconds(T time, int nb_decimals = 3)
@@ -378,8 +363,9 @@ namespace Colib
     return t;
   }
 
-  void throw_error(std::string const & message) {throw std::runtime_error(concatenate(Color::RED, message, Color::RESET));}
-
+  template<class... ARGS>
+  void throw_error(ARGS &&... args) {throw std::runtime_error(concatenate(Color::RED, std::forward<ARGS>(args)..., Color::RESET));}
+  
   std::map<std::string, std::string> error_message = 
   {
     {"DEV", "to be done"},

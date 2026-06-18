@@ -1,1 +1,1 @@
-shifts 1 30 fractions 0.01 0.95 0.01
+shifts 1 30 fractions 0.01 0.95 0.05 nbBaseline 10

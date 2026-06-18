@@ -1,45 +1,43 @@
 #pragma once
 
-#include "../Colib/lib/libCo.hpp"
+#include "../Colib/lib/libRoot.hpp"
 #include "../CaenLib/Hit.hpp"
-#include "TraceAnalysis.hpp"
+// #include "TraceAnalysis.hpp"
 #include "CFD.hpp"
-
-#include "TH2F.h"
-#include "TH3F.h"
-#include "TF1.h"
-#include "TFile.h"
-#include "TGraph2D.h"
 
 namespace Caen1725
 {
+  struct CFDMinimisationParameterI
+  {
+    std::vector<int> values; int first; int last; int nb_steps; int delta;
+    void set()
+    {
+      nb_steps = last - first + 1;
+      delta = 1;
+      values.clear();values.reserve(nb_steps);
+      for (int i = 0; i<nb_steps; ++i) values.push_back(first+i);
+    }
+  };
+  struct CFDMinimisationParameterD
+  {
+    std::vector<double> values; double first; double last; int nb_steps; double delta;
+    void set()
+    {
+      nb_steps = 1 + (last-first)/delta;
+      values.clear(); values.reserve(nb_steps);
+      for (int i = 0; i<nb_steps; ++i) values.push_back(first+i*delta);
+    }
+  };
   class CFDMinimisationParameters
   {
   public:
     CFDMinimisationParameters() noexcept = default;
     CFDMinimisationParameters(std::string const & filename) noexcept {set(filename);}
 
-    struct Fractions
-    {
-      std::vector<double> values; double first; double last; int nb_steps; double delta;
-      void set()
-      {
-        nb_steps = 1 + (last-first)/delta;
-        values.clear(); values.reserve(nb_steps);
-        for (int i = 0; i<nb_steps; ++i) values.push_back(first+i*delta);
-      }
-    } fractions;
+    CFDMinimisationParameterD fractions;
+    CFDMinimisationParameterI shifts;
 
-    struct Shifts
-    {
-      std::vector<int> values; int first; int last; int nb_steps;
-      void set()
-      {
-        nb_steps = last - first + 1;
-        values.clear();values.reserve(nb_steps);
-        for (int i = 0; i<nb_steps; ++i) values.push_back(first+i);
-      }
-    } shifts;
+    int nbBaseline = 10;
 
     void set(std::string const & filename)
     {
@@ -54,6 +52,7 @@ namespace Caen1725
         {
           if (temp == "shifts") iss >> shifts.first >> shifts.last;
           else if (temp == "fractions") iss >> fractions.first >> fractions.last >> fractions.delta;
+          else if (temp == "nbBaseline") iss >> nbBaseline;
         }
       }
       
@@ -65,7 +64,8 @@ namespace Caen1725
     friend std::ostream& operator<< (std::ostream& out, CFDMinimisationParameters const & params)
     {
       out << "fractions " << params.fractions.first << " " << params.fractions.last << " " << params.fractions.nb_steps << "\n"
-          << "shifts " << params.shifts.first << " " << params.shifts.last << " " << params.shifts.nb_steps << "\n";
+          << "shifts " << params.shifts.first << " " << params.shifts.last << " " << params.shifts.nb_steps << "\n"
+          << "nbBaseline " << params.nbBaseline;
       return out;
     }
   };
@@ -75,16 +75,14 @@ namespace Caen1725
   public:
     OptimizerHistograms() noexcept = default;
 
-    void init(std::string const & name, CFDMinimisationParameters const & parameters)
+    void init(std::string const & name, CFDMinimisationParameters const & parameters, int nb_dT_points = 4000, double min_dT = -2e6, double max_dT = 2e6)
     {
-      auto const & fracv = parameters.fractions.values;
-      auto const & shiftv = parameters.shifts.values;
       auto const & frac = parameters.fractions;
       auto const & shift = parameters.shifts;
       resolution_histos.reset(new TH2F(("resolution"+name).c_str(), ("resolution"+name+";fraction;shift").c_str(), 
-        frac.nb_steps,frac.first-frac.delta/2,frac.last+frac.delta/2, shift.nb_steps,shift.first,shift.last+1)); 
+        frac.nb_steps,frac.first,frac.last+frac.delta, shift.nb_steps,shift.first,shift.last+shift.delta)); 
       dT_histos.reset(new TH3F(("dT"+name).c_str(), ("dT"+name).c_str(), 
-        frac.nb_steps, frac.first-frac.delta/2, frac.last+frac.delta/2,  shift.nb_steps,shift.first,shift.last+1, 4000,-2e6,2e6)); 
+        frac.nb_steps,frac.first,frac.last+frac.delta,  shift.nb_steps,shift.first,shift.last+shift.delta, nb_dT_points,min_dT,max_dT)); 
       resolution_histos -> SetDirectory(nullptr);
       dT_histos -> SetDirectory(nullptr);
     }
@@ -103,10 +101,20 @@ namespace Caen1725
       dT_histos -> Write();
       resolution_histos -> Write();
     }
-
-    template<class... ARGS> void fill_dT  (double fraction, double shift, double dT) {dT_histos->Fill(fraction, shift, dT);}
     
-    int pointNb = 0;
+    template<class... ARGS> void fill_dT  (double fraction, double shift, double dT) {dT_histos->Fill(fraction, shift, dT);}
+    template<class... ARGS> void fillbin_dT  (int fraction_bin, int shift_bin, double dT) 
+    {
+      auto dT_bin = dT_histos->GetZaxis()->FindBin(dT);
+      if (0 < dT_bin && dT_bin < dT_histos->GetNbinsZ()) dT_histos->AddBinContent(fraction_bin+1, shift_bin+1, dT_bin+1);
+    }
+
+    std::unique_ptr<TH1D> get_dT(int fraction_bin, int shift_bin) const
+    {
+      auto dTName = dT_histos->GetName() + std::to_string(fraction_bin) + std::to_string(shift_bin);  
+      return std::make_unique<TH1D>(*(dT_histos->ProjectionZ(dTName.c_str(), fraction_bin+1, shift_bin+1)));
+    }
+    
     std::unique_ptr<TH2F> resolution_histos;
     std::unique_ptr<TH3F> dT_histos;
   };
@@ -114,9 +122,10 @@ namespace Caen1725
   class CFDOptimizer
   {
   public:
-    CFDOptimizer(std::vector<int> const & labels) noexcept :
+    CFDOptimizer() noexcept = default;
+    CFDOptimizer(std::vector<Label> const & labels) noexcept :
       m_nbDetectors(labels.size()),
-      m_listLabels(labels) //eg {0,2,4,6,8}
+      m_listLabels(labels)
     {
       size_t labelMax = *std::max_element(m_listLabels.begin(), m_listLabels.end());
       m_labelToDetectorIndex.resize(labelMax+1, -1);
@@ -125,6 +134,8 @@ namespace Caen1725
         auto const & label = m_listLabels[det_i];
         m_labelToDetectorIndex[label] = det_i; // eg {0,-1,1,-1,2,-1,3,-1,4}
       }
+      gaus.reset( new TF1("gaus", "gaus"));
+      gaus_and_bkgd.reset( new TF1("gaus_and_bkgd", "gaus(0)+pol1(3)"));
     }
 
     void setParameters(CFDMinimisationParameters const & parameters) 
@@ -140,20 +151,24 @@ namespace Caen1725
 
     void calculate_dT(Hit const & refHit, Label label, Timestamp time, Trace const & trace) 
     {
-      static thread_local CFD cfd;
-      for (auto const & shift : m_parameters.shifts.values) for (auto const & fraction : m_parameters.fractions.values)
-      {
-        if (m_labelToDetectorIndex.size() <= label) continue; // Detector non treated
-        auto const & index = m_labelToDetectorIndex[label];
-        if (index < 0) continue; // Detector non treated
+      if (m_labelToDetectorIndex.size() <= label) return; // Detector non treated
+      auto const & index = m_labelToDetectorIndex[label];
+      if (index < 0) return; // Detector non treated
 
-        cfd.generate(trace, shift, fraction, 10);
+      static thread_local CFD cfd;
+      cfd.setBaseline(trace, m_parameters.nbBaseline);
+      for (int shift_i = 0; shift_i<m_parameters.shifts.nb_steps; ++shift_i) 
+        for (int fraction_i = 0; fraction_i<m_parameters.fractions.nb_steps; ++fraction_i) 
+      {
+
+        cfd.generate(trace, m_parameters.shifts.values[shift_i], m_parameters.fractions.values[fraction_i]);
 
         auto const zero = cfd.findZero();
         if (zero == CFD::noSignal || zero == CFD::noZero) continue;
         auto const time_cfd = time + zero*ticks_to_ps;
 
-        m_histograms[index].fill_dT(fraction, shift, refHit.time - time_cfd);
+        m_histograms[index].fillbin_dT(fraction_i, shift_i, refHit.time - time_cfd);
+        // m_histograms[index].fill_dT(fraction, shift, refHit.time - time_cfd);
       }
     }
 
@@ -161,34 +176,91 @@ namespace Caen1725
     {
       if (!histo || histo->IsZombie() || histo->GetEntries() < 1) return 1e42;
 
-      // Raw ROOT estimates in the range
       double max = histo->GetMaximum();
-      double mean_est = histo->GetMean();
-      double sigma_est = histo->GetStdDev();
 
-      double bin_min = histo->FindFirstBinAbove(max*0.25);
-      double bin_max = histo->FindLastBinAbove(max*0.25);
+      // Full Width at Quarter Maximum (FWQM) :
+      double T = max * 0.25;
+      double bin_min = histo->FindFirstBinAbove(T);
+      double bin_max = histo->FindLastBinAbove(T);
 
-      if (bin_min < 0 || bin_max < 0) return 1e42;
+      if (bin_min < 1 || bin_max < 1 || histo->GetNbinsX() <= bin_min || histo->GetNbinsX() <= bin_max) return 1e42;
       if (bin_min == bin_max) {bin_min-=1; bin_max+=1;}
 
-      double x_min = histo->GetBinLowEdge(bin_min);
-      double x_max = histo->GetBinLowEdge(bin_max);
+      double x1 = histo->GetBinCenter(bin_min - 1);
+      double y1 = histo->GetBinContent(bin_min - 1);
+      double x2 = histo->GetBinCenter(bin_min);
+      double y2 = histo->GetBinContent(bin_min);
+      double x_min_interp = x1 + (T - y1) * (x2 - x1) / (y2 - y1);
 
-      double FWHM = x_max - x_min;
+      double x3 = histo->GetBinCenter(bin_max);
+      double y3 = histo->GetBinContent(bin_max);
+      double x4 = histo->GetBinCenter(bin_max + 1);
+      double y4 = histo->GetBinContent(bin_max + 1);
 
-      // return FWHM/1000.;
+      double x_max_interp = x3 + (T - y3) * (x4 - x3) / (y4 - y3);
 
-      // Instanciate the fit
-      TF1* fit = new TF1("fit", "gaus", x_min, x_max);
+      double FWQM = x_max_interp - x_min_interp;
+      
+      // Full Width at Half Maximum (FWHM) :
+
+      T = max * 0.25;
+      bin_min = histo->FindFirstBinAbove(T);
+      bin_max = histo->FindLastBinAbove(T);
+
+      if (bin_min < 1 || bin_max < 1 || histo->GetNbinsX() <= bin_min || histo->GetNbinsX() <= bin_max) return 1e42;
+      if (bin_min == bin_max) {bin_min-=1; bin_max+=1;}
+
+      x1 = histo->GetBinCenter(bin_min - 1);
+      y1 = histo->GetBinContent(bin_min - 1);
+      x2 = histo->GetBinCenter(bin_min);
+      y2 = histo->GetBinContent(bin_min);
+      x_min_interp = x1 + (T - y1) * (x2 - x1) / (y2 - y1);
+
+      x3 = histo->GetBinCenter(bin_max);
+      y3 = histo->GetBinContent(bin_max);
+      x4 = histo->GetBinCenter(bin_max + 1);
+      y4 = histo->GetBinContent(bin_max + 1);
+
+      x_max_interp = x3 + (T - y3) * (x4 - x3) / (y4 - y3);
+
+      double FWHM = x_max_interp - x_min_interp;
+      double FWHM_from_FWQM = FWQM/sqrt(2);
+
+      // We measured FWHM and FWQM. If the peak is gaussian, FWQM = sqrt(2)*FWHM.
+      // In case of bad CFD parameters, the peak won't be gaussian and a gaussian
+      // gaussian fit is very likely to fail. Therefore, if FWHM is too different from 
+      // sqrt(2)*FWQM then we don't try to fit it and FWQM/sqrt(2) is actually more
+      // likely to be a good measurement of the FWHM.
+
+      // Check if the difference is less than 10%:
+      // if ( (FWHM - FWHM_from_FWQM) / ((FWHM + FWHM_from_FWQM) / 2) < 0.1)
+        return FWHM_from_FWQM+FWHM / 2000;
+
+      // Instanciate the gaus
       // Initialise the parameters
-      fit->SetParameters(max, mean_est, FWHM/2.35);
-      // Fit
-      histo->Fit(fit, "RQ");
-      // Get this first estimate
-      double resolution = fit->GetParameter(2)*2.35/1000.;
 
-      return resolution;
+      // auto max_binX = histo -> GetBinLowEdge(histo -> GetMaximumBin());
+      // gaus->SetRange(max_binX-FWQM, max_binX+FWQM);
+      // histo->GetXaxis()->SetRangeUser(max_binX-FWQM, max_binX+FWQM);
+
+      // auto mean_est = histo -> GetMean();
+      // gaus->SetParameters(max, mean_est, FWHM_from_FWQM);
+      // // Fit
+      // histo->Fit(gaus.get(), "RQ");
+      // // Get this first estimate
+      // double sigma = gaus->GetParameter(2);
+
+      // // if (20 < FWHM) return FWHM;
+
+      // // Initialise the parameters
+      // // gaus_and_bkgd->SetRange(mean_est-FWHM, mean_est+FWHM);
+      // // gaus_and_bkgd->SetParameters(max, mean_est, sigma, 0, 1);
+      // // // Fit
+      // // histo->Fit(gaus_and_bkgd.get(), "RQ");
+      // // // Get this first estimate
+      // // sigma = gaus_and_bkgd->GetParameter(2);
+
+      // return Colib::sigtofwhm(sigma)/1000.;
     }
 
     void calculateResolutions()
@@ -207,7 +279,45 @@ namespace Caen1725
       }
     }
 
-    void write(std::string filename)
+    void findMinima(std::string filename)
+    {
+      auto file = TFile::Open(filename.c_str(), "read");
+      if (!file) Colib::throw_error(filename+" not found !!");
+
+      {
+        auto histos = Colib::file_get_map_of<TH2F>();
+        for (auto const & [name, histo] : histos)
+        {
+          std::string label_str = name;
+          Colib::remove(label_str, "resolution");
+          int label = std::stoi(label_str);
+          Colib::Smooth(histo, 2);
+          auto const globalMin = histo->GetMinimumBin();
+          int xbin, ybin, zbin;
+          histo->GetBinXYZ(globalMin, xbin, ybin, zbin);
+          m_minimaBin.emplace(label, std::array<int   , 2>({xbin, ybin}));
+          m_minima   .emplace(label, std::array<double, 2>({histo->GetXaxis()->GetBinLowEdge(xbin), histo->GetYaxis()->GetBinLowEdge(ybin)}));
+        }
+      }
+
+      auto dTs_names = Colib::file_get_names_of<TH3F>();
+      for (auto const & name : dTs_names)
+      {
+        auto dTs = file->Get<TH3F>(name.c_str());
+        std::string label_str = name;
+        Colib::remove(label_str, "dT");
+        int label = std::stoi(label_str);
+
+        auto const & [fraction_bin, shift_bin] = m_minimaBin.at(label);
+        auto dTName = "best_" + std::string(dTs->GetName()) + "_" + std::to_string(fraction_bin) + std::to_string(shift_bin);  
+        m_best_dT.emplace(label, dTs->ProjectionZ(dTName.c_str(), fraction_bin+1, fraction_bin+1, shift_bin+1, shift_bin+1));
+        m_best_dT.at(label)->SetDirectory(nullptr);
+      }
+
+      file->Close();
+    }
+
+    void writeRoot(std::string filename)
     {
       auto file = TFile::Open(filename.c_str(), "recreate");
       if (!file) Colib::throw_error(filename+" not created !! Is the path ok ?");
@@ -215,12 +325,61 @@ namespace Caen1725
       file->Close();
       print(filename, "written");
     }
+
+    void write_dT(std::string filename)
+    {
+      if (m_minima.empty()) Colib::throw_error("Can't write dT because no minima have been found !!");
+      std::ofstream file(filename);
+      for (auto const & [label, min] : m_minima) 
+      {
+        file << label << " ";
+        for (auto const & param : min) file << param << " ";
+        file << "\n";
+      }
+      file.close();
+      print(filename, "written");
+
+      auto rootFilename = Colib::setExtension(filename, "root");
+      auto resolutionsFilename = Colib::setExtension(filename, "resolutions");
+      auto tfile = TFile::Open(rootFilename.c_str(), "recreate");
+      if (!tfile) Colib::throw_error(rootFilename+" not created !! Is the path ok ?");
+      std::ofstream rfile(resolutionsFilename);
+      for (auto & [label, histo] : m_best_dT) 
+      {
+        if (!histo) {error(label, "not written"); continue;}
+        auto const R = Colib::resolution(histo)/1000;
+        rfile << label << " " << R << "\n"; 
+        histo->Write();
+      }
+      tfile->Close();
+      rfile.close();
+      print(rootFilename, "written");
+      print(resolutionsFilename, "written");
+    }
+
+    // void writeBest_dT(std::string filename)
+    // {
+    //   if (m_best_dT.empty()) Colib::throw_error("Can't write best dT because no  !!");
+    //   auto file = TFile::Open(filename.c_str(), "recreate");
+    //   if (!file) Colib::throw_error(filename+" not created !! Is the path ok ?");
+    //   for (auto const & [label, histo] : m_best_dT)
+    //   {
+    //     histo -> Write();
+    //   }
+    // }
     
   private:
     size_t m_nbDetectors = 0;
-    std::vector<int> m_listLabels;
+    std::vector<Label> m_listLabels;
     std::vector<int> m_labelToDetectorIndex;
     CFDMinimisationParameters m_parameters;
     std::vector<OptimizerHistograms> m_histograms;
+    std::map<int, std::array<double, 2>> m_minima;
+    std::map<int, std::array<int, 2>> m_minimaBin;
+    std::map<int, TH1D*> m_best_dT;
+
+    std::unique_ptr<TF1> gaus; 
+    std::unique_ptr<TF1> gaus_and_bkgd;
+
   };
 }
