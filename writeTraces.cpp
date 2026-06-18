@@ -105,11 +105,6 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
     {8, {0.75, 2}}
   });
 
-  auto useCFD = Colib::LUT<10000>([&](int boardID)
-  {
-    return Colib::key_found(CFDparams.map, boardID);
-  });
-
   Caen1725::RootInterface reader(file);
 
   vector<string> folders_names;
@@ -207,10 +202,10 @@ int writeTraces(string file, int nb_events_max = -1, int adcMin = 0, int adcMax 
     graphs[1] -> Draw("same");
     graphs[2] -> Draw("same");
 
-    if (hit.hasTrace() && useCFD[hit.board_ID])
+    if (hit.hasTrace() && CFDparams.get(hit.board_ID))
     {
-      auto const & cfdparam = CFDparams.map.at(hit.board_ID);
-      CFD cfd(std::move(hit.trace), cfdparam.shift, cfdparam.fraction, cfdparam.nbBaseline);
+      auto const & cfdparam = CFDparams.get(hit.board_ID);
+      CFD cfd(std::move(hit.trace), cfdparam->shift, cfdparam->fraction, cfdparam->nbBaseline);
       double zero = cfd.findZero();
       ++nbTot[hit.label];
       if (zero == CFD::noSignal)

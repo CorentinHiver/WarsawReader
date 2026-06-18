@@ -12,15 +12,19 @@
 struct CFDParameters
 {
   double fraction = 0.5;
-  int shift = 1;
+  int shift = 2;
   int nbBaseline = 10;
 };
 
 template<class T>
 class CFDParametersMap
 {
-public:
   std::unordered_map<T, CFDParameters> map;
+  std::vector<bool> labelMask;
+
+public:
+
+  CFDParametersMap() noexcept = default;
   CFDParametersMap (std::unordered_map<T, CFDParameters> const & _map):
     map(_map) {}
 
@@ -32,10 +36,15 @@ public:
     {
       // Get the parameter of each board or each detector
       std::istringstream iss(line);
-      T label; iss >> label;
-      auto & params = map[label];
+      T ID; iss >> ID;
+      auto & params = map[ID];
       iss >> params.fraction >> params.shift;
     }
+  }
+  [[nodiscard]] const CFDParameters* get(T const & id) const noexcept 
+  {
+    auto it = map.find(id);
+    return (it != map.end()) ? &it->second : nullptr;
   }
 };
 

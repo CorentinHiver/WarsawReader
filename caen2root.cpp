@@ -57,25 +57,19 @@ constexpr size_t   reserved_buffer_size = 500000ul;
 
 int main(int argc, char** argv)
 {
-  CFDParametersMap<int> CFDparams = CFDParametersMap<int>({
+  CFDParametersMap<int> CFDboardParams = CFDParametersMap<int>({
     {0, {0.75, 5}},
     {1, {0.75, 5}},
     {6, {0.75, 2}},
     {7, {0.75, 2}},
     {8, {0.75, 2}}
   });
+  CFDParametersMap<int> CFDlabelParams;
 
-  // CFDParametersMap<int> CFDparams; 
-  // CFDparams.map.emplace(0, 5, 0.75);
-  // CFDparams.map.emplace(1, 5, 0.75);
-  // CFDparams.map.emplace(6, 2, 0.75);
-  // CFDparams.map.emplace(7, 2, 0.75);
-  // CFDparams.map.emplace(8, 2, 0.75);
-
-  auto useCFD = LUT<LUT_size>([&](int boardID)
-  {
-    return key_found(CFDparams.map, boardID);
-  });
+  // auto boardUseCFD = LUT<LUT_size>([&](int boardID)
+  // {
+  //   return key_found(CFDboardParams.map, boardID);
+  // });
 
   Timer timer;
 
@@ -90,6 +84,7 @@ int main(int argc, char** argv)
   bool group = true;
   bool inMemory = true;
   bool applyCFD = true;
+  std::string CFDfile;
   int ADCmin{};
   
   std::vector<std::string> filenames;
@@ -104,7 +99,7 @@ int main(int argc, char** argv)
     print("Note: if \"scientific format accepted\", it means that e.g. 1e3 is a valid shorthand for 1000)");
     print("   --ADCmin            (default 1) : Use CFD timestamp correction (hard-coded parameters(shift, fraction, nb samples for baseline...).");
     print("   --cfd               [0 or 1] (default 1) : Use CFD timestamp correction (hard-coded parameters(shift, fraction, nb samples for baseline...).");
-    print("   --cfd-param         [filename] : Use CFD timestamp correction (hard-coded parameters(shift, fraction, nb samples for baseline...).");
+    print("   --cfd-param         [filename] : Use CFD timestamp correction written in a label-based file");
     print("-e --ts-evt-build      [0 or 1] (default 0) : Perform event building based on : [0] the absolute time (usually corrected by cfd) [1] the raw timestamp.");
     print("-f --files             [caen_filename] : File to convert. Include wildcards * and ?, but ONLY IF the name is guarded by quotes (i.e. -f \"/path/to/file/names*.caendat\") ");
     print("-F --files-nb          [caen_filename] [nb_files] : Same as -f. Additionally, can select the number of files (-1 = all, scientific format accepted]");
@@ -136,6 +131,11 @@ int main(int argc, char** argv)
          if (temp ==  "--cfd")
     {
       iss >> applyCFD;
+    }
+    else if (temp ==  "--cfd-param")
+    {
+      applyCFD = true;
+      iss >> CFDfile;
     }
     else if (temp == "-f" || temp ==  "--files")
     {
@@ -450,15 +450,19 @@ int main(int argc, char** argv)
 
       // 1. Apply the cfd
         timerCFD.StartProfiling();
-      if (applyCFD && inHit.hasTrace() && useCFD[inHit.board_ID])
+      if (applyCFD && inHit.hasTrace())
       {
-        ++nbHit[inHit.label];
-        auto const & cfdparam = CFDparams.map.at(inHit.board_ID);
-        cfd.generate(inHit.trace, cfdparam.shift, cfdparam.fraction, cfdparam.nbBaseline);
-        auto zero = cfd.findZero();
-             if (zero==CFD::noSignal) {inHit.time = inHit.precise_ts; ++nbNoSignal[inHit.label];}
-        else if (zero==CFD::noZero  ) {inHit.time = inHit.precise_ts; ++nbNoZero  [inHit.label];}
-        else                          {inHit.time = inHit.extended_ts + zero*Caen1725::ticks_to_ps; inHit.wfa_success = true;}
+        const CFDParameters* cfdparam{};
+        if (CFDlabelParams.get(inHit.label)) cfdparam = CFDlabelParams.get(inHit.label);
+        if (cfdparam)
+        {
+          ++nbHit[inHit.label];
+          cfd.generate(inHit.trace, cfdparam->shift, cfdparam->fraction, cfdparam->nbBaseline);
+          auto zero = cfd.findZero();
+               if (zero==CFD::noSignal) {inHit.time = inHit.precise_ts; ++nbNoSignal[inHit.label];}
+          else if (zero==CFD::noZero  ) {inHit.time = inHit.precise_ts; ++nbNoZero  [inHit.label];}
+          else                          {inHit.time = inHit.extended_ts + zero*Caen1725::ticks_to_ps; inHit.wfa_success = true;}
+        }
       }
       else inHit.time = inHit.precise_ts;
         timerCFD.StopProfiling();

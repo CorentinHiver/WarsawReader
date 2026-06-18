@@ -106,7 +106,11 @@ namespace Caen1725
     template<class... ARGS> void fillbin_dT  (int fraction_bin, int shift_bin, double dT) 
     {
       auto dT_bin = dT_histos->GetZaxis()->FindBin(dT);
+    #if ROOT_VERSION_CODE >= ROOT_VERSION(6, 8, 0)
+      if (0 < dT_bin && dT_bin < dT_histos->GetNbinsZ()) dT_histos->AddBinContent(dT_histos->GetBin(fraction_bin+1, shift_bin+1, dT_bin+1));
+    #else
       if (0 < dT_bin && dT_bin < dT_histos->GetNbinsZ()) dT_histos->AddBinContent(fraction_bin+1, shift_bin+1, dT_bin+1);
+    #endif
     }
 
     std::unique_ptr<TH1D> get_dT(int fraction_bin, int shift_bin) const

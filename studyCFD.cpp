@@ -34,11 +34,6 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
     {8, {0.75, 2}}
   });
 
-  auto useCFD = Colib::LUT<10000>([&](int boardID)
-  {
-    return Colib::key_found(CFDparams.map, boardID);
-  });
-
   auto constexpr static glabel = [](Caen1725::RootHit const & hit){
     return hit.board_ID * 16 + hit.channel_ID * 2 + hit.subchannel_ID;
   };
@@ -115,16 +110,16 @@ int studyCFD(std::vector<std::string> filenames, int nb_events_max = -1)
 
       auto & hit = reader.getHit();
 
-      if (reader.nbHits() % int(1e5) == 0) printsln(Colib::nicer_double(reader.nbHits(), 1), "       ");
+      if (reader.nbHits() % int(1e5) == 0) printsln(Colib::nicer_double(reader.nbHits(), 1));
 
       // Correct caen_time with cfd :
 
-      if (useCFD[hit.board_ID] && hit.hasTrace())
+      if (CFDparams.get(hit.board_ID) && hit.hasTrace())
       {
         ++nb[hit.label];
 
-        auto const & cfdparam = CFDparams.map.at(hit.board_ID);
-        CFD cfd(std::move(hit.trace), cfdparam.shift, cfdparam.fraction, cfdparam.nbBaseline);
+        auto const & cfdparam = CFDparams.get(hit.board_ID);
+        CFD cfd(std::move(hit.trace), cfdparam->shift, cfdparam->fraction, cfdparam->nbBaseline);
         
         // auto zero = cfd.findZero(cfd_thresholds[hit.board_ID]);
         auto zero = cfd.findZero();
