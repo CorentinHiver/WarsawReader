@@ -81,8 +81,8 @@ namespace Caen1725
       
       fractions.set();
       shifts.set();
-      print("fractions", fractions.values);
-      print("shifts", shifts.values);
+      // print("fractions", fractions.values);
+      // print("shifts", shifts.values);
     }
     auto const & getLabels() const noexcept {return labels;}
     friend std::ostream& operator<< (std::ostream& out, CFDMinimisationParameters const & params)
@@ -90,6 +90,8 @@ namespace Caen1725
       out << "fractions " << params.fractions.first << " " << params.fractions.last << " " << params.fractions.nb_steps << "\n"
           << "shifts " << params.shifts.first << " " << params.shifts.last << " " << params.shifts.nb_steps << "\n"
           << "nbBaseline " << params.nbBaseline;
+      out << "labels ";
+      for (auto const & label : params.labels) out << label << " ";
       return out;
     }
   };
@@ -149,59 +151,32 @@ namespace Caen1725
 
   class CFDOptimizer
   {
-    std::array<bool, 10000> labelLUT{{}};
+    std::array<int, 10000> labelLUT{{}};
   public:
     CFDOptimizer() noexcept = default;
     CFDOptimizer(CFDMinimisationParameters const & parameters):
-      m_listLabels(parameters.getLabels()),
-      m_nbDetectors(m_listLabels.size()),
-      m_parameters(parameters)
+      m_parameters(parameters),
+      m_nbDetectors(m_parameters.getLabels().size())
     {
-      size_t labelMax = *std::max_element(m_listLabels.begin(), m_listLabels.end());
+      size_t labelMax = *std::max_element(m_parameters.getLabels().begin(), m_parameters.getLabels().end());
       if (labelLUT.size() < labelMax) Colib::throw_error("Label", labelMax, "too high (>", labelLUT.size(), ")");
       m_histograms.resize(m_nbDetectors);
-      m_labelToDetectorIndex.resize(labelMax+1, -1);
-      for (size_t det_i = 0; det_i<m_listLabels.size(); ++det_i) 
+      labelLUT.fill(-1);
+      for (size_t det_i = 0; det_i<m_parameters.getLabels().size(); ++det_i) 
       {
-        auto const & label = m_listLabels[det_i];
-        m_labelToDetectorIndex[label] = det_i;
-        labelLUT[label] = true;
+        auto const & label = m_parameters.getLabels()[det_i];
+        // m_labelToDetectorIndex[label] = det_i;
+        labelLUT[label] = det_i;
         m_histograms[det_i].init(std::to_string(label), m_parameters);
       }
       gaus.reset( new TF1("gaus", "gaus"));
       gaus_and_bkgd.reset( new TF1("gaus_and_bkgd", "gaus(0)+pol1(3)"));
     }
-    // CFDOptimizer(std::vector<Label> const & labels) noexcept :
-    //   m_nbDetectors(labels.size()),
-    //   m_listLabels(labels)
-    // {
-    //   size_t labelMax = *std::max_element(m_listLabels.begin(), m_listLabels.end());
-    //   m_labelToDetectorIndex.resize(labelMax+1, -1);
-    //   for (size_t det_i = 0; det_i<m_listLabels.size(); ++det_i) 
-    //   {
-    //     auto const & label = m_listLabels[det_i];
-    //     m_labelToDetectorIndex[label] = det_i; // eg {0,-1,1,-1,2,-1,3,-1,4}
-    //   }
-    //   gaus.reset( new TF1("gaus", "gaus"));
-    //   gaus_and_bkgd.reset( new TF1("gaus_and_bkgd", "gaus(0)+pol1(3)"));
-    // }
-
-    // void setParameters(CFDMinimisationParameters const & parameters) 
-    // {
-    //   m_parameters = parameters;
-    //   m_histograms.resize(m_nbDetectors);
-    //   for (size_t det_i = 0; det_i<m_nbDetectors; ++det_i) 
-    //   {
-    //     auto const & label = m_listLabels[det_i];
-    //     m_histograms[det_i].init(std::to_string(label), m_parameters);
-    //   }
-    // }
 
     void calculate_dT(Timestamp timeRef, Timestamp time, Label label, Trace const & trace) 
     {
-      if (m_labelToDetectorIndex.size() <= label) return; // Detector non treated
-      auto const & index = m_labelToDetectorIndex[label];
-      if (index < 0) return; // Detector non treated
+      if (trace.empty() || labelLUT[label] < 0) return;
+      auto const & index = labelLUT[label];
 
       static thread_local CFD cfd;
       cfd.setBaseline(trace, m_parameters.nbBaseline);
@@ -312,9 +287,10 @@ namespace Caen1725
 
     void calculateResolutions()
     {
-      for (auto & label : m_listLabels)
+      for (auto & label : m_parameters.getLabels())
       {
-        auto const & index = m_labelToDetectorIndex[label];
+        // auto const & index = m_labelToDetectorIndex[label];
+        auto const & index = labelLUT[label];
         auto & dTs = m_histograms[index].dT_histos;
         for (int binx = 1; binx<=dTs->GetNbinsX(); ++binx) for (int biny = 1; biny<=dTs->GetNbinsY(); ++biny)
         {
@@ -416,10 +392,8 @@ namespace Caen1725
     // }
     
   private:
-    std::vector<Label> m_listLabels;
-    size_t m_nbDetectors = 0;
-    std::vector<int> m_labelToDetectorIndex;
     CFDMinimisationParameters m_parameters;
+    size_t m_nbDetectors = 0;
     std::vector<OptimizerHistograms> m_histograms;
     std::map<int, std::array<double, 2>> m_minima;
     std::map<int, std::array<int, 2>> m_minimaBin;

@@ -43,10 +43,8 @@ int main(int argc, char** argv)
   if (refLabelI<0) throw_error("No reference label !! Use option -t to give it to me.");
   if (filenames.empty()) throw_error("No files !! Use -f options to feed me.");
   auto refLabel = size_cast(refLabelI);
-  bool const max_events = nb_events_max < max<size_t>();
 
-  CFDMinimisationParameters parameters;
-  parameters.set(parameterFile);
+  CFDMinimisationParameters parameters(parameterFile);
   print(parameters);
 
   // CFDOptimizer optimizer;
@@ -58,12 +56,11 @@ int main(int argc, char** argv)
     for (auto const & filename : filenames)
     {
       RootReader reader(filename);
+      reader.printEvery(1000);
+      reader.setMaxHits(nb_events_max);
       printsln(filename);
       while(reader.readNextEvent())
       {
-        if (reader.getCursor()%1000 == 0) printsln(getShortname(filename), 
-          nicer_double((100.*reader.getCursor())/reader.getTree()->GetEntries(), 1), " %");
-        if (max_events && nb_events_max < reader.getCursor()) break;
         auto const & event = reader.getEvent();
         for (int hit_i = 0; hit_i<event.mult; ++hit_i) if (event.label[hit_i] == refLabel) 
         {
@@ -73,7 +70,6 @@ int main(int argc, char** argv)
             auto const & trace = event.traces[hit_j];
             if (label != refLabel)
             {
-              if (trace.empty()) throw_error("No trace for detector ", label);
               optimizer.calculate_dT(event.time[hit_i], event.time[hit_j], label, trace);
             }
           }

@@ -1,14 +1,21 @@
-// g++ -o caen2root caen2root.cpp -Wall -Wextra $(root-config --cflags) $(root-config --glibs) -O2 -std=c++17
+// g++ -o caen2root caen2root.cpp -Wall -Wextra $(root-config --cflags) $(root-config --glibs) -O3 #-std=c++17
+// #define MT
+
+#ifdef MT
+#include "Colib/lib/CoMT.hpp"
+#endif //MT
 
 #include "AnalysisLib/CFD.hpp"
+
 #include "CaenLib/utils.hpp"
 #include "CaenLib/RootEvent.hpp"
 #include "CaenLib/CaenRootInterface.hpp"
 #include "CaenLib/CaenRootEventBuilder.hpp"
 #include "CaenLib/RootHit.hpp"
+
+#include "Colib/lib/libCo.hpp"
 #include "Colib/lib/Classes/Timer.hpp"
 #include "Colib/lib/Classes/Timeshifts.hpp"
-#include "Colib/lib/libCo.hpp"
 
 constexpr int reader_version = 110;
 constexpr size_t LUT_size = 10000;
@@ -285,7 +292,12 @@ int main(int argc, char** argv)
 
   size_t nbHitsTot = 0;
 
+#ifdef MT
+  auto filenamesMT = MT::distribute(filenames);
+  MT::parallelise_function([&](){ for (auto const & filename : filenamesMT[MT::getThreadIndex()])
+#else
   for (auto const & filename : filenames)
+  #endif //MT
   {
     if (hitsMaxTotSet && nbHitsMaxTot < nbHitsTot) break;
     std::string file(filename);
@@ -413,6 +425,7 @@ int main(int argc, char** argv)
 
       eventBuilder.clear();
     };
+    
 
 
     constexpr int labelMax = 1000;
@@ -523,6 +536,10 @@ int main(int argc, char** argv)
 
     print(rootFile->GetName(), "written");
   }
+#ifdef MT
+  });
+#endif //MT
+
 
   print(timer());
   return 0;

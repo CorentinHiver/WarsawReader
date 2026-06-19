@@ -1,6 +1,7 @@
 #pragma once
 #include "RootEvent.hpp"
 #include "TFile.h"
+#include "../Colib/lib/libCo.hpp"
 
 namespace Caen1725
 {
@@ -31,6 +32,8 @@ namespace Caen1725
       m_size = std::min(m_size, static_cast<size_t>(m_tree->GetEntries()));
       return tree;
     }
+
+    void printEvery(int freq) {m_print = true; m_printFreq = freq;}
   
     TTree* connectFile(TFile * file)
     {
@@ -56,18 +59,21 @@ namespace Caen1725
       if (!m_file)  {error("RootReader::RootReader(std::string filename) : Can't read file " + filename); return nullptr;}
       return connectFile(m_file);
     }
+
+    void setMaxHits(size_t maxHits) {m_useMaxHits = true; m_maxHits = maxHits;}
         
     /// @brief Advanced users only. Read next event in grouped mode, or next hit in plain mode
     /// @return false if last entry
     bool readNextEntry()
     {
-      if (m_cursor < m_size)
+      if (m_cursor < m_size && (!m_useMaxHits || m_cursor < m_maxHits))
       {
+        if (m_print && (m_cursor%m_printFreq == 0)) printsln(m_file->GetName(), Colib::nicer_double((100.*m_cursor)/m_tree->GetEntries(), 1), " %");
         m_tree->GetEntry(m_cursor++);
         if (m_plain) m_hit.manageInputTrace();
         return true;
       }
-      return false; 
+      else return false; 
     }
 
     /// @brief Read next event
@@ -157,6 +163,9 @@ namespace Caen1725
     size_t m_cursor = 0;
     size_t m_size = 0;
     bool m_plain = false;
+
+    bool m_print, m_useMaxHits{};
+    size_t m_printFreq, m_maxHits{};
   
     Caen1725::EventID   m_eventID = 0;
     Caen1725::EventMult m_evtMult = 0;
