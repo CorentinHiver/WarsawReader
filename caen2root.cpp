@@ -66,11 +66,6 @@ int main(int argc, char** argv)
   });
   CFDParametersMap<int> CFDlabelParams;
 
-  // auto boardUseCFD = LUT<LUT_size>([&](int boardID)
-  // {
-  //   return key_found(CFDboardParams.map, boardID);
-  // });
-
   Timer timer;
 
   // Parameters :
@@ -208,14 +203,14 @@ int main(int argc, char** argv)
       iss >> temp;
       if (temp == "-l" || temp == "--label")
       {
-        int label = 0;
+        int label{};
         iss >> label;
         trigger_labels.push_back(label);
       }
       if (temp == "-L" || temp == "--labels")
       {
-        int nbLabels = 0; iss >> nbLabels;
-        int label = 0;
+        int nbLabels{}, label{}; 
+        iss >> nbLabels;
         for (int label_i = 0; label_i < nbLabels; ++label_i)
         {
           iss >> label;
@@ -224,7 +219,7 @@ int main(int argc, char** argv)
       }
       else if (temp == "-b" || temp == "--board")
       {
-        int boardID = 0; iss >> boardID;
+        int boardID{}; iss >> boardID;
         for (int label = boardID*16; label < (boardID+1)*16; ++label) trigger_labels.push_back(label);
       }
       else if (temp == "-B" || temp == "--boards")
@@ -262,9 +257,9 @@ int main(int argc, char** argv)
     }
   }
 
-  // -------------------- //
-  // Check the parameters //
-  // -------------------- //
+  // ---------------------------- //
+  // Check and use the parameters //
+  // ---------------------------- //
 
   const bool hitsMaxSet    = 0 < nbHitsMax   ;
   const bool hitsMaxTotSet = 0 < nbHitsMaxTot;
@@ -272,10 +267,12 @@ int main(int argc, char** argv)
   const bool trigger_label = !trigger_labels.empty();
 
   // if (hitsMaxTotSet && multithreadSet) throw-error("Can't have -N and -M at the same time !");
-  if (trigger_label) print(trigger_labels);
+  if (trigger_label) print("trigger on", trigger_labels);
 #ifdef TRIGGER
   if (trigger_label) print(STRINGIFY(TRIGGER), "chosen along with label-based trigger. The behavior is AND (possibility to develop it if you really need a OR logic).");
 #endif //TRIGGER
+
+  CFDlabelParams.load(CFDfile);
 
   // Look-up tables (LUT) :
   auto triggerLUT = Colib::LUT<LUT_size>([&trigger_labels](UShort_t label){
@@ -298,7 +295,7 @@ int main(int argc, char** argv)
     Caen1725::RootInterface reader(filename, readTraces);
     reader.setBoardReadTrace(boardReadTrace);
     Caen1725::EventBuilder eventBuilder(reserved_buffer_size);
-    eventBuilder.buildOnTimestamp(ts_evt_build);
+    eventBuilder.buildOnCaenTime(ts_evt_build);
   #ifdef TRIGGER
     Trigger trigger(&eventBuilder);
   #endif //TRIGGER
@@ -450,10 +447,13 @@ int main(int argc, char** argv)
 
       // 1. Apply the cfd
         timerCFD.StartProfiling();
+      
       if (applyCFD && inHit.hasTrace())
       {
         const CFDParameters* cfdparam{};
         if (CFDlabelParams.get(inHit.label)) cfdparam = CFDlabelParams.get(inHit.label);
+        else if (CFDboardParams.get(inHit.board_ID)) cfdparam = CFDboardParams.get(inHit.board_ID);
+        
         if (cfdparam)
         {
           ++nbHit[inHit.label];
@@ -463,6 +463,7 @@ int main(int argc, char** argv)
           else if (zero==CFD::noZero  ) {inHit.time = inHit.precise_ts; ++nbNoZero  [inHit.label];}
           else                          {inHit.time = inHit.extended_ts + zero*Caen1725::ticks_to_ps; inHit.wfa_success = true;}
         }
+        else inHit.time = inHit.precise_ts;
       }
       else inHit.time = inHit.precise_ts;
         timerCFD.StopProfiling();

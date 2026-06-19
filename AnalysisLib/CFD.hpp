@@ -14,6 +14,11 @@ struct CFDParameters
   double fraction = 0.5;
   int shift = 2;
   int nbBaseline = 10;
+  friend std::ostream& operator<<(std::ostream& out, CFDParameters const & param)
+  {
+    out << param.fraction << " " << param.shift << " " << param.nbBaseline;
+    return out;
+  }
 };
 
 template<class T>

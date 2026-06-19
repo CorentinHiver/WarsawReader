@@ -3453,25 +3453,25 @@ namespace Colib
    * If no file is passed as parameter, reads the current file.
    * Internally perform a file->cd()
    */
-template<class T>
-std::vector<std::string> file_get_names_of(TFile* file = nullptr)
-{
-    static_assert(std::is_base_of_v<TObject, T>, "Template type T must inherit from TObject");
-    std::vector<std::string> ret;
-    const char* classname = T::Class_Name();
-    if (file == nullptr) file = gFile;
-    if (!file) {error("in file_get_names_of<", classname, ">(TFile* file): file is nullptr"); return ret;}
-    file->cd();
-    std::string_view const target_classname(classname); // Use string_view for fast, allocation-free string comparisons
-    auto list = file->GetListOfKeys();
-    if (!list) return ret; // Safety check in case the file is somehow corrupted/empty
-    for (auto&& keyAsObj : *list)
-    {
-      auto key = static_cast<TKey*>(keyAsObj);
-      if (std::string_view(key->GetClassName()) == target_classname) ret.emplace_back(key->GetName());
-    }
-    return ret;
-}
+  template<class T>
+  std::vector<std::string> file_get_names_of(TFile* file = nullptr)
+  {
+      static_assert(std::is_base_of_v<TObject, T>, "Template type T must inherit from TObject");
+      std::vector<std::string> ret;
+      const char* classname = T::Class_Name();
+      if (file == nullptr) file = gFile;
+      if (!file) {error("in file_get_names_of<", classname, ">(TFile* file): file is nullptr"); return ret;}
+      file->cd();
+      std::string_view const target_classname(classname); // Use string_view for fast, allocation-free string comparisons
+      auto list = file->GetListOfKeys();
+      if (!list) return ret; // Safety check in case the file is somehow corrupted/empty
+      for (auto&& keyAsObj : *list)
+      {
+        auto key = static_cast<TKey*>(keyAsObj);
+        if (std::string_view(key->GetClassName()) == target_classname) ret.emplace_back(key->GetName());
+      }
+      return ret;
+  }
   
   /**
    * @brief Creates a map of all the object of a certain class (TH1F, TH2F...) inside a TFile, indexed by their name
@@ -3969,7 +3969,7 @@ namespace Colib
         std::string output_name = target+"_"+std::to_string(outfile_i)+".root";
         std::string command = "hadd " + hadd_options + " " + output_name + " " + mergeStrings(files);
         // print(command);
-        system(command.c_str());
+        [[maybe_unused]] int dummy = system(command.c_str());
       }
     });
     for (auto & thread : threads) thread.join();

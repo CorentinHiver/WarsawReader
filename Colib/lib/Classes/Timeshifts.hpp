@@ -119,7 +119,7 @@ bool Timeshifts::load(std::string const & filename, bool ns)
 void Timeshifts::write(std::string const & fullpath, std::string const & name)
 {
   m_outPath = fullpath;
-  system(("mkdir -p "+m_outPath).c_str());
+  [[maybe_unused]] int dummy = system(("mkdir -p "+m_outPath).c_str());
 
   std::string outData = Colib::removeExtension(m_outPath + name)+".dT";
 

@@ -1,16 +1,17 @@
 #include "Colib/lib/CoMT.hpp"
 #include "Colib/lib/Classes/Arguments.hpp"
+
 #include "AnalysisLib/CFDOptimizer.hpp"
+
 #include "CaenLib/RootReader.hpp"
 
 using namespace std;
 using namespace Colib;
 using namespace Caen1725;
 
-constexpr Label refLabel = 81;
-constexpr Label refBoard = 5;
 int main(int argc, char** argv)
 {
+  int refLabelI{-1};
   Arguments args(argc, argv);
   auto nb_events_max = max<size_t>();
   vector<string> filenames;
@@ -24,7 +25,8 @@ int main(int argc, char** argv)
     else if (args == "-f") filenames = findFilesWildcard(args.load<string>());
     // else if (args == "-c") calib.load(args.load<string>());
     else if (args == "-p") parameterFile = args.load<string>();
-    else if (args == "min") 
+    else if (args == "-t") refLabelI = args.load<Label>();
+    else if (args == "min")
     {
       onlyMin = true;
       rootfilename = args.load<std::string>();
@@ -38,17 +40,18 @@ int main(int argc, char** argv)
     optimizer.write_dT("cfd.params");
     return 0;
   }
-  bool const max_events = nb_events_max < max<size_t>();
+  if (refLabelI<0) throw_error("No reference label !! Use option -t to give it to me.");
   if (filenames.empty()) throw_error("No files !! Use -f options to feed me.");
+  auto refLabel = size_cast(refLabelI);
+  bool const max_events = nb_events_max < max<size_t>();
 
-  std::vector<Label> labels_to_study;
-  for (Label board = 0; board<2; ++board) for (Label channel = 0; channel<8; ++channel) labels_to_study.push_back(board*16+channel*2);
-  auto const isStudied = LUT<200>([&labels_to_study](Label const & label){return found(labels_to_study, label);});
-  CFDOptimizer optimizer(labels_to_study);
   CFDMinimisationParameters parameters;
   parameters.set(parameterFile);
   print(parameters);
-  optimizer.setParameters(parameters);
+
+  // CFDOptimizer optimizer;
+  // optimizer.setParameters(parameters);
+  CFDOptimizer optimizer(parameters);
 
   auto distributed_filenames = MT::distribute(filenames);
   MT::parallelise_function([&](){
@@ -61,18 +64,17 @@ int main(int argc, char** argv)
         if (reader.getCursor()%1000 == 0) printsln(getShortname(filename), 
           nicer_double((100.*reader.getCursor())/reader.getTree()->GetEntries(), 1), " %");
         if (max_events && nb_events_max < reader.getCursor()) break;
-        auto event = reader.getEvent();
-        for (int hit_i = 0; hit_i<event.mult; ++hit_i) if (event.board_ID[hit_i] == refBoard) 
+        auto const & event = reader.getEvent();
+        for (int hit_i = 0; hit_i<event.mult; ++hit_i) if (event.label[hit_i] == refLabel) 
         {
-          auto const & refHit = event.getHit(hit_i);
           for (int hit_j = 0; hit_j<event.mult; ++hit_j)
           {
             auto const & label = event.label[hit_j];
             auto const & trace = event.traces[hit_j];
-            if (isStudied[label] && event.board_ID[hit_j] != refBoard)
+            if (label != refLabel)
             {
               if (trace.empty()) throw_error("No trace for detector ", label);
-              optimizer.calculate_dT(refHit, label, event.time[hit_j], trace);
+              optimizer.calculate_dT(event.time[hit_i], event.time[hit_j], label, trace);
             }
           }
         }

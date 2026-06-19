@@ -24,7 +24,9 @@ TH2F* dT(TFile* file, int ref_label, int nbBins = 6000, double min = -3000000, d
 {
   RootReader reader(file);
   auto & event = reader.getEvent();
-  auto dT = new TH2F("hdT","dT;label;dT[ps]",200,0,200, nbBins,min,max);
+  static int i = -1; ++i;
+  auto name = "hdT"+std::to_string(i); 
+  auto dT = new TH2F(name.c_str(),(name+";label;dT[ps]").c_str(),200,0,200, nbBins,min,max);
   dT->SetDirectory(gROOT);
   while(reader.readNextEvent())
   { // Looping through the events
@@ -36,13 +38,16 @@ TH2F* dT(TFile* file, int ref_label, int nbBins = 6000, double min = -3000000, d
       }
     }
   }
-  print("hdT created, hdT->Draw() to see it");
+  print(name+"created, "+name+"->Draw() to see it");
   return dT;
 }
 
 TH2F* dT(string const & filename, int ref_label, int nbBins = 6000, double min = -3000000, double max = 3000000)
 {
-  return dT(TFile::Open(filename.c_str(), "READ"), ref_label, nbBins, min, max);
+  auto file = TFile::Open(filename.c_str(), "READ");
+  auto ret =  dT(file, ref_label, nbBins, min, max);
+  file->Close();
+  return ret;
 }
 
 void coincMatrix(TFile* file)

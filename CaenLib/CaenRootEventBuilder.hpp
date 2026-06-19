@@ -42,7 +42,7 @@ namespace Caen1725
     void align()
     {
       Colib::linspace(m_ordered_index, m_hit_buffer.size());
-      if (m_buildOnTimestamp) std::sort(m_ordered_index.begin(), m_ordered_index.end(), [this](size_t i, size_t j){
+      if (m_buildOnCaenTime) std::sort(m_ordered_index.begin(), m_ordered_index.end(), [this](size_t i, size_t j){
         return m_hit_buffer[j].caen_time > m_hit_buffer[i].caen_time;
       });
       else                    std::sort(m_ordered_index.begin(), m_ordered_index.end(), [this](size_t i, size_t j){
@@ -63,10 +63,11 @@ namespace Caen1725
         auto const & hit_i      =  m_ordered_index[loop_i       ];
         auto const & hit        =  m_hit_buffer   [hit_i        ];
         auto const & first_hit  =  m_hit_buffer   [event.front()];
+
         // 3. Add new hits until one is out of time window with the first hit of the event
         // moment referred to as "closing the event"
-        if ((m_buildOnTimestamp) ? (static_cast<Long64_t>(hit.caen_time - first_hit.caen_time) < time_window)
-                                 : (static_cast<Long64_t>(hit.time      - first_hit.time     ) < time_window)) 
+        if ((m_buildOnCaenTime) ? (static_cast<Long64_t>(hit.caen_time - first_hit.caen_time) < time_window)
+                                : (static_cast<Long64_t>(hit.     time - first_hit.     time) < time_window)) 
         {
           event.emplace_back(hit_i);  
           continue;
@@ -98,7 +99,7 @@ namespace Caen1725
     auto begin() const {return m_event_buffer.begin();}
     auto end  () const {return m_event_buffer.end  ();}
 
-    void buildOnTimestamp(bool b) {m_buildOnTimestamp = b;}
+    void buildOnCaenTime(bool b) {m_buildOnCaenTime = b;}
 
   private:
 
@@ -108,7 +109,7 @@ namespace Caen1725
     bool m_aligned = false;
 
     // Options
-    bool m_buildOnTimestamp = false;
+    bool m_buildOnCaenTime = false;
   };
 };
 

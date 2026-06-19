@@ -1,0 +1,41 @@
+You will need:
+- 60Co data for Germaniums, in-beam data for DSSD;
+- a cfd.opt.param .
+
+1. Conversion
+$ caen2root --group 0 --write-traces 1 --trigger --label 81 --cfd 0 --files "/path/files/to/convert/name*.caendat"
+
+Explaination:
+The data used for optimize CFD needs to contain the traces and be untouched by any previous CFD correction.
+For now, the regular HIL tree can't hold the traces, but the HILplain can and is created by the --group 0 parameter.
+Only data containing the detector used as a time reference is need, so --label 81 allows rejecting events without the ref detector.
+
+2. Optimization
+$ CFDoptimizations -f "/path/to/converted/files*.root" -p /path/to/cfd.opt.param
+
+Short instructions:
+If you don't care about the details, just fill the labels and/or boards rows to select the detectors you want to calculate the fine CFD parameters.
+The label corresponds to board_ID*16 + channel_ID*8 + subchannel_ID
+The board selects all the detectors in the board
+The output is named cfd.params
+
+More details:
+The cfd.opt.param has a strict structure: first row is the minimisation space, the second the labels or boards to study.
+You can of course duplicate, rename and modify it to create e.g. one for test, one for Ge and one for DSSD.
+The structure is :
+
+shifts <min> <max> fractions <min> <max> <steps> nbBaseline <nb>
+label <label1> <label2> <label3> ...
+board <board1> <board2> ...
+
+The shifts are integers with a step of 1, while the fractions should be < 1 and you can determine the step size of your choice.
+
+2.1 Checks:
+It is of some importance to check the minimization happened correctly.
+First, check the cfd.params file. If there are out-of-bound values, just remove the detector from the list
+Then, check the intermediate 
+
+3. Use
+Parameters can be used in caen2root with the --cfd-param keyword:
+
+$ caen2root -f "files*.caendat" --cfd-param /path/to/cfd.params

@@ -30,6 +30,8 @@ namespace Caen1725
   };
   class CFDMinimisationParameters
   {
+    // std::array<bool, 10000> labelLUT{{}};
+    std::vector<Label> labels;
   public:
     CFDMinimisationParameters() noexcept = default;
     CFDMinimisationParameters(std::string const & filename) noexcept {set(filename);}
@@ -41,7 +43,7 @@ namespace Caen1725
 
     void set(std::string const & filename)
     {
-      if (!Colib::fileExists(filename)) Colib::throw_error(filename+" not found !!");
+      if (!Colib::fileExists(filename)) Colib::throw_error("cfd parameter file", filename, "not found !!");
       std::ifstream file(filename);
       std::string line;
       while(std::getline(file, line))
@@ -53,6 +55,27 @@ namespace Caen1725
           if (temp == "shifts") iss >> shifts.first >> shifts.last;
           else if (temp == "fractions") iss >> fractions.first >> fractions.last >> fractions.delta;
           else if (temp == "nbBaseline") iss >> nbBaseline;
+          else if (temp == "labels")
+          {
+            size_t label{};
+            while(iss >> label) 
+            {
+              // if (labelLUT.size() < label) Colib::throw_error("Label", label, "too high (<", labelLUT.size(), ")");
+              labels.push_back(label);
+              // labelLUT[label] = true;
+            }
+          }
+          else if (temp == "boards")
+          {
+            size_t board{};
+            while(iss >> board) for (size_t channel = 0; channel<16; ++channel) 
+            {
+              auto label = 16*board+channel;
+              // if (labelLUT.size() < label) Colib::throw_error("Label", label, "too high (<", labelLUT.size(), ")");
+              labels.push_back(label);
+              // labelLUT[label] = true;
+            }
+          }
         }
       }
       
@@ -61,6 +84,7 @@ namespace Caen1725
       print("fractions", fractions.values);
       print("shifts", shifts.values);
     }
+    auto const & getLabels() const noexcept {return labels;}
     friend std::ostream& operator<< (std::ostream& out, CFDMinimisationParameters const & params)
     {
       out << "fractions " << params.fractions.first << " " << params.fractions.last << " " << params.fractions.nb_steps << "\n"
@@ -125,35 +149,55 @@ namespace Caen1725
 
   class CFDOptimizer
   {
+    std::array<bool, 10000> labelLUT{{}};
   public:
     CFDOptimizer() noexcept = default;
-    CFDOptimizer(std::vector<Label> const & labels) noexcept :
-      m_nbDetectors(labels.size()),
-      m_listLabels(labels)
+    CFDOptimizer(CFDMinimisationParameters const & parameters):
+      m_listLabels(parameters.getLabels()),
+      m_nbDetectors(m_listLabels.size()),
+      m_parameters(parameters)
     {
       size_t labelMax = *std::max_element(m_listLabels.begin(), m_listLabels.end());
+      if (labelLUT.size() < labelMax) Colib::throw_error("Label", labelMax, "too high (>", labelLUT.size(), ")");
+      m_histograms.resize(m_nbDetectors);
       m_labelToDetectorIndex.resize(labelMax+1, -1);
       for (size_t det_i = 0; det_i<m_listLabels.size(); ++det_i) 
       {
         auto const & label = m_listLabels[det_i];
-        m_labelToDetectorIndex[label] = det_i; // eg {0,-1,1,-1,2,-1,3,-1,4}
+        m_labelToDetectorIndex[label] = det_i;
+        labelLUT[label] = true;
+        m_histograms[det_i].init(std::to_string(label), m_parameters);
       }
       gaus.reset( new TF1("gaus", "gaus"));
       gaus_and_bkgd.reset( new TF1("gaus_and_bkgd", "gaus(0)+pol1(3)"));
     }
+    // CFDOptimizer(std::vector<Label> const & labels) noexcept :
+    //   m_nbDetectors(labels.size()),
+    //   m_listLabels(labels)
+    // {
+    //   size_t labelMax = *std::max_element(m_listLabels.begin(), m_listLabels.end());
+    //   m_labelToDetectorIndex.resize(labelMax+1, -1);
+    //   for (size_t det_i = 0; det_i<m_listLabels.size(); ++det_i) 
+    //   {
+    //     auto const & label = m_listLabels[det_i];
+    //     m_labelToDetectorIndex[label] = det_i; // eg {0,-1,1,-1,2,-1,3,-1,4}
+    //   }
+    //   gaus.reset( new TF1("gaus", "gaus"));
+    //   gaus_and_bkgd.reset( new TF1("gaus_and_bkgd", "gaus(0)+pol1(3)"));
+    // }
 
-    void setParameters(CFDMinimisationParameters const & parameters) 
-    {
-      m_parameters = parameters;
-      m_histograms.resize(m_nbDetectors);
-      for (size_t det_i = 0; det_i<m_nbDetectors; ++det_i) 
-      {
-        auto const & label = m_listLabels[det_i];
-        m_histograms[det_i].init(std::to_string(label), m_parameters);
-      }
-    }
+    // void setParameters(CFDMinimisationParameters const & parameters) 
+    // {
+    //   m_parameters = parameters;
+    //   m_histograms.resize(m_nbDetectors);
+    //   for (size_t det_i = 0; det_i<m_nbDetectors; ++det_i) 
+    //   {
+    //     auto const & label = m_listLabels[det_i];
+    //     m_histograms[det_i].init(std::to_string(label), m_parameters);
+    //   }
+    // }
 
-    void calculate_dT(Hit const & refHit, Label label, Timestamp time, Trace const & trace) 
+    void calculate_dT(Timestamp timeRef, Timestamp time, Label label, Trace const & trace) 
     {
       if (m_labelToDetectorIndex.size() <= label) return; // Detector non treated
       auto const & index = m_labelToDetectorIndex[label];
@@ -171,7 +215,7 @@ namespace Caen1725
         if (zero == CFD::noSignal || zero == CFD::noZero) continue;
         auto const time_cfd = time + zero*ticks_to_ps;
 
-        m_histograms[index].fillbin_dT(fraction_i, shift_i, refHit.time - time_cfd);
+        m_histograms[index].fillbin_dT(fraction_i, shift_i, timeRef - time_cfd);
         // m_histograms[index].fill_dT(fraction, shift, refHit.time - time_cfd);
       }
     }
@@ -200,7 +244,6 @@ namespace Caen1725
       double y3 = histo->GetBinContent(bin_max);
       double x4 = histo->GetBinCenter(bin_max + 1);
       double y4 = histo->GetBinContent(bin_max + 1);
-
       double x_max_interp = x3 + (T - y3) * (x4 - x3) / (y4 - y3);
 
       double FWQM = x_max_interp - x_min_interp;
@@ -229,42 +272,42 @@ namespace Caen1725
 
       double FWHM = x_max_interp - x_min_interp;
       double FWHM_from_FWQM = FWQM/sqrt(2);
+      return (FWHM_from_FWQM+FWHM) / 2000;
 
-      // We measured FWHM and FWQM. If the peak is gaussian, FWQM = sqrt(2)*FWHM.
-      // In case of bad CFD parameters, the peak won't be gaussian and a gaussian
-      // gaussian fit is very likely to fail. Therefore, if FWHM is too different from 
-      // sqrt(2)*FWQM then we don't try to fit it and FWQM/sqrt(2) is actually more
-      // likely to be a good measurement of the FWHM.
+      // Here lies previous attemps :
+      {
+        // Check if the difference is less than 10%:
+        // if ( (FWHM - FWHM_from_FWQM) / ((FWHM + FWHM_from_FWQM) / 2) < 0.1) 
 
-      // Check if the difference is less than 10%:
-      // if ( (FWHM - FWHM_from_FWQM) / ((FWHM + FWHM_from_FWQM) / 2) < 0.1)
-        return FWHM_from_FWQM+FWHM / 2000;
+        // We measured FWHM and FWQM. If the peak is gaussian, FWQM = sqrt(2)*FWHM.
+        // In case of bad CFD parameters, the peak won't be gaussian and a gaussian
+        // gaussian fit is very likely to fail. Therefore, if FWHM is too different from 
+        // sqrt(2)*FWQM then we don't try to fit it and FWQM/sqrt(2) is actually more
+        // likely to be a good measurement of the FWHM.
+        
+        // auto max_binX = histo -> GetBinLowEdge(histo -> GetMaximumBin());
+        // gaus->SetRange(max_binX-FWQM, max_binX+FWQM);
+        // histo->GetXaxis()->SetRangeUser(max_binX-FWQM, max_binX+FWQM);
 
-      // Instanciate the gaus
-      // Initialise the parameters
+        // auto mean_est = histo -> GetMean();
+        // gaus->SetParameters(max, mean_est, FWHM_from_FWQM);
+        // // Fit
+        // histo->Fit(gaus.get(), "RQ");
+        // // Get this first estimate
+        // double sigma = gaus->GetParameter(2);
 
-      // auto max_binX = histo -> GetBinLowEdge(histo -> GetMaximumBin());
-      // gaus->SetRange(max_binX-FWQM, max_binX+FWQM);
-      // histo->GetXaxis()->SetRangeUser(max_binX-FWQM, max_binX+FWQM);
+        // // if (20 < FWHM) return FWHM;
 
-      // auto mean_est = histo -> GetMean();
-      // gaus->SetParameters(max, mean_est, FWHM_from_FWQM);
-      // // Fit
-      // histo->Fit(gaus.get(), "RQ");
-      // // Get this first estimate
-      // double sigma = gaus->GetParameter(2);
+        // // Initialise the parameters
+        // // gaus_and_bkgd->SetRange(mean_est-FWHM, mean_est+FWHM);
+        // // gaus_and_bkgd->SetParameters(max, mean_est, sigma, 0, 1);
+        // // // Fit
+        // // histo->Fit(gaus_and_bkgd.get(), "RQ");
+        // // // Get this first estimate
+        // // sigma = gaus_and_bkgd->GetParameter(2);
 
-      // // if (20 < FWHM) return FWHM;
-
-      // // Initialise the parameters
-      // // gaus_and_bkgd->SetRange(mean_est-FWHM, mean_est+FWHM);
-      // // gaus_and_bkgd->SetParameters(max, mean_est, sigma, 0, 1);
-      // // // Fit
-      // // histo->Fit(gaus_and_bkgd.get(), "RQ");
-      // // // Get this first estimate
-      // // sigma = gaus_and_bkgd->GetParameter(2);
-
-      // return Colib::sigtofwhm(sigma)/1000.;
+        // return Colib::sigtofwhm(sigma)/1000.;
+      }
     }
 
     void calculateResolutions()
@@ -373,8 +416,8 @@ namespace Caen1725
     // }
     
   private:
-    size_t m_nbDetectors = 0;
     std::vector<Label> m_listLabels;
+    size_t m_nbDetectors = 0;
     std::vector<int> m_labelToDetectorIndex;
     CFDMinimisationParameters m_parameters;
     std::vector<OptimizerHistograms> m_histograms;
