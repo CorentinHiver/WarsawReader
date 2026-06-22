@@ -26,8 +26,8 @@ namespace Caen1725
       if (m_plain)
       {
         m_hit.readFrom(tree);
-        m_tree->SetBranchAddress("eventID", &m_eventID);
-        m_tree->SetBranchAddress("mult"   , &m_evtMult);
+        m_tree->SetBranchAddress("evtNb", &m_eventID);
+        m_tree->SetBranchAddress("mult" , &m_evtMult);
       }
       m_size = std::min(m_size, static_cast<size_t>(m_tree->GetEntries()));
       return tree;

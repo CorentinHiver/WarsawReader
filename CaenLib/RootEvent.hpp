@@ -20,8 +20,8 @@ namespace Caen1725
     {
       if (reset) tree->ResetBranchAddresses();
 
-      tree->Branch("eventID", &eventID);
-      tree->Branch("mult"   , &mult   );
+      tree->Branch("evtNb", &eventID);
+      tree->Branch("mult" , &mult   );
 
       createBranchArray(tree, "label"        , &label        , "mult");
       createBranchArray(tree, "board_ID"     , &board_ID     , "mult");
@@ -40,7 +40,7 @@ namespace Caen1725
     {
       if (reset) tree->ResetBranchAddresses();
       
-      tree->SetBranchAddress("eventID"      , &eventID      );
+      tree->SetBranchAddress("evtNb"        , &eventID      );
       tree->SetBranchAddress("mult"         , &mult         );
       tree->SetBranchAddress("label"        , &label        );
       tree->SetBranchAddress("board_ID"     , &board_ID     );

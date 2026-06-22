@@ -4,7 +4,7 @@
 namespace Caen1725
 {
   using EventID   = Long64_t; // Event ID
-  using EventMult = Int_t   ; // Event multiplicity
+  using EventMult = Int_t ;   // Event multiplicity
 
   class Event 
   {

@@ -332,7 +332,7 @@ int main(int argc, char** argv)
     if (group) outEvent.writeTo(tree);
     else
     {// Plain mode :
-      tree -> Branch("eventID", &eventID);
+      tree -> Branch("evtNb", &eventID);
       tree -> Branch("mult"   , &evtMult);
       outHit.writeTo(tree, false);
     }
