@@ -70,7 +70,7 @@ int main(int argc, char** argv)
             auto const & trace = event.traces[hit_j];
             if (label != refLabel)
             {
-              optimizer.calculate_dT(event.time[hit_i], event.time[hit_j], label, trace);
+              optimizer.calculate_dT(event.time[hit_i], event.time[hit_j], label, trace, ticks_to_ps);
             }
           }
         }

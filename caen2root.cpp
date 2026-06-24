@@ -177,6 +177,7 @@ int main(int argc, char** argv)
     else if (temp == "-o" || temp == "--output")
     {
       iss >> outpath;
+      if (outpath.back() != '/') outpath.push_back('/');
     }
     else if (temp == "-g" || temp == "--group")
     {
