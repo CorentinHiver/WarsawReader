@@ -1,13 +1,12 @@
 // The point of this code is to write down the traces of the signal
 // The additionnal point is to study the cfd and compare with the original crrc2 timestamp,
-// but without any coincidences, simply comparison of both methods !
+// but without any coincidences, simply comparison of consequence of both methods on traces !
 
 // #include "CaenLib/CaenRawReader.hpp"
 #include "AnalysisLib/CFD.hpp"
 #include "CaenLib/CaenRootInterface.hpp"
-// #include "AnalysisLib/RawHit.hpp"
-#include "Colib/lib/Classes/Timer.hpp"
-#include "Colib/lib/libCo.hpp"
+#include "Colib/Timer.hpp"
+#include "Colib/Colib.hh"
 
 #include "TPad.h"
 #include "TCanvas.h"

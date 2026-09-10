@@ -2,7 +2,7 @@
 // #define MT
 
 #ifdef MT
-#include "Colib/lib/CoMT.hpp"
+#include "Colib/CoMT.hpp"
 #endif //MT
 
 #include "AnalysisLib/CFD.hpp"
@@ -13,9 +13,9 @@
 #include "CaenLib/CaenRootEventBuilder.hpp"
 #include "CaenLib/RootHit.hpp"
 
-#include "Colib/lib/libCo.hpp"
-#include "Colib/lib/Classes/Timer.hpp"
-#include "Colib/lib/Classes/Timeshifts.hpp"
+#include "Colib/Colib.hh"
+#include "Colib/Timer.hpp"
+#include "Colib/Timeshifts.hpp"
 
 constexpr int reader_version = 110;
 constexpr size_t LUT_size = 10000;

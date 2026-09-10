@@ -1,7 +1,7 @@
 #pragma once
 #include "RootEvent.hpp"
 #include "TFile.h"
-#include "../Colib/lib/libCo.hpp"
+#include "Colib/Colib.hh"
 
 namespace Caen1725
 {

@@ -4,8 +4,8 @@
 #include "TH2F.h"
 #include "TFile.h"
 #include "AnalysisLib/CFD.hpp"
-#include "Colib/lib/Classes/Timer.hpp"
-#include "Colib/lib/libCo.hpp"
+#include "Colib/Timer.hpp"
+#include "Colib/Colib.hh"
 
 #include "CaenLib/CaenRootInterface.hpp"
 #include "CaenLib/CaenRootEventBuilder.hpp"

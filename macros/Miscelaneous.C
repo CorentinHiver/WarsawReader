@@ -1,5 +1,5 @@
 #include "../CaenLib/RootReader.hpp"
-#include "../Colib/lib/Classes/Timeshifts.hpp"
+#include "Colib/Timeshifts.hpp"
 #include "TH2F.h"
 #include "TChain.h"
 

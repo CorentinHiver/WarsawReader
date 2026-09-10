@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Colib/lib/libRoot.hpp"
+#include "Colib/libRoot.hh"
 // #include "../CaenLib/Hit.hpp"
 // #include "TraceAnalysis.hpp"
 #include "CFD.hpp"
@@ -211,15 +211,16 @@ public:
     double y1 = histo->GetBinContent(bin_min - 1);
     double x2 = histo->GetBinCenter(bin_min);
     double y2 = histo->GetBinContent(bin_min);
-    if (y2 == y1) y2 = y1+1;
-    double x_min_interp = x1 + (T - y1) * (x2 - x1) / (y2 - y1);
+    double x_min_interp{}, x_max_interp{};
+    if (std::abs(y2 - y1) < 1e-9) x_min_interp = x1 + 0.5 * (x2 - x1); // if y2==y1, not interpolation
+    else x_min_interp = x1 + (T - y1) * (x2 - x1) / (y2 - y1);
 
     double x3 = histo->GetBinCenter(bin_max);
     double y3 = histo->GetBinContent(bin_max);
     double x4 = histo->GetBinCenter(bin_max + 1);
     double y4 = histo->GetBinContent(bin_max + 1);
-    if (y4 == y3) y4 = y3+1;
-    double x_max_interp = x3 + (T - y3) * (x4 - x3) / (y4 - y3);
+    if (std::abs(y4 - y3) < 1e-9) x_max_interp = x3 + 0.5 * (y4 - x3); // if y4==y3, not interpolation
+    else x_max_interp = x3 + (T - y3) * (x4 - x3) / (y4 - y3);
 
     double FWQM = x_max_interp - x_min_interp;
     
@@ -236,16 +237,15 @@ public:
     y1 = histo->GetBinContent(bin_min - 1);
     x2 = histo->GetBinCenter(bin_min);
     y2 = histo->GetBinContent(bin_min);
-    if (y2 == y1) y2 = y1+1;
-    x_min_interp = x1 + (T - y1) * (x2 - x1) / (y2 - y1);
+    if (std::abs(y2 - y1) < 1e-9) x_min_interp = x1 + 0.5 * (x2 - x1); // if y2==y1, not interpolation
+    else x_min_interp = x1 + (T - y1) * (x2 - x1) / (y2 - y1);
 
     x3 = histo->GetBinCenter(bin_max);
     y3 = histo->GetBinContent(bin_max);
     x4 = histo->GetBinCenter(bin_max + 1);
     y4 = histo->GetBinContent(bin_max + 1);
-    if (y4 == y3) y4 = y3+1;
-
-    x_max_interp = x3 + (T - y3) * (x4 - x3) / (y4 - y3);
+    if (std::abs(y4 - y3) < 1e-9) x_max_interp = x3 + 0.5 * (y4 - x3); // if y4==y3, not interpolation
+    else x_max_interp = x3 + (T - y3) * (x4 - x3) / (y4 - y3);
 
     double FWHM = x_max_interp - x_min_interp;
     double FWHM_from_FWQM = FWQM/sqrt(2);
@@ -291,6 +291,7 @@ public:
   {
     for (auto & label : m_parameters.getLabels())
     {
+      printsln(label);
       auto const & index = labelLUT[label];
       auto & dTs = m_histograms[index].dT_histos;
       for (int binx = 1; binx<=dTs->GetNbinsX(); ++binx) for (int biny = 1; biny<=dTs->GetNbinsY(); ++biny)

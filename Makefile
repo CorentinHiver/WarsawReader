@@ -5,7 +5,7 @@ OPT := -O3 -march=native
 DEPFLAGS := -MD -MP
 
 ROOTCFLAGS := $(shell root-config --cflags)
-ROOTLIBS := $(shell root-config --glibs)
+ROOTLIBS := $(shell root-config --glibs) -lSpectrum
 
 BUILD_DIR := build
 TARGETS := CFDoptimizations writeTraces studyCFD caen2root #rootReaderExample

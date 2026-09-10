@@ -1,5 +1,5 @@
-#include "Colib/lib/CoMT.hpp"
-#include "Colib/lib/Classes/Arguments.hpp"
+#include "Colib/CoMT.hh"
+#include "Colib/Arguments.hpp"
 
 #include "AnalysisLib/CFDOptimizer.hpp"
 
@@ -78,10 +78,12 @@ int main(int argc, char** argv)
     }
   });
 
-  printsln("dT calculated, finding optimal cfd parameters");
+  print("dT calculated, finding optimal cfd parameters");
 
+  printsln("calculating resultion");
   optimizer.calculateResolutions();
   optimizer.writeRoot("cfdOpti.root");
+  printsln("finding minima");
   optimizer.findMinima("cfdOpti.root");
   optimizer.write_dT("cfd.params");
 

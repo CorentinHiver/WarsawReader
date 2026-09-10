@@ -1,5 +1,5 @@
 #pragma once
-#include "../Colib/lib/libCo.hpp"
+#include "Colib/Colib.hh"
 
 template <class Trace>
 Trace& getBaseline(Trace & trace, size_t nb_samples_baseline)
