@@ -2,7 +2,7 @@
 corentin.hiver@free.fr
 
 NEW: need to install the Colib library
-git clone https://gitlab.com/CorentinHiver/Colib.git && cd Colib && sh Install.sh
+cd && git clone https://gitlab.com/CorentinHiver/Colib.git && cd Colib && sh Install.sh
 
 Compilation:
 
